@@ -74,6 +74,16 @@
         </div>
       </div>
     </div>
+    <div id="cache-loading" class="cache-loading" hidden>
+      <div class="cache-loading-track">
+        <div id="cache-loading-fill" class="cache-loading-fill"></div>
+      </div>
+      <p id="cache-loading-status" class="cache-loading-status" role="status" aria-live="polite">
+        Aggiornamento cache del registro…
+      </p>
+      <div id="cache-loading-bar" class="visually-hidden" role="progressbar" aria-valuemin="0" aria-valuemax="100"
+        aria-labelledby="cache-loading-status"></div>
+    </div>
     <div class="header-title-section">
       <div class="container-fluid px-3 py-3">
         <h1 class="h3 mb-0" id="page-heading">IT-Wallet Registry Search Engine</h1>
@@ -226,6 +236,11 @@
       <button type="button" class="btn-close" data-bs-dismiss="offcanvas" id="message-board-close" aria-label="Chiudi"></button>
     </div>
     <div class="offcanvas-body">
+      <div id="board-loading" class="board-loading" hidden>
+        <div class="cache-loading-track">
+          <div id="board-loading-fill" class="cache-loading-fill"></div>
+        </div>
+      </div>
       <ul id="message-board-list" class="list-unstyled" role="log" aria-live="polite" aria-relevant="additions"></ul>
     </div>
   </div>

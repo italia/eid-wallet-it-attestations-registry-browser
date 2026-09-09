@@ -58,7 +58,10 @@
     "badge": "{{n}} errori in bacheca",
     "dumpOk": "Dump {{env}}: {{n}} risorse caricate",
     "httpStatus": "HTTP",
-    "duration": "{{ms}} ms"
+    "duration": "{{ms}} ms",
+    "loading": "Aggiornamento cache del registro…",
+    "loadingProgress": "Aggiornamento cache {{current}} di {{total}}",
+    "loadingDone": "Cache aggiornata"
   },
   "artifacts": {
     "heading": "Artefatti",

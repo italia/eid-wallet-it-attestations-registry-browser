@@ -5,10 +5,17 @@ export class MessageBoard {
     this.toggle = toggle;
     this.labels = {};
     this.items = [];
+    this.pending = null;
   }
 
   clear() {
     this.items = [];
+    this.pending = null;
+    this.render();
+  }
+
+  setPending(text) {
+    this.pending = text || null;
     this.render();
   }
 
@@ -64,14 +71,26 @@ export class MessageBoard {
         if (this.labels.open) this.toggle?.setAttribute('aria-label', this.labels.open);
       }
     }
+    if (this.pending) this.list.appendChild(this.renderPending());
     for (const item of this.items) {
       this.list.appendChild(this.renderItem(item));
     }
   }
 
+  renderPending() {
+    const li = document.createElement('li');
+    li.className = 'board-call board-call-pending';
+    li.setAttribute('aria-busy', 'true');
+    const p = document.createElement('p');
+    p.className = 'board-call-endpoint mb-0';
+    p.textContent = this.pending;
+    li.appendChild(p);
+    return li;
+  }
+
   renderItem(item) {
     const li = document.createElement('li');
-    li.className = `board-call mb-3 ${item.status === 'error' ? 'board-call-error' : 'board-call-ok'}`;
+    li.className = `board-call ${item.status === 'error' ? 'board-call-error' : 'board-call-ok'}`;
     if (item.kind === 'http') {
       const endpoint = document.createElement('p');
       endpoint.className = 'board-call-endpoint mb-1';

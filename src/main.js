@@ -24,6 +24,60 @@ const board = new MessageBoard({
   toggle: document.getElementById('message-board-toggle'),
 });
 
+const cacheLoading = {
+  el: document.getElementById('cache-loading'),
+  fill: document.getElementById('cache-loading-fill'),
+  bar: document.getElementById('cache-loading-bar'),
+  status: document.getElementById('cache-loading-status'),
+  board: document.getElementById('board-loading'),
+  boardFill: document.getElementById('board-loading-fill'),
+  active: false,
+  current: 0,
+  total: 0,
+};
+
+function cacheLoadingLabel() {
+  if (cacheLoading.total > 0) {
+    return t('board.loadingProgress', {
+      current: String(cacheLoading.current),
+      total: String(cacheLoading.total),
+    });
+  }
+  return t('board.loading');
+}
+
+function setCacheLoading({ active, current = 0, total = 0 } = {}) {
+  cacheLoading.active = Boolean(active);
+  cacheLoading.current = current;
+  cacheLoading.total = total;
+  const indeterminate = cacheLoading.active && total <= 0;
+  const pct = total > 0 ? Math.min(100, Math.round((current / total) * 100)) : 0;
+  const width = total > 0 ? `${pct}%` : '';
+  const label = cacheLoading.active ? cacheLoadingLabel() : t('board.loadingDone');
+
+  if (cacheLoading.el) {
+    cacheLoading.el.hidden = !cacheLoading.active;
+    cacheLoading.el.setAttribute('aria-hidden', String(!cacheLoading.active));
+    cacheLoading.el.classList.toggle('is-indeterminate', indeterminate);
+  }
+  if (cacheLoading.board) {
+    cacheLoading.board.hidden = !cacheLoading.active;
+    cacheLoading.board.classList.toggle('is-indeterminate', indeterminate);
+  }
+  if (cacheLoading.fill) cacheLoading.fill.style.width = width;
+  if (cacheLoading.boardFill) cacheLoading.boardFill.style.width = width;
+  if (cacheLoading.status) cacheLoading.status.textContent = label;
+  if (cacheLoading.bar) {
+    cacheLoading.bar.setAttribute('aria-busy', String(cacheLoading.active));
+    if (cacheLoading.active && !indeterminate) cacheLoading.bar.setAttribute('aria-valuenow', String(pct));
+    else cacheLoading.bar.removeAttribute('aria-valuenow');
+  }
+  document.getElementById('main-content')?.setAttribute('aria-busy', String(cacheLoading.active));
+  document.getElementById('message-board')?.setAttribute('aria-busy', String(cacheLoading.active));
+  document.getElementById('message-board-toggle')?.setAttribute('aria-busy', String(cacheLoading.active));
+  board.setPending(cacheLoading.active ? label : null);
+}
+
 const FACET_FIELDS = [
   ['facet-legal-type', 'legal_type'],
   ['facet-issuer', 'issuer'],
@@ -187,6 +241,13 @@ async function applyLocale(lang) {
   applyDocumentLang(lang, dict);
   renderStatic(dict);
   board.setLabels(dict.board);
+  if (cacheLoading.active) {
+    setCacheLoading({
+      active: true,
+      current: cacheLoading.current,
+      total: cacheLoading.total,
+    });
+  }
 }
 
 function renderStatic(dict) {
@@ -474,42 +535,58 @@ async function bootDump() {
   const gen = ++dumpGeneration;
   const spec = currentEnv();
   syncEnvUi();
-  let loaded;
-  try {
-    loaded = await loadDumpManifest(spec.id);
-  } catch (err) {
+  board.clear();
+  setCacheLoading({ active: true, current: 0, total: 0 });
+  const onProgress = (progress) => {
     if (gen !== dumpGeneration) return;
-    board.clear();
-    if (err.httpCalls?.length) board.setHttpCalls(err.httpCalls, { retry: () => bootDump() });
-    else {
+    if (progress.httpCalls?.length) {
+      board.setHttpCalls(progress.httpCalls, { retry: () => bootDump() });
+    }
+    setCacheLoading({
+      active: true,
+      current: progress.current || 0,
+      total: progress.total || 0,
+    });
+  };
+  try {
+    let loaded;
+    try {
+      loaded = await loadDumpManifest(spec.id, fetch, onProgress);
+    } catch (err) {
+      if (gen !== dumpGeneration) return;
+      board.clear();
+      if (err.httpCalls?.length) board.setHttpCalls(err.httpCalls, { retry: () => bootDump() });
+      else {
+        board.error({
+          url: `${import.meta.env.BASE_URL}cache/${spec.manifestFile}`,
+          reason: err.message || String(err),
+          retry: () => bootDump(),
+        });
+      }
+      exposeTestApi(new Set(), []);
+      window.__ITW_ERROR__ = err.message || String(err);
+      return;
+    }
+    if (gen !== dumpGeneration) return;
+    const { manifest, httpCalls } = loaded;
+    if (!manifest.resources?.length) {
+      board.setHttpCalls(httpCalls, { retry: () => bootDump() });
       board.error({
         url: `${import.meta.env.BASE_URL}cache/${spec.manifestFile}`,
-        reason: err.message || String(err),
+        reason: t('results.emptyDump'),
         retry: () => bootDump(),
       });
+      exposeTestApi(new Set(), []);
+      return;
     }
-    exposeTestApi(new Set(), []);
-    window.__ITW_ERROR__ = err.message || String(err);
-    return;
+    const dump = await loadDump(manifest, { httpCalls, onProgress });
+    if (gen !== dumpGeneration) return;
+    state.dump = dump;
+    board.setHttpCalls(dump.httpCalls, { retry: () => bootDump() });
+    rebuildGraph();
+  } finally {
+    if (gen === dumpGeneration) setCacheLoading({ active: false });
   }
-  if (gen !== dumpGeneration) return;
-  const { manifest, httpCalls } = loaded;
-  board.clear();
-  if (!manifest.resources?.length) {
-    board.setHttpCalls(httpCalls, { retry: () => bootDump() });
-    board.error({
-      url: `${import.meta.env.BASE_URL}cache/${spec.manifestFile}`,
-      reason: t('results.emptyDump'),
-      retry: () => bootDump(),
-    });
-    exposeTestApi(new Set(), []);
-    return;
-  }
-  const dump = await loadDump(manifest, { httpCalls });
-  if (gen !== dumpGeneration) return;
-  state.dump = dump;
-  board.setHttpCalls(dump.httpCalls, { retry: () => bootDump() });
-  rebuildGraph();
 }
 
 bindChrome();

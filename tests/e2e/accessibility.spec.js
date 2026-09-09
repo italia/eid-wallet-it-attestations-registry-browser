@@ -33,9 +33,14 @@ test.describe('accessibility', () => {
     expect(box.width).toBeGreaterThanOrEqual(24);
     expect(box.height).toBeGreaterThanOrEqual(24);
 
+    await expect(page.locator('#cache-loading')).toBeHidden();
+    await expect(page.locator('#cache-loading')).toHaveAttribute('aria-hidden', 'true');
+    await expect(page.locator('#main-content')).toHaveAttribute('aria-busy', 'false');
+
     await boardBtn.click();
     await expect(page.locator('#message-board')).toBeVisible();
-    await expect(page.locator('#message-board-list li')).not.toHaveCount(0);
+    await expect(page.locator('#message-board-list li.board-call')).not.toHaveCount(0);
+    await expect(page.locator('#message-board-list li.board-call-pending')).toHaveCount(0);
     await expect(page.locator('#message-board-list')).toContainText('GET https://');
     await expect(page.locator('#message-board-list')).toContainText('HTTP 200');
     await expect(page.locator('#message-board-list')).toContainText('ms');
@@ -43,7 +48,20 @@ test.describe('accessibility', () => {
     await expect(page.locator('#message-board-list')).toContainText('it-wallet-registry');
     const callCount = await page.evaluate(() => window.__ITW_EXPLORER__?.httpCalls?.length || 0);
     expect(callCount).toBeGreaterThan(10);
-    await expect(page.locator('#message-board-list li')).toHaveCount(callCount);
+    await expect(page.locator('#message-board-list li.board-call')).toHaveCount(callCount);
+    const firstCard = page.locator('#message-board-list li.board-call').first();
+    const secondCard = page.locator('#message-board-list li.board-call').nth(1);
+    await expect(firstCard).toBeVisible();
+    await expect(secondCard).toBeVisible();
+    const gap = await page.evaluate(() => {
+      const list = document.getElementById('message-board-list');
+      const items = [...list.querySelectorAll('li.board-call')];
+      if (items.length < 2) return 0;
+      const a = items[0].getBoundingClientRect();
+      const b = items[1].getBoundingClientRect();
+      return b.top - a.bottom;
+    });
+    expect(gap).toBeGreaterThanOrEqual(8);
     await page.locator('#message-board-close').click();
   });
 

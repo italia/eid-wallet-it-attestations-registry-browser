@@ -79,16 +79,18 @@ export async function timedFetch(url, fetchFn = fetch) {
   }
 }
 
-export async function loadDumpManifest(env = 'pre', fetchFn = fetch) {
+export async function loadDumpManifest(env = 'pre', fetchFn = fetch, onProgress) {
   const urls = manifestUrlsFor(env);
   const httpCalls = [];
   let lastErr;
+  onProgress?.({ phase: 'manifest', current: 0, total: 0, httpCalls });
   for (const url of urls) {
     const result = await timedFetch(url, fetchFn);
     httpCalls.push({
       ...result.http,
       endpoint: url,
     });
+    onProgress?.({ phase: 'manifest', current: httpCalls.length, total: 0, httpCalls });
     if (!result.http.ok || result.text == null) {
       lastErr = new Error(result.http.error || `HTTP ${result.http.status} ${url}`);
       continue;
@@ -104,7 +106,7 @@ export async function loadDumpManifest(env = 'pre', fetchFn = fetch) {
   throw error;
 }
 
-export async function loadDump(manifest, { fetchFn = fetch, cacheBase = cacheRoot(), httpCalls = [] } = {}) {
+export async function loadDump(manifest, { fetchFn = fetch, cacheBase = cacheRoot(), httpCalls = [], onProgress } = {}) {
   const dump = {
     manifest,
     discovery: null,
@@ -118,50 +120,58 @@ export async function loadDump(manifest, { fetchFn = fetch, cacheBase = cacheRoo
     httpCalls: [...httpCalls],
   };
 
-  for (const entry of manifest.resources || []) {
-    if (entry.error || !entry.path) {
-      dump.resources.push({ ...entry, json: null });
+  const entries = manifest.resources || [];
+  const total = entries.length;
+  onProgress?.({ phase: 'resources', current: 0, total, httpCalls: dump.httpCalls });
+
+  for (const entry of entries) {
+    try {
+      if (entry.error || !entry.path) {
+        dump.resources.push({ ...entry, json: null });
+        dump.httpCalls.push({
+          method: 'GET',
+          endpoint: entry.url || entry.path,
+          requestUrl: entry.path ? cacheUrl(entry.path, cacheBase) : '',
+          status: entry.status || 0,
+          ok: false,
+          durationMs: entry.duration_ms ?? null,
+          contentType: entry.content_type || '',
+          applicationType: pickApplicationType(entry.content_type),
+          error: entry.error || 'missing path',
+        });
+        continue;
+      }
+      const requestUrl = cacheUrl(entry.path, cacheBase);
+      const result = await timedFetch(requestUrl, fetchFn);
+      const applicationType = pickApplicationType(entry.content_type, result.http.contentType);
       dump.httpCalls.push({
-        method: 'GET',
-        endpoint: entry.url || entry.path,
-        requestUrl: entry.path ? cacheUrl(entry.path, cacheBase) : '',
-        status: entry.status || 0,
-        ok: false,
-        durationMs: entry.duration_ms ?? null,
-        contentType: entry.content_type || '',
-        applicationType: pickApplicationType(entry.content_type),
-        error: entry.error || 'missing path',
+        ...result.http,
+        endpoint: entry.url || requestUrl,
+        requestUrl,
+        applicationType,
+        dumpStatus: entry.status,
+        dumpDurationMs: entry.duration_ms ?? null,
       });
-      continue;
-    }
-    const requestUrl = cacheUrl(entry.path, cacheBase);
-    const result = await timedFetch(requestUrl, fetchFn);
-    const applicationType = pickApplicationType(entry.content_type, result.http.contentType);
-    dump.httpCalls.push({
-      ...result.http,
-      endpoint: entry.url || requestUrl,
-      requestUrl,
-      applicationType,
-      dumpStatus: entry.status,
-      dumpDurationMs: entry.duration_ms ?? null,
-    });
-    if (!result.http.ok || result.text == null) {
+      if (!result.http.ok || result.text == null) {
+        dump.resources.push({
+          ...entry,
+          error: result.http.error || `HTTP ${result.http.status} ${requestUrl}`,
+          json: null,
+        });
+        continue;
+      }
+      const parsed = parseRegistryBody(result.text, applicationType || result.http.contentType);
       dump.resources.push({
         ...entry,
-        error: result.http.error || `HTTP ${result.http.status} ${requestUrl}`,
-        json: null,
+        json: parsed.json,
+        jwt: parsed.jwt,
+        header: parsed.header || null,
+        raw: parsed.raw ?? result.text,
       });
-      continue;
+      assignDump(dump, entry, parsed.json);
+    } finally {
+      onProgress?.({ phase: 'resources', current: dump.resources.length, total, httpCalls: dump.httpCalls });
     }
-    const parsed = parseRegistryBody(result.text, applicationType || result.http.contentType);
-    dump.resources.push({
-      ...entry,
-      json: parsed.json,
-      jwt: parsed.jwt,
-      header: parsed.header || null,
-      raw: parsed.raw ?? result.text,
-    });
-    assignDump(dump, entry, parsed.json);
   }
   return dump;
 }

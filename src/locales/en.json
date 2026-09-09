@@ -58,7 +58,10 @@
     "badge": "{{n}} errors on the board",
     "dumpOk": "Dump {{env}}: {{n}} resources loaded",
     "httpStatus": "HTTP",
-    "duration": "{{ms}} ms"
+    "duration": "{{ms}} ms",
+    "loading": "Updating the registry cache…",
+    "loadingProgress": "Updating cache {{current}} of {{total}}",
+    "loadingDone": "Cache updated"
   },
   "artifacts": {
     "heading": "Artifacts",
