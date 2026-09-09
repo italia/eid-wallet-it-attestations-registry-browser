@@ -1,0 +1,242 @@
+; Returned data elements signed by the issuer
+IssuerSigned = {
+  "nameSpaces" : IssuerNameSpacesObjectBytes,
+  ; Data elements in Bytes
+  "issuerAuth" : IssuerAuthObjectBytes ; Mobile security object (MSO) for issuer data authentication in Bytes
+}
+
+IssuerNameSpacesObjectBytes = {
+  "it.ipzs.wallet.ta.residency.1" : [
+    #6.24(bstr .cbor Given_name),
+    #6.24(bstr .cbor Family_name),
+    #6.24(bstr .cbor Birth_date),
+    #6.24(bstr .cbor Place_of_birth),
+    #6.24(bstr .cbor Tax_id_code),
+    #6.24(bstr .cbor Foreign_residence),
+    #6.24(bstr .cbor Effective_date),
+    #6.24(bstr .cbor Resident_city),
+    #6.24(bstr .cbor Resident_street),
+    #6.24(bstr .cbor Issuing_country),
+    #6.24(bstr .cbor Issuing_authority),
+    #6.24(bstr .cbor Sub),
+    ? #6.24(bstr .cbor Verification),
+    ? #6.24(bstr .cbor Consulate_code),
+    ? #6.24(bstr .cbor Consulate_name),
+    ? #6.24(bstr .cbor Resident_state),
+    ? #6.24(bstr .cbor Resident_country),
+    ? #6.24(bstr .cbor Resident_postal_code)
+  ]
+}
+
+; Digest and element identifiers
+DigestID = uint
+DataElementIdentifier = tstr
+RandomValue = bstr
+
+; Credential elements
+Given_name = {
+  digestID: DigestID,
+  random: RandomValue,
+  elementIdentifier: DataElementIdentifier .enum ("given_name"),
+  elementValue: tstr
+}
+
+Family_name = {
+  digestID: DigestID,
+  random: RandomValue,
+  elementIdentifier: DataElementIdentifier .enum ("family_name"),
+  elementValue: tstr
+}
+
+Birth_date = {
+  digestID: DigestID,
+  random: RandomValue,
+  elementIdentifier: DataElementIdentifier .enum ("birth_date"),
+  elementValue: tdate
+}
+
+Place_of_birth = {
+  digestID: DigestID,
+  random: RandomValue,
+  elementIdentifier: DataElementIdentifier .enum ("place_of_birth"),
+  elementValue: tstr
+}
+
+Tax_id_code = {
+  digestID: DigestID,
+  random: RandomValue,
+  elementIdentifier: DataElementIdentifier .enum ("tax_id_code"),
+  elementValue: tstr
+}
+
+Foreign_residence = {
+  digestID: DigestID,
+  random: RandomValue,
+  elementIdentifier: DataElementIdentifier .enum ("foreign_residence"),
+  elementValue: bool
+}
+
+Consulate_code = {
+  digestID: DigestID,
+  random: RandomValue,
+  elementIdentifier: DataElementIdentifier .enum ("consulate_code"),
+  elementValue: tstr
+}
+
+Consulate_name = {
+  digestID: DigestID,
+  random: RandomValue,
+  elementIdentifier: DataElementIdentifier .enum ("consulate_name"),
+  elementValue: tstr
+}
+
+Effective_date = {
+  digestID: DigestID,
+  random: RandomValue,
+  elementIdentifier: DataElementIdentifier .enum ("effective_date"),
+  elementValue: tdate
+}
+
+Resident_city = {
+  digestID: DigestID,
+  random: RandomValue,
+  elementIdentifier: DataElementIdentifier .enum ("resident_city"),
+  elementValue: tstr
+}
+
+Resident_state = {
+  digestID: DigestID,
+  random: RandomValue,
+  elementIdentifier: DataElementIdentifier .enum ("resident_state"),
+  elementValue: tstr
+}
+
+Resident_country = {
+  digestID: DigestID,
+  random: RandomValue,
+  elementIdentifier: DataElementIdentifier .enum ("resident_country"),
+  elementValue: tstr
+}
+
+Resident_street = {
+  digestID: DigestID,
+  random: RandomValue,
+  elementIdentifier: DataElementIdentifier .enum ("resident_street"),
+  elementValue: tstr
+}
+
+Resident_postal_code = {
+  digestID: DigestID,
+  random: RandomValue,
+  elementIdentifier: DataElementIdentifier .enum ("resident_postal_code"),
+  elementValue: tstr
+}
+
+Issuing_country = {
+  digestID: DigestID,
+  random: RandomValue,
+  elementIdentifier: DataElementIdentifier .enum ("issuing_country"),
+  elementValue: tstr .enum ("IT")
+}
+
+Issuing_authority = {
+  digestID: DigestID,
+  random: RandomValue,
+  elementIdentifier: DataElementIdentifier .enum ("issuing_authority"),
+  elementValue: tstr
+}
+
+Sub = {
+  digestID: DigestID,
+  random: RandomValue,
+  elementIdentifier: DataElementIdentifier .enum ("sub"),
+  elementValue: tstr .regexp "^[a-f0-9] {
+    8}-?[a-f0-9] {
+      4}-?4[a-f0-9] {
+        3
+      }
+    }
+  }
+}
+
+Verification = {
+  digestID: DigestID,
+  random: RandomValue,
+  elementIdentifier: DataElementIdentifier .enum ("verification"),
+  elementValue: VerificationValue
+}
+
+VerificationValue = {
+  trust_framework: tstr .enum ("it_l2+document_proof", "it_cie", "it_wallet", "eudi_wallet"),
+  assurance_level: tstr .enum ("https://ta.wallet.ipzs.it/loa/high", "https://ta.wallet.ipzs.it/loa/substantial")
+}
+
+; Mobile Security Object
+IssuerAuthObjectBytes = #6.18(COSE_Sign1)
+COSE_Sign1 = [ Headers, payload: #6.24(bstr .cbor MobileSecurityObject), signature: bstr ]
+Headers = ( protected: protected_header_map, unprotected: unprotected_header_map )
+protected_header_map = {
+  1 => AlgorithmIdentifier
+}
+unprotected_header_map = {
+  4 => bstr,
+  33 => bstr
+}
+
+MobileSecurityObject = {
+  "version" : tstr .enum ("1.0"),
+  "digestAlgorithm" : tstr .enum ("SHA-256"),
+  "valueDigests" : ValueDigests,
+  "deviceKeyInfo" : DeviceKeyInfo,
+  "docType" : tstr .enum ("it.ipzs.wallet.ta.residency.1"),
+  "validityInfo" : ValidityInfo,
+  ? "status" : Status
+}
+
+ValueDigests = {
+  "it.ipzs.wallet.ta.residency.1": DigestIDs
+}
+DigestIDs = [1* DigestID]
+
+DeviceKeyInfo = {
+  "deviceKey": COSE_Key,
+  ? "keyInfo": KeyInfo,
+  ? "keyAuthorizations": KeyAuthorizations
+}
+COSE_Key = {
+  1=>tstr/int,
+  ?2=>bstr,
+  ?3=>AlgorithmIdentifier,
+  ?4=>[+(tstr/int)],
+  ?5=>bstr,
+  *label=>values
+}
+label = int/tstr
+values = any
+AlgorithmIdentifier = tstr .enum ("ES256")
+KeyInfo = {
+  * int => any
+}
+KeyAuthorizations = {
+  ? "nameSpaces": AuthorizedNameSpaces,
+  ? "dataElements": AuthorizedDataElements
+}
+AuthorizedNameSpaces = ["it.ipzs.wallet.ta.residency.1"]
+AuthorizedDataElements = {
+  "it.ipzs.wallet.ta.residency.1": DataElementsArray
+}
+DataElementsArray = [1* DataElementIdentifier]
+
+ValidityInfo = {
+  "signed": tdate,
+  "validFrom": tdate,
+  "validUntil": tdate,
+  ? "expectedUpdate": tdate
+}
+Status = {
+  ? "status_list": StatusListInfo
+}
+StatusListInfo = {
+  "idx": uint,
+  "uri": tstr
+}

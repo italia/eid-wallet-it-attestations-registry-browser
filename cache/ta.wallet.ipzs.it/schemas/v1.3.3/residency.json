@@ -1,0 +1,247 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SD-JWT Residency Schema",
+  "description": "An object defining the structure of a SD-JWT Verifiable Credential Residency compliant with IT Wallet Specification v1.3.3",
+  "type": "object",
+  "required": [
+    "iss",
+    "sub",
+    "iat",
+    "exp",
+    "issuing_authority",
+    "issuing_country",
+    "status",
+    "cnf",
+    "vct",
+    "_sd",
+    "_sd_alg",
+    "given_name",
+    "family_name",
+    "birthdate",
+    "place_of_birth",
+    "tax_id_code",
+    "foreign_residence",
+    "effective_date",
+    "address"
+  ],
+  "properties": {
+    "iss": {
+      "type": "string",
+      "description": "URL string representing the Credential Issuer unique identifier",
+      "format": "uri"
+    },
+    "sub": {
+      "type": "string",
+      "description": "Identifier of the subject of the SD-JWT",
+      "pattern": "^[a-f0-9]{8}-?[a-f0-9]{4}-?4[a-f0-9]{3}-?[89ab][a-f0-9]{3}-?[a-f0-9]{12}\\z$"
+    },
+    "iat": {
+      "type": "number",
+      "description": "UNIX Timestamp with the time of JWT issuance, coded as NumericDate as indicated in RFC 7519"
+    },
+    "exp": {
+      "type": "number",
+      "description": "UNIX Timestamp with the expiry time of the JWT, coded as NumericDate as indicated in RFC 7519"
+    },
+    "nbf": {
+      "type": "number",
+      "description": "UNIX Timestamp with the start time of validity of the JWT, coded as NumericDate as indicated in RFC 7519"
+    },
+    "vct": {
+      "type": "string",
+      "description": "Credential type identifier (URN)."
+    },
+    "vct#integrity": {
+      "type": "string",
+      "description": "A String representing an integrity metadata for ensuring the integrity of the resource referred to by the vct"
+    },
+    "verification": {
+      "type": "object",
+      "required": ["trust_framework", "assurance_level"],
+      "properties": {
+        "trust_framework": {
+          "type": "string",
+          "enum": ["it_l2+document_proof", "it_cie", "it_wallet", "eudi_wallet"]
+        },
+        "assurance_level": {
+          "type": "string",
+          "enum": ["high", "substantial"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "issuing_authority": {
+      "type": "string",
+      "description": "Name of the administrative authority that has issued the SD-JWT VC",
+      "pattern": "^(?!\\s)(?!.*\\s\\s)(?!.*\\s$).+$"
+    },
+    "issuing_country": {
+      "type": "string",
+      "description": "Country of the SD-JWT VC issuing authority, as a two letter country code defined in ISO 3166-1 alpha-2",
+      "enum": ["IT"]
+    },
+    "status": {
+      "type": "object",
+      "required": ["status_list"],
+      "properties": {
+        "status_list": {
+          "type": "object",
+          "required": ["idx", "uri"],
+          "properties": {
+            "idx": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "uri": {
+              "type": "string",
+              "format": "uri"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "cnf": {
+      "type": "object",
+      "required": ["jwk"],
+      "properties": {
+        "jwk": {
+          "type": "object",
+          "required": ["kty", "crv", "x", "y"],
+          "properties": {
+            "alg": {
+              "type": "string",
+              "enum": ["ES256", "ES384", "ES512"]
+            },
+            "key_ops": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "kid": {
+              "type": "string"
+            },
+            "kty": {
+              "type": "string",
+              "enum": ["EC"]
+            },
+            "use": {
+              "type": "string",
+              "enum": ["sig", "enc"]
+            },
+            "x5c": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "x5t": {
+              "type": "string"
+            },
+            "x5t#S256": {
+              "type": "string"
+            },
+            "x5u": {
+              "type": "string",
+              "format": "uri"
+            },
+            "crv": {
+              "type": "string",
+              "enum": ["P-256", "P-384", "P-521"]
+            },
+            "x": {
+              "type": "string"
+            },
+            "y": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "_sd": {
+      "type": "array",
+      "description": "Digests of the disclosures",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    },
+    "_sd_alg": {
+      "type": "string",
+      "description": "Identifier of the hash algorithm used by the Credential Issuer to generate the digests",
+      "enum": ["sha-256"]
+    },
+    "given_name": {
+      "type": "string",
+      "description": "First Name"
+    },
+    "family_name": {
+      "type": "string",
+      "description": "Family Name"
+    },
+    "birthdate": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of birth"
+    },
+    "place_of_birth": {
+      "type": "string",
+      "description": "Place of birth"
+    },
+    "tax_id_code": {
+      "type": "string",
+      "description": "Tax ID Code"
+    },
+    "foreign_residence": {
+      "type": "boolean",
+      "description": "Indicates if the resident lives abroad"
+    },
+    "consulate_code": {
+      "type": "string",
+      "description": "Consulate code for residents abroad"
+    },
+    "consulate_name": {
+      "type": "string",
+      "description": "Consulate name for residents abroad"
+    },
+    "effective_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Effective date of residence"
+    },
+    "address": {
+      "type": "object",
+      "description": "Current residence address",
+      "required": ["locality", "street_address"],
+      "properties": {
+        "locality": {
+          "type": "string",
+          "description": "Residence locality"
+        },
+        "region": {
+          "type": "string",
+          "description": "Residence state or province or district or local area"
+        },
+        "street_address": {
+          "type": "string",
+          "description": "Residence street address"
+        },
+        "postal_code": {
+          "type": "string",
+          "description": "Postal Code"
+        },
+        "country": {
+          "type": "string",
+          "description": "Country of residence"
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

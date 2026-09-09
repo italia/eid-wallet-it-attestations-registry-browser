@@ -55,14 +55,18 @@ Niente “fantasma” dei non-match (default). Toggle SHOULD «mostra resto in g
 
 ## 5. Interazione
 
-- click / Enter: pannello dettaglio (metadati, schema, offer QR)
-- tastiera: il grafo NON è l’unico controllo; la lista a sinistra è un `listbox` o una `table` sincronizzata
-- zoom/pan: pulsanti +/-/fit, non solo rotella
+- click / Enter: pannello dettaglio sotto lista e grafo (metadati, **artefatti grezzi** JWS/JSON/CDDL, offer QR)
+- trascinamento: i nodi sono **spostabili** con il mouse (o touch); lo sfondo continua a fare pan
+- tastiera: il grafo NON è l’unico controllo; la lista sopra è sincronizzata
+- layout: il grafo occupa tutta la larghezza disponibile della riga di pagina
+- zoom/pan: pulsanti icona Bootstrap Italia (`it-zoom-in`, `it-zoom-out`, `it-maximize`) e rotella
 - selezione sincronizzata lista ↔ grafo
 
-## 6. Dati di collaudo attesi (fotografia manuale 3/9/2026)
+## 6. Dati attesi (dump 9/9/2026)
 
-10 `credential_type` tutti `pub-eaa`:  
+**Collaudo** (`pre`, `https://pre.ta.wallet.ipzs.it`): 10 `credential_type` tutti `pub-eaa`:  
 `av`, `education_attendance`, `education_degree`, `education_diploma`, `education_enrollment`, `EuropeanDisabilityCard`, `EuropeanHealthInsuranceCard`, `mDL`, `pid`, `residency`.
 
 18 schemi (più formati per tipo). Il grafo deve far vedere **due schemi** (sd-jwt e mdoc) dove entrambi esistono, e un solo formato dove l’inventario è incompleto (PID solo SD-JWT, AV solo mdoc, secondo il manuale).
+
+**Produzione** (`prod`, `https://ta.wallet.ipzs.it`): dump su disco (`manifest-prod.json`, `cache/ta.wallet.ipzs.it/`). Selezionabile dall’UI (F-12). Il grafo MUST restare usabile anche se il catalogo prod è più magro o in errore (bacheca, non crash).

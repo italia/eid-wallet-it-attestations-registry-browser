@@ -1,0 +1,167 @@
+{
+  "version" : "1.0",
+  "last_updated" : "2026-07-21T08:29:25Z",
+  "schemas" : [ {
+    "id" : "education_attendance+dc+sd-jwt+urn:it-wallet:education_attendance:it:1",
+    "version" : "1.0",
+    "credential_type" : "education_attendance",
+    "format" : "dc+sd-jwt",
+    "vct" : "urn:it-wallet:education_attendance:1",
+    "schema_uri" : "https://ta.wallet.ipzs.it/schemas/v1.3.3/education_attendance.json",
+    "schema_uri#integrity" : "sha256-/g+1A4RaMk/to9eBuZxkvYtDbtGQvDHmSCOIjBZ6taA=",
+    "description" : "Schema tecnico per la frequenza scolastica dello studente in formato SD-JWT."
+  }, {
+    "id" : "education_attendance+mso_mdoc+it.ipzs.wallet.ta.education_attendance.1",
+    "version" : "1.0",
+    "credential_type" : "education_attendance",
+    "format" : "mso_mdoc",
+    "docType" : "it.ipzs.wallet.ta.education_attendance.1",
+    "schema_uri" : "https://ta.wallet.ipzs.it/schemas/v1.3.3/education_attendance.cddl",
+    "schema_uri#integrity" : "sha256-sNpLaoG+ROe91sEWmAKEPETa6hVeDrfmze7bgaWaK2Q=",
+    "description" : "Schema tecnico per la frequenza scolastica dello studente in formato mso_mdoc."
+  }, {
+    "id" : "education_degree+dc+sd-jwt+urn:it-wallet:education_degree:it:1",
+    "version" : "1.0",
+    "credential_type" : "education_degree",
+    "format" : "dc+sd-jwt",
+    "vct" : "urn:it-wallet:education_degree:1",
+    "schema_uri" : "https://ta.wallet.ipzs.it/schemas/v1.3.3/education_degree.json",
+    "schema_uri#integrity" : "sha256-TFi1DjGXizdLsNDDeyYRb6rqPeWf2fzkfBtpULSXaRE=",
+    "description" : "Schema tecnico per i titoli accademici in formato SD-JWT."
+  }, {
+    "id" : "education_degree+dc+mso_mdoc+it.ipzs.wallet.ta.education_degree.1",
+    "version" : "1.0",
+    "credential_type" : "education_degree",
+    "format" : "mso_mdoc",
+    "docType" : "it.ipzs.wallet.ta.education_degree.1",
+    "schema_uri" : "https://ta.wallet.ipzs.it/schemas/v1.3.3/education_degree.cddl",
+    "schema_uri#integrity" : "sha256-/8kwMlusiHPrCzK+8e0JRTOIWIsOqjamt2u72F5gfG4=",
+    "description" : "Schema tecnico per i titoli accademici in formato mso_mdoc."
+  }, {
+    "id" : "education_diploma+dc+sd-jwt+urn:it-wallet:education_diploma:it:1",
+    "version" : "1.0",
+    "credential_type" : "education_diploma",
+    "format" : "dc+sd-jwt",
+    "vct" : "urn:it-wallet:education_diploma:1",
+    "schema_uri" : "https://ta.wallet.ipzs.it/schemas/v1.3.3/education_diploma.json",
+    "schema_uri#integrity" : "sha256-j7x+LFwLeLtsqP3dDl4VnMakHzPeivziAyglEsETAyQ=",
+    "description" : "Schema tecnico per i titoli di studio scolastici in formato SD-JWT."
+  }, {
+    "id" : "education_diploma+mso_mdoc+it.ipzs.wallet.ta.education_diploma.1",
+    "version" : "1.0",
+    "credential_type" : "education_diploma",
+    "format" : "mso_mdoc",
+    "docType" : "it.ipzs.wallet.ta.education_diploma.1",
+    "schema_uri" : "https://ta.wallet.ipzs.it/schemas/v1.3.3/education_diploma.cddl",
+    "schema_uri#integrity" : "sha256-R9gX1/eWQjllkVjwq6HrksWpVa5TxoZ4eFbQ5zIrqSM=",
+    "description" : "Schema tecnico per i titoli di studio scolastici in formato mso_mdoc."
+  }, {
+    "id" : "education_enrollment+dc+sd-jwt+urn:it-wallet:education_enrollment:it:1",
+    "version" : "1.0",
+    "credential_type" : "education_enrollment",
+    "format" : "dc+sd-jwt",
+    "vct" : "urn:it-wallet:education_enrollment:1",
+    "schema_uri" : "https://ta.wallet.ipzs.it/schemas/v1.3.3/education_enrollment.json",
+    "schema_uri#integrity" : "sha256-hJx5US2sAgvGGfbFHc+bjgV+Vse2FvuBRdZNvnCu1FQ=",
+    "description" : "Schema tecnico per le iscrizioni accademiche in formato SD-JWT."
+  }, {
+    "id" : "education_enrollment+mso_mdoc+it.ipzs.wallet.ta.education_enrollment.1",
+    "version" : "1.0",
+    "credential_type" : "education_enrollment",
+    "format" : "mso_mdoc",
+    "docType" : "it.ipzs.wallet.ta.education_enrollment.1",
+    "schema_uri" : "https://ta.wallet.ipzs.it/schemas/v1.3.3/education_enrollment.cddl",
+    "schema_uri#integrity" : "sha256-gJHL2Ix2Jys4dLRNaHzxL292YkysBDSpP/ATC3sfX2Q=",
+    "description" : "Schema tecnico per le iscrizioni accademiche in formato mso_mdoc."
+  }, {
+    "id" : "EuropeanDisabilityCard+dc+sd-jwt+urn:it-wallet:EuropeanDisabilityCard:it:1",
+    "version" : "1.0",
+    "credential_type" : "EuropeanDisabilityCard",
+    "format" : "dc+sd-jwt",
+    "vct" : "urn:it-wallet:EuropeanDisabilityCard:1",
+    "schema_uri" : "https://ta.wallet.ipzs.it/schemas/v1.3.3/europeandisabilitycard.json",
+    "schema_uri#integrity" : "sha256-l0Ta5CQxoGXuoVq8iBgTJQ9JXJBGBteMbAbnmD5yyJo=",
+    "description" : "Schema tecnico per la Carta Europea della Disabilità in formato SD-JWT."
+  }, {
+    "id" : "EuropeanDisabilityCard+mso_mdoc+it.ipzs.wallet.ta.EuropeanDisabilityCard.1",
+    "version" : "1.0",
+    "credential_type" : "EuropeanDisabilityCard",
+    "format" : "mso_mdoc",
+    "docType" : "it.ipzs.wallet.ta.EuropeanDisabilityCard.1",
+    "schema_uri" : "https://ta.wallet.ipzs.it/schemas/v1.3.3/europeandisabilitycard.cddl",
+    "schema_uri#integrity" : "sha256-BqHcDnAiLUP76Oyiacgt6pd+U1ZtWDJkVbCOA58M/Kg=",
+    "description" : "Schema tecnico per la Carta Europea della Disabilità in formato mso_mdoc."
+  }, {
+    "id" : "EuropeanHealthInsuranceCard+dc+sd-jwt+urn:it-wallet:EuropeanHealthInsuranceCard:it:1",
+    "version" : "1.0",
+    "credential_type" : "EuropeanHealthInsuranceCard",
+    "format" : "dc+sd-jwt",
+    "vct" : "urn:it-wallet:EuropeanHealthInsuranceCard:1",
+    "schema_uri" : "https://ta.wallet.ipzs.it/schemas/v1.3.3/europeanhealthinsurancecard.json",
+    "schema_uri#integrity" : "sha256-CHXlxWkK9BgdxP/ZXvxP9TlGs2Ozyzyb0ODUYC3Ye5w=",
+    "description" : "Schema tecnico per la Tessera Sanitaria - Tessera europea di assicurazione malattia in formato SD-JWT."
+  }, {
+    "id" : "EuropeanHealthInsuranceCard+mso_mdoc+it.ipzs.wallet.ta.EuropeanHealthInsuranceCard.1",
+    "version" : "1.0",
+    "credential_type" : "EuropeanHealthInsuranceCard",
+    "format" : "mso_mdoc",
+    "docType" : "it.ipzs.wallet.ta.EuropeanHealthInsuranceCard.1",
+    "schema_uri" : "https://ta.wallet.ipzs.it/schemas/v1.3.3/europeanhealthinsurancecard.cddl",
+    "schema_uri#integrity" : "sha256-MctHxTletvfZ9XPXE3i7NsPKmYLH0n3mO/rNOaIo0DE=",
+    "description" : "Schema tecnico per la Tessera Sanitaria - Tessera europea di assicurazione malattia in formato mso_mdoc."
+  }, {
+    "id" : "mDL+dc+sd-jwt+urn:it-wallet:mDL:it:1",
+    "version" : "1.0",
+    "credential_type" : "mDL",
+    "format" : "dc+sd-jwt",
+    "vct" : "urn:it-wallet:mDL:1",
+    "schema_uri" : "https://ta.wallet.ipzs.it/schemas/v1.3.3/mdl.json",
+    "schema_uri#integrity" : "sha256-Qj9E82bXUkCC/IZZQx/FwcIPz04v7s7CGSBDx+pXHRw=",
+    "description" : "Schema tecnico per la Patente di guida in formato SD-JWT."
+  }, {
+    "id" : "mDL+mso_mdoc+org.iso.18013.5.1.mDL",
+    "version" : "1.0",
+    "credential_type" : "mDL",
+    "format" : "mso_mdoc",
+    "docType" : "org.iso.18013.5.1.mDL",
+    "schema_uri" : "https://ta.wallet.ipzs.it/schemas/v1.3.3/mdl.cddl",
+    "schema_uri#integrity" : "sha256-s0rtQIFu49a4e+Jf5PC6NrKQ75YWXWpxN3C9lZHoRXM=",
+    "description" : "Schema tecnico per la Patente di guida in formato mso_mdoc"
+  }, {
+    "id" : "pid+dc+sd-jwt+urn:it-wallet:pid:it:1",
+    "version" : "1.0",
+    "credential_type" : "pid",
+    "format" : "dc+sd-jwt",
+    "vct" : "urn:it-wallet:pid:1",
+    "schema_uri" : "https://ta.wallet.ipzs.it/schemas/v1.3.3/pid.json",
+    "schema_uri#integrity" : "sha256-oO/YyC+trfhv+GcGl2ak7HavVZ41fZtD/YR3LCpF65Y=",
+    "description" : "Schema tecnico per i Dati di Identificazione Personale in formato SD-JWT."
+  }, {
+    "id" : "residency+dc+sd-jwt+urn:it-wallet:residency:it:1",
+    "version" : "1.0",
+    "credential_type" : "residency",
+    "format" : "dc+sd-jwt",
+    "vct" : "urn:it-wallet:residency:1",
+    "schema_uri" : "https://ta.wallet.ipzs.it/schemas/v1.3.3/residency.json",
+    "schema_uri#integrity" : "sha256-aqu6Z6GS3QuLk8RLA1wuPaFUR/anldITbJNYh/1d01E=",
+    "description" : "Schema tecnico per l'attestato di Residenza in formato SD-JWT."
+  }, {
+    "id" : "residency+mso_mdoc+it.ipzs.wallet.ta.residency.1",
+    "version" : "1.0",
+    "credential_type" : "residency",
+    "format" : "mso_mdoc",
+    "docType" : "it.ipzs.wallet.ta.residency.1",
+    "schema_uri" : "https://ta.wallet.ipzs.it/schemas/v1.3.3/residency.cddl",
+    "schema_uri#integrity" : "sha256-HR79PiJLIcnc51FSqYNLlRp/P3KHTuZHK2wsb9/dTuk=",
+    "description" : "Schema tecnico per l'attestato di Residenza in formato mso_mdoc"
+  }, {
+    "id" : "av+mso_mdoc+eu.europa.ec.av.1",
+    "version" : "1.0",
+    "credential_type" : "av",
+    "format" : "mso_mdoc",
+    "docType" : "eu.europa.ec.av.1",
+    "schema_uri" : "https://ta.wallet.ipzs.it/schemas/v1.3.3/av.cddl",
+    "schema_uri#integrity" : "sha256-hqVLLL+/pQ/vrOjtsnznQrECa1rZEqoHsp77Dc8DPig=",
+    "description" : "Schema tecnico per l'attestato di Età certificata in formato mso_mdoc."
+  } ]
+}

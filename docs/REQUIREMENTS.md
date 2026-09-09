@@ -1,9 +1,11 @@
-# Requisiti — IT-Wallet Registry Explorer
+# Requisiti — IT-Wallet Registry Search Engine
 
-Versione requisiti: **0.1.0**  
-Origine: richiesta di progetto + valutazione del [manuale del registro](EVALUATION_HANDBOOK.md) + Specifiche Tecniche IT-Wallet v1.4.6.
+Versione requisiti: **0.2.0**  
+Origine: richiesta di progetto + valutazione del [manuale del registro](EVALUATION_HANDBOOK.md) + Specifiche Tecniche IT-Wallet v1.4.6 + aggiornamenti UI (facet di ricerca, header `disco.html`, switch Trust Anchor, traccia HTTP in bacheca).
 
 Priorità: **MUST** / **SHOULD** / **MAY** (RFC 2119).
+
+Changelog 0.2.0: F-01 facet HTML, F-06 traccia per-chiamata, F-08 etichette `ITA`/`EN`, F-12 ambiente/TA, NF-07 identità visiva header `disco.html`, A-01/A-03/A-17/A-20 allineati all’implementazione.
 
 ---
 
@@ -31,6 +33,17 @@ Il motore MUST indicizzare e filtrare almeno:
 
 MUST essere possibile combinare dimensioni (query testuale + facet UI).
 
+Il form di ricerca MUST esporre `<select>` HTML, etichettati, popolati dal dump:
+
+| Controllo | Valori | Effetto |
+|-----------|--------|---------|
+| `legal_type` | sempre `pub-eaa`, `qeaa`, `eaa` (+ vuoto = tutti) | scrive `legal_type:` nella query |
+| Emittente | issuer reali del catalogo | scrive `issuer:` |
+| Fonte autentica | FA reali del registro | scrive `as:` |
+| Attributo / claim | claim usati dalle FA | scrive `claim:` |
+
+I menu MUST **scrivere nella stessa query** Lucene-lite (`legal_type:pub-eaa`, `issuer:"…"`, `as:"…"`, `claim:family_name`), non un secondo motore. Dettaglio: [SEARCH.md](SEARCH.md).
+
 ### F-02 Sintassi di query
 
 Il motore MUST accettare le notazioni da [SEARCH.md](SEARCH.md):
@@ -51,7 +64,9 @@ Uno script MUST scaricare le risorse REST del registro **senza trasformare i bod
 
 MUST partire da `/.well-known/it-wallet-registry` e seguire `endpoints.*` e gli URI derivati (`schema_uri`, bundle l10n se raggiungibili).
 
-MUST registrare ogni fetch in `cache/manifest.json` (URL, status, content-type, hash, timestamp, errore).
+MUST registrare ogni fetch negli indici di dump (URL, status, content-type / application type, hash, timestamp, `duration_ms`, errore).
+
+MUST scrivere `cache/manifest-pre.json` e `cache/manifest-prod.json` (un indice per Trust Anchor). `cache/manifest.json` MUST restare il dump di default di collaudo (`pre`) per compatibilità.
 
 ### F-04 CI GitHub Pages con due CD
 
@@ -73,12 +88,15 @@ Al load l’app MUST:
 
 MUST esistere una bacheca (drawer o offcanvas Bootstrap Italia) con:
 
-- successi di load (risorsa, byte/tempo, dump vs live)
-- errori con **motivazione** (status HTTP, CORS, JWT non decodificabile, integrity mismatch, 404 produzione, WAF HTML)
-- stato `pending` per i refresh in corso
-- `aria-live` per gli annunci
+- **una riga per ogni chiamata HTTP** avvenuta (manifest + ogni risorsa del dump, tentativi falliti inclusi)
+- per ciascuna riga: **endpoint** (URL del Trust Anchor o URL richiesto), **metodo**, **status code**, **tempo di risposta** (`duration_ms`), **application type** (`Content-Type` / media type, es. `application/json`, `application/jose`)
+- errori con **motivazione** (status HTTP, CORS, JWT non decodificabile, integrity mismatch, 404 produzione, WAF HTML) e pulsante Riprova
+- stato `pending` per i refresh in corso (SHOULD)
+- `role="log"` e `aria-live` per gli annunci
 
 MUST avere un’**icona nella navbar in alto a destra**, con badge del numero di errori aperti.
+
+La bacheca MUST NON riassumere il load in un’unica riga «N risorse caricate» al posto del dettaglio per-chiamata.
 
 ### F-07 Retry
 
@@ -86,7 +104,7 @@ Ogni errore MUST mostrare un pulsante **Riprova** / **Retry** che rilanja solo q
 
 ### F-08 Multilingua
 
-MUST italiano e inglese, stesso meccanismo delle pagine ufficiali (i18next, file `locales/it.json` e `locales/en.json`, dropdown ITA/ENG nell’header slim).
+MUST italiano e inglese, file `src/locales/it.json` e `src/locales/en.json`, dropdown **ITA** / **EN** nell’header slim (markup `disco.html`, NF-07). `document.documentElement.lang` MUST seguire la lingua scelta.
 
 SHOULD usare i bundle `localization` del registro quando disponibili; fallback sulle chiavi tecniche (`credential_type`, `l10n_id`).
 
@@ -121,6 +139,19 @@ Ogni attestato/credenziale MUST offrire:
 
 conformi alle ST, con i limiti in [CREDENTIAL_OFFER.md](CREDENTIAL_OFFER.md) (offer di discovery, `grants.authorization_code` senza `issuer_state` cifrato PDND).
 
+### F-12 Switch collaudo / produzione e Trust Anchor
+
+Il form di ricerca MUST includere un `<select>` **Ambiente** con almeno:
+
+| Valore | Etichetta (it) | Trust Anchor |
+|--------|----------------|--------------|
+| `pre` | Collaudo (preprod) | `https://pre.ta.wallet.ipzs.it` |
+| `prod` | Produzione | `https://ta.wallet.ipzs.it` |
+
+L’UI MUST **indicare il Trust Anchor** dell’ambiente attivo (URL visibile e linkabile). Il cambio ambiente MUST ricaricare il dump corrispondente (`manifest-pre.json` / `manifest-prod.json`) e MUST aggiornare il permalink `?env=pre|prod`. Non è un token della query Lucene.
+
+Produzione MAY avere catalogo incompleto o assente: l’app MUST non crashare; gli errori restano in bacheca (F-06, F-07).
+
 ---
 
 ## 3. Requisiti non funzionali (richiesti)
@@ -136,7 +167,7 @@ incluso: skip-link, `role="banner"` / `contentinfo`, header slim + lingua, `main
 
 ### NF-02 Icona bacheca in navbar
 
-L’icona bacheca MUST stare nella **zona destra dell’header slim** (accanto al selettore lingua), non nel titolo di pagina.
+L’icona bacheca MUST stare nella **zona destra dell’header slim** (accanto al selettore lingua), non nel titolo di pagina. MUST usare lo stesso pattern `nav-link` dello slim header (non un `btn btn-link` Bootstrap generico).
 
 ### NF-03 Stack JavaScript
 
@@ -154,6 +185,17 @@ MUST mostrare il dump in meno di 2 s su desktop medio dopo il fetch dei JSON loc
 
 MUST trattare solo metadati di registro. MUST NON loggare query verso terze parti. La cache browser MUST restare in origine (GitHub Pages).
 
+### NF-07 Identità visiva header = `disco.html`
+
+I controlli in alto a destra (lingua e bacheca) e il **menu dropdown lingua** MUST essere identici, nello stile e nel markup, a `official_resources/discovery-page/disco.html`:
+
+- trigger lingua: `button.nav-link.dropdown-toggle`, etichetta `ITA` / `EN`, icona `it-expand`, senza caret Bootstrap `::after`
+- menu: `dropdown-menu` + `link-list-wrapper` + `ul.link-list` + `button.dropdown-item.list-item` (`menuitemradio`)
+- offset Popper 24 px tra trigger e menu
+- colori slim `#004D99`, voci menu blu Italia (attivo scuro, hover sottolineato)
+
+Dettaglio: [ACCESSIBILITY.md](ACCESSIBILITY.md).
+
 ---
 
 ## 4. Requisiti aggiuntivi (introdotti in sede di progettazione)
@@ -162,10 +204,10 @@ Motivati da manuale, ST e vincoli GitHub Pages.
 
 | ID | Priorità | Requisito |
 |----|----------|-----------|
-| A-01 | MUST | Switch **collaudo / produzione** (URL TA distinti). Produzione può non avere catalogo: bacheca, non crash. |
+| A-01 | MUST | Switch **collaudo / produzione** nel form di ricerca (F-12), con URL del Trust Anchor visibile. Produzione può non avere catalogo: bacheca, non crash. |
 | A-02 | MUST | Vista **tabella/lista** equivalente al grafo (WCAG: il canvas non è l’unica modalità). |
-| A-03 | MUST | Deep link: `?q=`, `?env=pre\|prod`, `?node=` ripristinano ricerca e selezione. |
-| A-04 | MUST | Catalogo JWT: salvare raw; in UI mostrare payload decodificato e header JOSE (`kid`, `alg`). |
+| A-03 | MUST | Deep link: `?q=`, `?env=pre\|prod`, `?node=` ripristinano ricerca, ambiente e selezione. |
+| A-04 | MUST | Catalogo JWT: salvare raw; al click su un’entità mostrare l’artefatto originale firmato e header/payload JOSE in chiaro (`kid`, `alg`). |
 | A-05 | SHOULD | Verifica firma JWT del catalogo con JWKS del Trust Anchor, quando scaricabili. |
 | A-06 | SHOULD | Verifica `schema_uri#integrity` (SRI sha256) dopo il fetch dello schema. |
 | A-07 | MUST | CORS: se il TA non espone `Access-Control-Allow-Origin`, il refresh browser fallisce in modo esplicito; il dump CI resta valido. |
@@ -178,12 +220,16 @@ Motivati da manuale, ST e vincoli GitHub Pages.
 | A-14 | MUST | Disclaimer visibile: tool non ufficiale; offer non è un’emissione di produzione. |
 | A-15 | SHOULD | Rispetto `prefers-reduced-motion` sul layout del grafo. |
 | A-16 | MAY | Export PNG/SVG del grafo visibile. |
-| A-17 | MUST | `manifest.json` del dump versionato insieme ai file. |
+| A-17 | MUST | Indici dump versionati: `manifest.json` (default `pre`), `manifest-pre.json`, `manifest-prod.json`. |
 | A-18 | SHOULD | Rate limiting nel crawler (pausa tra fetch, retry esponenziale su 429/5xx). |
 | A-19 | MUST | Pagine `noscript` e messaggio se JS è disabilitato. |
-| A-20 | SHOULD | Content-Security-Policy compatibile con GitHub Pages (script propri + CDN i18next se ancora usata; obiettivo: tutto bundled). |
+| A-20 | SHOULD | Content-Security-Policy compatibile con GitHub Pages (script propri; obiettivo: tutto bundled). |
 | A-21 | MAY | Confronto pre vs prod nella stessa sessione (due radici). |
 | A-22 | SHOULD | Documentare in bacheca lo scostamento path schema (`/schemas/v1.3.3/…` vs esempio ST). |
+| A-23 | MUST | Facet HTML `legal_type` / issuer / FA / claim che scrivono `campo:valore` nella query (F-01). |
+| A-24 | MUST | Bacheca: traccia completa delle GET (endpoint, status, ms, application type) (F-06). |
+| A-25 | MUST | Header slim: dropdown lingua e campanella allineati a `disco.html` (NF-07). |
+| A-26 | MUST | Dettaglio nodo (lista **e grafo**): artefatti dump (JWS/JSON/CDDL). JWT: originale firmato **oppure** header e payload in chiaro; per credenziali/issuer/FA anche estratto dell’entità. JSON: presentazione indentata con espandi/comprimi di oggetti e array innestati. |
 
 ---
 
@@ -200,8 +246,9 @@ Motivati da manuale, ST e vincoli GitHub Pages.
 ## 6. Criteri di accettazione sintetici
 
 1. Clonando il repo e aprendo Pages (o `npm run dev` dopo `npm run dump:pre`) si vede il grafo radicato in «IT-Wallet Registry» con i tipi presenti in catalogo di collaudo.
-2. La query `legal_type:pub-eaa +mDL -pid` riduce lista e grafo a mDL e ai suoi issuer/FA/antenati.
-3. La navbar in alto a destra apre la bacheca; un 404 su produzione ha Riprova.
+2. La query `legal_type:pub-eaa +mDL -pid` riduce lista e grafo a mDL e ai suoi issuer/FA/antenati. I `<select>` `legal_type` / emittente / FA / claim compilano gli stessi token.
+3. La navbar in alto a destra (stile `disco.html`) apre la bacheca; ogni GET del dump è una riga con endpoint, HTTP status, ms e application type; un 404 ha Riprova.
 4. Ogni card attestato mostra QR e link `openid-credential-offer://`.
-5. IT/EN commutano header, bacheca, ricerca e caption del grafo.
-6. Il nightly aggiorna `cache/` senza toccare a mano i file.
+5. IT/EN commutano header, bacheca, ricerca e caption del grafo. Il trigger lingua mostra `ITA`/`EN` e il menu `link-list` di `disco.html`.
+6. Il nightly aggiorna `cache/` senza toccare a mano i file. `npm run dump:prod` scrive `manifest-prod.json` sotto `cache/ta.wallet.ipzs.it/`.
+7. Il menu Ambiente mostra Collaudo/Produzione e l’URL del Trust Anchor; `?env=prod` carica il dump di produzione.

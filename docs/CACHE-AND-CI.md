@@ -29,20 +29,19 @@ Niente estensione inventata: se il well-known non ha `.json`, il file non si chi
 
 ```text
 cache/
-  manifest.json          # indice del dump, non una risorsa TA
+  manifest.json          # alias del dump pre (compatibilità)
+  manifest-pre.json      # indice collaudo → https://pre.ta.wallet.ipzs.it
+  manifest-prod.json     # indice produzione → https://ta.wallet.ipzs.it
   README.md
-  <host>/
-    .well-known/
-      it-wallet-registry
-      credential-catalog
-      schemas
-      claims-registry
-      authentic-sources
-      credential-taxonomy
+  pre.ta.wallet.ipzs.it/
+    .well-known/…
+    schemas/v1.3.3/…
+  ta.wallet.ipzs.it/
+    .well-known/…
     schemas/v1.3.3/…
 ```
 
-## 3. `manifest.json`
+## 3. Indici dump (`manifest.json`, `manifest-pre.json`, `manifest-prod.json`)
 
 Schema interno (soggetto a versionamento `manifest_version`):
 
@@ -52,7 +51,7 @@ Schema interno (soggetto a versionamento `manifest_version`):
   "generated_at": "2026-09-09T08:00:00Z",
   "env": "pre",
   "base_url": "https://pre.ta.wallet.ipzs.it",
-  "tool": "it-wallet-registry-explorer@0.1.0",
+  "tool": "eid-wallet-it-attestations-registry-browser@0.2.0",
   "resources": [
     {
       "url": "https://pre.ta.wallet.ipzs.it/.well-known/it-wallet-registry",
@@ -61,12 +60,15 @@ Schema interno (soggetto a versionamento `manifest_version`):
       "content_type": "application/json",
       "sha256": "…",
       "bytes": 1234,
+      "duration_ms": 140,
       "fetched_at": "2026-09-09T08:00:01Z",
       "error": null
     }
   ]
 }
 ```
+
+Oltre a `manifest.json` (dump di default = `pre`), lo script scrive `manifest-pre.json` e `manifest-prod.json`. L’UI carica quello dell’ambiente scelto (`?env=pre|prod`).
 
 Risorse in errore restano elencate (`status` o `error`) così la bacheca può offrire Riprova anche a freddo.
 
@@ -79,9 +81,10 @@ Risorse in errore restano elencate (`status` o `error`) così la bacheca può of
 5. Tenta `localization.base_uri` (può essere WAF-blocked).
 6. Opzionale: issuer metadata, federazione.
 7. Non usa `HEAD`.
-8. `User-Agent: it-wallet-registry-explorer/0.1 (+https://github.com/italia/it-wallet-registry-explorer)`.
+8. `User-Agent: eid-wallet-it-attestations-registry-browser/0.2 (+https://github.com/italia/eid-wallet-it-attestations-registry-browser)`.
 9. Retry 3× su 429/5xx, backoff.
-10. Riscrive `cache/manifest.json`.
+10. Scrive `cache/manifest-{env}.json` e, se `env=pre`, anche `cache/manifest.json`.
+11. Registra `duration_ms` per ogni GET (tempi di risposta del dump).
 
 Flag: `--env pre|prod`, `--with-federation`, `--with-issuer-metadata`, `--dry-run`.
 
@@ -93,7 +96,7 @@ All’avvio:
 2. Serve l’UI da lì.
 3. Refresh: `fetch(url, { headers: { Accept: '…' } })`.
 4. Se ok e hash diverso → IndexedDB `itw-registry-live` + evento `cache:updated`.
-5. Se fallisce → riga bacheca + Riprova (stesso `fetch`).
+5. Se fallisce → riga bacheca per quella GET (endpoint, status, ms, type) + Riprova.
 
 Chiave IndexedDB = URL assoluto della risorsa TA, non il path Pages.
 
@@ -102,7 +105,7 @@ Chiave IndexedDB = URL assoluto della risorsa TA, non il path Pages.
 ### A — Nightly cache (`.github/workflows/nightly-cache.yml`)
 
 - Trigger: `schedule` (02:15 UTC) e `workflow_dispatch`.
-- Job: checkout → Node 22 → `node scripts/dump-registry.mjs --env pre` (e MAY prod in job separato).
+- Job: checkout → Node 22 → `node scripts/dump-registry.mjs --env pre` e SHOULD `node scripts/dump-registry.mjs --env prod` in job (o step) separato.
 - Se `git diff -- cache` non è vuoto: commit `chore(cache): nightly dump YYYY-MM-DD` come `github-actions[bot]`.
 - **Non** lancia Vite. Responsabilità: solo cache.
 

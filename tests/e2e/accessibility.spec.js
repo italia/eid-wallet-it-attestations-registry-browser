@@ -1,0 +1,81 @@
+import { test, expect } from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
+import { waitForGraph } from './helpers.js';
+
+test.describe('accessibility', () => {
+  test('skip links, labelled search, live results, board in slim header', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await waitForGraph(page);
+
+    await expect(page.locator('#skip-main')).toHaveAttribute('href', '#main-content');
+    await expect(page.locator('#skip-footer')).toHaveAttribute('href', '#page-footer');
+    await expect(page.locator('#skip-graph')).toHaveAttribute('href', '#registry-graph');
+    await expect(page.locator('#registry-search')).toHaveAttribute('id', 'registry-search');
+    await expect(page.locator('label[for="registry-search"]')).toBeVisible();
+    await expect(page.locator('label[for="registry-env"]')).toBeVisible();
+    await expect(page.locator('label[for="facet-legal-type"]')).toBeVisible();
+    await expect(page.locator('label[for="facet-issuer"]')).toBeVisible();
+    await expect(page.locator('label[for="facet-as"]')).toBeVisible();
+    await expect(page.locator('label[for="facet-claim"]')).toBeVisible();
+    await expect(page.locator('#results-count')).toHaveAttribute('aria-live', 'polite');
+    await expect(page.locator('#graph-caption')).toHaveAttribute('aria-live', 'polite');
+
+    const boardBtn = page.locator('#message-board-toggle');
+    await expect(boardBtn).toBeVisible();
+    await expect(boardBtn).toHaveClass(/nav-link/);
+    await expect(page.locator('#languagesDropButton')).toHaveClass(/nav-link dropdown-toggle/);
+    await expect(page.locator('.it-header-lang-dropdown .link-list-wrapper')).toHaveCount(1);
+    await expect(page.locator('#languagesDropButton svg.icon')).toHaveCount(1);
+    const header = page.locator('header [role="banner"], header.it-header-wrapper');
+    await expect(header.locator('#message-board-toggle')).toHaveCount(1);
+    const box = await boardBtn.boundingBox();
+    expect(box).toBeTruthy();
+    expect(box.width).toBeGreaterThanOrEqual(24);
+    expect(box.height).toBeGreaterThanOrEqual(24);
+
+    await boardBtn.click();
+    await expect(page.locator('#message-board')).toBeVisible();
+    await expect(page.locator('#message-board-list li')).not.toHaveCount(0);
+    await expect(page.locator('#message-board-list')).toContainText('GET https://');
+    await expect(page.locator('#message-board-list')).toContainText('HTTP 200');
+    await expect(page.locator('#message-board-list')).toContainText('ms');
+    await expect(page.locator('#message-board-list')).toContainText('application/json');
+    await expect(page.locator('#message-board-list')).toContainText('it-wallet-registry');
+    const callCount = await page.evaluate(() => window.__ITW_EXPLORER__?.httpCalls?.length || 0);
+    expect(callCount).toBeGreaterThan(10);
+    await expect(page.locator('#message-board-list li')).toHaveCount(callCount);
+    await page.locator('#message-board-close').click();
+  });
+
+  test('axe wcag2a + wcag2aa excluding the canvas graph', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await waitForGraph(page);
+    const results = await new AxeBuilder({ page })
+      .withTags(['wcag2a', 'wcag2aa'])
+      .exclude('#registry-graph')
+      .exclude('#offer-qr')
+      .analyze();
+    expect(results.violations, JSON.stringify(results.violations, null, 2)).toEqual([]);
+  });
+
+  test('keyboard can reach search and a result', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await waitForGraph(page);
+    await page.locator('#registry-search').focus();
+    await expect(page.locator('#registry-search')).toBeFocused();
+    await page.keyboard.press('Tab');
+    await page.locator('#results-list button').first().focus();
+    await expect(page.locator('#results-list button').first()).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(page.locator('#credential-offer')).toBeVisible();
+  });
+
+  test('language switch updates document lang', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await waitForGraph(page);
+    await page.locator('#languagesDropButton').click();
+    await page.locator('.it-lang-option[data-lang="en"]').click();
+    await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+    await expect(page.locator('#page-heading')).toContainText('IT-Wallet Registry Search Engine');
+  });
+});

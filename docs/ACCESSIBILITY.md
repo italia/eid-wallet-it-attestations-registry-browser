@@ -13,19 +13,19 @@ Riferimenti da copiare (non re-inventare):
 |--------------------|----------|
 | `nav.it-skip-links` → `#main-content`, `#page-footer` | Uguale + skip verso `#registry-graph` e `#message-board` |
 | Header slim `bg-primary` + brand | Brand «Registro IT-Wallet» (i18n) |
-| Dropdown lingua ITA/ENG (`menuitemradio`) | Uguale, stesso script pattern `header-lang-dropdown.js` |
-| Zona destra slim | **Lingua + bottone bacheca** (campanella/bacheca, `aria-expanded`, badge errori) |
+| Dropdown lingua ITA/EN (`menuitemradio`) | Markup e CSS di `disco.html`: `nav-link.dropdown-toggle`, icona `it-expand`, `link-list-wrapper`, offset Popper 24 px, etichetta `ITA`/`EN` (NF-07) |
+| Zona destra slim | **Campanella bacheca** (`button.nav-link`) **poi** dropdown lingua, stessa riga |
 | `header-title-section` + logo | Logo IT-Wallet da shared-ui |
 | `main#main-content` | Titolo h1 + search + split lista/grafo |
 | Footer legale Note / Privacy / Accessibilità | Link a pagine del progetto o a dichiarazione |
 | `noscript` | Messaggio i18n |
-| i18next da JSON | `src/locales/it.json`, `en.json` |
+| i18n da JSON | `src/locales/it.json`, `en.json` (modulo `src/js/i18n/`) |
 
-## 2. Bacheca (NF-02, F-06, F-07)
+## 2. Bacheca (NF-02, F-06, F-07, A-24)
 
-- Trigger: `button` in `.it-header-slim-right-zone`, **prima** o **dopo** il dropdown lingua ma nella stessa riga, a destra.
+- Trigger: `button.nav-link` in `.it-header-slim-right-zone`, **prima** del dropdown lingua, stessa riga (stile slim `disco.html`, non `btn btn-link`).
 - Contenitore: Offcanvas Bootstrap Italia `placement="end"`.
-- `role="log"` o lista `role="list"` con voci `status=ok|error|pending`.
+- Lista `role="log"` `aria-live="polite"`: **una voce per ogni GET** (endpoint, HTTP status, durata ms, application type).
 - Errori: testo motivazione + `button` Riprova.
 - Badge: `aria-label` «N errori in bacheca».
 - Focus: al close il focus torna al bottone icona (come i dropdown ufficiali).
@@ -36,12 +36,13 @@ Un canvas Cytoscape non è sufficiente per AA:
 
 - lista/tabella gemella con gli stessi nodi visibili
 - caption testuale del filtro («12 nodi visibili su 40, query …»)
-- controlli zoom come `button`
+- controlli zoom come `button` icona (`it-zoom-in` / `it-zoom-out` / `it-maximize`) con testo visivamente nascosto
 - contrasto nodi/testo ≥ 4.5:1 (colori da palette Italia, non da default Cytoscape)
 
 ## 4. Ricerca e offer
 
 - Pattern search di `it-wallet.html` (clear, `aria-invalid` su parse error)
+- Facet e ambiente: intestazioni visibili (`h2`/`h3` + `label`) per Ambiente, ricerca, `legal_type`, emittente, FA, claim; Trust Anchor come link testuale
 - QR: `alt` = URI; il link testuale è sempre presente (il QR non è l’unico modo)
 - Modali dettaglio: focus trap Bootstrap Italia
 

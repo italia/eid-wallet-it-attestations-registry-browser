@@ -67,7 +67,7 @@ Riuso possibile del web component `official_resources/shared-ui/js/qrcode/qr-cod
 
 Testo i18n accanto a QR/link:
 
-> Offerta di discovery generata dal catalogo. Non avvia un’emissione certificata: manca `issuer_state` PDND. Per ottenere l’attestato usare i canali dell’emittente.
+> Credential offer generata dal catalogo. Non abilita l'emissione di una istanza specifica perché l'utente non è autenticato e manca `issuer_state`. Abilita la richiesta di una tipologia di credenziale a seguito dell'autenticazione dell'utente (se elegibile).
 
 ## 7. Cosa non fare
 

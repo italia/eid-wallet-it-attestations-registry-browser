@@ -12,3 +12,7 @@ dist/
 coverage/
 tmp/
 public/cache/
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/

@@ -12,16 +12,12 @@ import { createHash } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { resolveRegistryEnv } from '../src/js/cache/environments.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const CACHE_ROOT = join(ROOT, 'cache');
 const USER_AGENT =
-  'it-wallet-registry-explorer/0.1 (+https://github.com/italia/it-wallet-registry-explorer)';
-
-const ENV_BASE = {
-  pre: 'https://pre.ta.wallet.ipzs.it',
-  prod: 'https://ta.wallet.ipzs.it',
-};
+  'eid-wallet-it-attestations-registry-browser/0.2 (+https://github.com/italia/eid-wallet-it-attestations-registry-browser)';
 
 const REGISTRY_ENDPOINT_KEYS = [
   'claims_registry',
@@ -32,8 +28,9 @@ const REGISTRY_ENDPOINT_KEYS = [
 ];
 
 const args = parseArgs(process.argv.slice(2));
-const env = args.env || process.env.ITW_REGISTRY_ENV || 'pre';
-const baseUrl = (args.base || process.env.ITW_REGISTRY_BASE_URL || ENV_BASE[env] || '').replace(
+const envSpec = resolveRegistryEnv(args.env || process.env.ITW_REGISTRY_ENV || 'pre');
+const env = envSpec.id;
+const baseUrl = (args.base || process.env.ITW_REGISTRY_BASE_URL || envSpec.baseUrl || '').replace(
   /\/$/,
   '',
 );
@@ -175,12 +172,15 @@ async function dumpOne({ url, kind }) {
     content_type: null,
     sha256: null,
     bytes: 0,
+    duration_ms: null,
     fetched_at: new Date().toISOString(),
     error: null,
   };
 
+  const started = Date.now();
   try {
     const { res, buf, contentType } = await fetchWithRetry(url, accept);
+    entry.duration_ms = Date.now() - started;
     entry.status = res.status;
     entry.content_type = contentType;
     entry.bytes = buf.length;
@@ -212,6 +212,7 @@ async function dumpOne({ url, kind }) {
     resources.push(entry);
     console.log(`✓ ${url} → cache/${path} (${entry.bytes} B)`);
   } catch (err) {
+    entry.duration_ms = Date.now() - started;
     entry.error = err.message || String(err);
     resources.push(entry);
     console.warn(`! ${url} → ${entry.error}`);
@@ -295,19 +296,22 @@ async function main() {
     generated_at: new Date().toISOString(),
     env,
     base_url: baseUrl,
-    tool: 'it-wallet-registry-explorer@0.1.0',
+    tool: 'eid-wallet-it-attestations-registry-browser@0.2.0',
     flags: { withFederation, withIssuerMetadata },
     resources,
   };
 
   if (!args.dryRun) {
     await mkdir(CACHE_ROOT, { recursive: true });
-    await writeFile(join(CACHE_ROOT, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
+    const envFile = join(CACHE_ROOT, envSpec.manifestFile);
+    const body = `${JSON.stringify(manifest, null, 2)}\n`;
+    await writeFile(envFile, body);
+    if (env === 'pre') await writeFile(join(CACHE_ROOT, 'manifest.json'), body);
   }
 
   const ok = resources.filter((r) => !r.error).length;
   const fail = resources.length - ok;
-  console.log(`Done. ${ok} ok, ${fail} errors. Manifest: cache/manifest.json`);
+  console.log(`Done. ${ok} ok, ${fail} errors. Manifest: cache/${envSpec.manifestFile}`);
   if (fail && ok === 0) process.exit(1);
 }
 

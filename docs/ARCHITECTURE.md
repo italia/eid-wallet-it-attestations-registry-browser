@@ -9,7 +9,7 @@
 
 ## 2. Decisione
 
-**Vite 7 + JavaScript ESM vanilla + Bootstrap Italia + Cytoscape.js + Lunr.js + i18next.**
+**Vite 7 + JavaScript ESM vanilla + Bootstrap Italia + Cytoscape.js + parser Lucene-lite (in-memory) + i18n JSON `it`/`en`.**
 
 Non si usa React/Vue/Svelte/Angular. Le pagine ufficiali IT-Wallet non lo fanno; il valore del tool è dati + grafo + ricerca, non un design system nuovo.
 
@@ -22,7 +22,7 @@ Non si usa React/Vue/Svelte/Angular. Le pagine ufficiali IT-Wallet non lo fanno;
               ▼
 ┌──────────────────────────────────────────────────────────┐
 │ App (src/)                                                │
-│  i18n → cacheLoader → indexer (Lunr) → graph (Cytoscape) │
+│  i18n → cacheLoader → search (Lucene-lite) → graph       │
 │                │                                          │
 │                └── refresh live (best-effort) → bacheca   │
 └──────────────────────────────────────────────────────────┘
@@ -37,26 +37,26 @@ Non si usa React/Vue/Svelte/Angular. Le pagine ufficiali IT-Wallet non lo fanno;
 |---------|---------------------|
 | React / Preact | Doppia vita con Bootstrap Italia (modali, dropdown, offcanvas già jQuery-free ma non React). |
 | Vue / Svelte | Stesso disallineamento con i template ufficiali; curva per contributor PA. |
-| Vanilla senza Vite | Import map e tree-shake di Cytoscape/Lunr più fragili su Pages. |
+| Vanilla senza Vite | Import map e tree-shake di Cytoscape più fragili su Pages. |
 | D3-only per il grafo | Troppo codice custom per gerarchie + filtro. |
 | vis-network | Layout gerarchico meno prevedibile di dagre. |
 | Elastic / server search | Contraddice «solo JS / Pages». |
-| MiniSearch da solo | Non ha `+` `-` `" "` out of the box; Lunr sì. |
+| Lunr.js / MiniSearch | Il filtro è un parser Lucene-lite su documenti in memoria (facet `campo:valore`, quote, `+`/`-`); non serve un indice inverted a runtime. |
 | Service worker come unica cache | Complessità e debugging su Pages; IndexedDB è sufficiente. |
 
 ## 4. Moduli applicativi (`src/js`)
 
 | Modulo | Responsabilità |
 |--------|----------------|
-| `i18n/` | i18next, dropdown lingua, `document.documentElement.lang` |
-| `cache/loader.js` | Fetch dump da `./cache/manifest.json` + file gerarchici |
+| `i18n/` | JSON `it`/`en` importati, dropdown lingua stile `disco.html` |
+| `cache/environments.js` | Trust Anchor `pre` / `prod` e alias permalink |
+| `cache/loader.js` | Fetch dump da `manifest-{env}.json` + file gerarchici; `timedFetch` (status, ms, Content-Type) |
 | `cache/browser.js` | Overlay IndexedDB, refresh live, confronto hash |
 | `cache/jwt.js` | Split JOSE, decode payload, (fase 2) verify |
-| `search/parser.js` | Tokenize `+ - "" () field: * ^` |
-| `search/index.js` | Costruzione indice Lunr sui nodi normalizzati |
-| `graph/model.js` | Registry → nodes/edges |
+| `search/index.js` | Parser Lucene-lite e filtro documenti; facet che riscrivono `campo:valore` |
+| `graph/model.js` | Registry → nodes/edges; opzioni facet dal dump |
 | `graph/view.js` | Cytoscape + dagre `rankDir: 'TB'` |
-| `messages/` | Bacheca, badge, retry |
+| `messages/` | Bacheca: una riga per GET, badge, retry |
 | `offer/` | Costruzione URI OpenID4VCI + QR |
 
 Nessun framework a componenti: DOM + Bootstrap Italia (`Offcanvas`, `Dropdown`, `Tooltip`).
@@ -87,13 +87,13 @@ Il dump su disco resta **intatto**. L’indice è derivato in memoria.
 ## 6. Flusso di avvio
 
 1. Skip-link e shell HTML già in pagina (no blank).
-2. i18next `it` default, `en` da `localStorage` se scelto.
-3. `GET ./cache/manifest.json` → fetch parallelo delle risorse elencate.
+2. i18n `it` default, `en` da `localStorage` se scelto (`ITA`/`EN` in header).
+3. `GET ./cache/manifest-{env}.json` (default `pre`; `?env=prod` → produzione) → fetch delle risorse elencate, ciascuna cronometrata.
 4. Decode JWT catalogo se `typ` JOSE / tre segmenti.
-5. Build modello grafo + indice Lunr.
+5. Build modello grafo + indice di ricerca.
 6. Render grafo (radice) + lista.
-7. Bacheca: una riga per risorsa (`ok` dal dump).
-8. `requestIdleCallback` → refresh live per URL nel manifest.
+7. Bacheca: una riga per ogni GET (endpoint TA, HTTP status, ms, application type).
+8. `requestIdleCallback` → refresh live per URL nel manifest (best-effort; CORS).
 9. Per ogni live: successo / errore+retry; se hash diverso, rebuild indice e grafo senza perdere la query corrente.
 
 ## 7. Ambienti
@@ -103,7 +103,7 @@ Il dump su disco resta **intatto**. L’indice è derivato in memoria.
 | `pre` | `https://pre.ta.wallet.ipzs.it` |
 | `prod` | `https://ta.wallet.ipzs.it` |
 
-Il dump nightly default è `pre` (produzione incompleta al 3/9/2026). L’UI può puntare a `prod` per il solo refresh live.
+Il dump nightly default è `pre`. L’UI MUST poter caricare `prod` dal dump `manifest-prod.json` (F-12). Produzione (fotografia 3/9/2026) poteva essere incompleta; al 9/9/2026 il dump prod è disponibile e selezionabile.
 
 ## 8. Dipendenze runtime
 

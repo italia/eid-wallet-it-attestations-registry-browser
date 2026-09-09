@@ -4,10 +4,10 @@
 <head>
   <meta http-equiv="content-type" content="text/html; charset=UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-  <title id="tab-title">Esploratore del Registro IT-Wallet</title>
+  <title id="tab-title">IT-Wallet Registry Search Engine</title>
   <meta name="description"
     content="Navigazione grafica del catalogo, degli schemi, dei claims, delle fonti autentiche e della tassonomia del Registro IT-Wallet.">
-  <link rel="icon" href="https://cdn.jsdelivr.net/gh/italia/bootstrap-italia@2.16.2/dist/favicon/favicon-32x32.png">
+  <link rel="icon" href="https://cdn.jsdelivr.net/npm/bootstrap-italia@2.16.2/dist/favicon/favicon-32x32.png">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-italia@2.16.2/dist/css/bootstrap-italia.min.css" rel="stylesheet">
   <link rel="stylesheet" href="./src/css/explorer.css">
 </head>
@@ -23,41 +23,51 @@
 
   <header class="it-header-wrapper" role="banner">
     <div class="it-header-slim-wrapper bg-primary">
-      <div class="container">
+      <div class="container-fluid px-3">
         <div class="it-header-slim-wrapper-content d-flex justify-content-between align-items-center">
-          <span class="navbar-brand text-white"><strong id="header-region-name">Registro IT-Wallet</strong></span>
-          <div class="it-header-slim-right-zone d-flex align-items-center gap-2">
-            <button type="button" id="message-board-toggle" class="btn btn-link text-white p-2"
+          <span class="navbar-brand text-white text-truncate pe-2"><strong id="header-region-name">Registro IT-Wallet</strong></span>
+          <div class="it-header-slim-right-zone">
+            <button type="button" id="message-board-toggle" class="nav-link"
               aria-controls="message-board" aria-expanded="false" data-bs-toggle="offcanvas"
               data-bs-target="#message-board">
               <span class="visually-hidden" id="message-board-toggle-label">Apri la bacheca dei messaggi</span>
-              <svg class="icon icon-sm icon-white" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <svg class="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                 <path fill="currentColor"
                   d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22Zm8-6V11a8 8 0 0 0-6-7.75V3a2 2 0 1 0-4 0v.25A8 8 0 0 0 4 11v5l-2 2v1h20v-1Z" />
               </svg>
               <span id="message-board-badge" class="badge bg-danger rounded-pill d-none" aria-hidden="true">0</span>
             </button>
             <div class="nav-item dropdown it-header-lang-dropdown">
-              <button type="button" id="languagesDropButton" class="nav-link dropdown-toggle text-white"
-                aria-controls="language-menu" data-bs-toggle="dropdown" aria-haspopup="menu" aria-expanded="false">
+              <button type="button" id="languagesDropButton" class="nav-link dropdown-toggle"
+                aria-controls="language-menu" data-bs-toggle="dropdown" aria-haspopup="menu" aria-expanded="false"
+                aria-label="Selezione lingua, Italiano selezionata">
                 <span id="header-lang-active-hint" class="visually-hidden">lingua attiva:</span>
                 <span class="it-header-lang-label" aria-hidden="true">ITA</span>
+                <svg class="icon icon-sm ms-1" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path fill="currentColor" d="M11.6 15.4 6 9.8l.7-.8 4.9 4.9L16.5 9l.7.8z" />
+                </svg>
               </button>
               <div id="language-menu" class="dropdown-menu dropdown-menu-end">
-                <ul class="link-list" role="menu" aria-labelledby="languagesDropButton">
-                  <li>
-                    <button type="button" class="dropdown-item list-item it-lang-option active" data-lang="it"
-                      role="menuitemradio" aria-checked="true" aria-current="true">
-                      <span lang="it">Italiano</span>
-                    </button>
-                  </li>
-                  <li>
-                    <button type="button" class="dropdown-item list-item it-lang-option" data-lang="en"
-                      role="menuitemradio" aria-checked="false">
-                      <span lang="en">English</span>
-                    </button>
-                  </li>
-                </ul>
+                <div class="row">
+                  <div class="col-12">
+                    <div class="link-list-wrapper">
+                      <ul class="link-list" role="menu" aria-labelledby="languagesDropButton">
+                        <li>
+                          <button type="button" class="dropdown-item list-item it-lang-option active" data-lang="it"
+                            role="menuitemradio" aria-checked="true" aria-current="true">
+                            <span lang="it">Italiano</span>
+                          </button>
+                        </li>
+                        <li>
+                          <button type="button" class="dropdown-item list-item it-lang-option" data-lang="en"
+                            role="menuitemradio" aria-checked="false">
+                            <span lang="en">English</span>
+                          </button>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -65,46 +75,145 @@
       </div>
     </div>
     <div class="header-title-section">
-      <div class="container py-3">
-        <h1 class="h3 mb-0" id="page-heading">Esploratore del Registro IT-Wallet</h1>
-        <p class="mb-0 small" id="page-tagline">Catalogo, schemi, claims, fonti autentiche, tassonomia</p>
+      <div class="container-fluid px-3 py-3">
+        <h1 class="h3 mb-0" id="page-heading">IT-Wallet Registry Search Engine</h1>
+        <p class="mb-0 small" id="page-tagline">Italian Wallet Ecosystem Catalog about attestation data schemas, attestations and authentic sources</p>
       </div>
     </div>
   </header>
 
-  <main id="main-content" class="container my-4" aria-labelledby="page-heading">
-    <p class="alert alert-info" id="unofficial-disclaimer" role="note">
-      Strumento non ufficiale, in sola lettura. I registri restano quelli pubblicati dal Trust Anchor.
-    </p>
-
-    <form id="registry-search-form" class="mb-4" role="search">
-      <label for="registry-search" class="form-label" id="registry-search-label">Cerca nel registro</label>
-      <div class="input-group">
+  <main id="main-content" class="container-fluid px-3 my-4" aria-labelledby="page-heading">
+    <form id="registry-search-form" class="mb-3" role="search">
+      <div class="registry-env-row mb-3">
+        <h2 class="registry-field-heading h5">
+          <label for="registry-env" id="registry-env-label">Ambiente</label>
+        </h2>
+        <select id="registry-env" class="form-select" name="env" aria-describedby="registry-ta">
+          <option value="pre">Collaudo (preprod)</option>
+          <option value="prod">Produzione</option>
+        </select>
+        <p id="registry-ta" class="registry-ta mb-0">
+          <span id="registry-ta-prefix" class="registry-field-heading registry-field-heading--inline">Trust Anchor:</span>
+          <a id="registry-ta-link" href="https://pre.ta.wallet.ipzs.it" rel="noopener">https://pre.ta.wallet.ipzs.it</a>
+        </p>
+      </div>
+      <h2 class="registry-field-heading h5">
+        <label for="registry-search" id="registry-search-label">Cerca nel registro</label>
+      </h2>
+      <div class="it-wallet-search-group d-flex flex-wrap gap-2">
         <input type="search" id="registry-search" name="q" class="form-control"
-          placeholder="+mDL legal_type:pub-eaa -pid &quot;tessera sanitaria&quot;" autocomplete="off"
+          placeholder="+mDL legal_type:pub-eaa -pid" autocomplete="off" enterkeyhint="search"
           aria-describedby="registry-search-hint">
+        <button class="btn btn-outline-secondary" type="button" id="search-clear-btn" hidden>Cancella</button>
         <button class="btn btn-primary" type="submit" id="search-btn">Cerca</button>
       </div>
-      <p id="registry-search-hint" class="form-text">
-        Usa +, -, virgolette e campo:valore. Esempi in docs/SEARCH.md.
+      <fieldset class="registry-search-facets mt-3">
+        <legend class="registry-field-heading h5" id="search-facets-legend">Filtri sulla ricerca</legend>
+        <div class="row g-2">
+          <div class="col-12 col-md-6 col-xl-3">
+            <h3 class="registry-field-heading h6">
+              <label for="facet-legal-type" id="facet-legal-type-label">legal_type</label>
+            </h3>
+            <select id="facet-legal-type" class="form-select" name="legal_type"
+              aria-describedby="registry-search-hint">
+              <option value="">Tutti</option>
+              <option value="pub-eaa">pub-eaa</option>
+              <option value="qeaa">qeaa</option>
+              <option value="eaa">eaa</option>
+            </select>
+          </div>
+          <div class="col-12 col-md-6 col-xl-3">
+            <h3 class="registry-field-heading h6">
+              <label for="facet-issuer" id="facet-issuer-label">Emittente</label>
+            </h3>
+            <select id="facet-issuer" class="form-select" name="issuer"
+              aria-describedby="registry-search-hint">
+              <option value="">Tutti</option>
+            </select>
+          </div>
+          <div class="col-12 col-md-6 col-xl-3">
+            <h3 class="registry-field-heading h6">
+              <label for="facet-as" id="facet-as-label">Fonte autentica</label>
+            </h3>
+            <select id="facet-as" class="form-select" name="as"
+              aria-describedby="registry-search-hint">
+              <option value="">Tutti</option>
+            </select>
+          </div>
+          <div class="col-12 col-md-6 col-xl-3">
+            <h3 class="registry-field-heading h6">
+              <label for="facet-claim" id="facet-claim-label">Attributo / claim</label>
+            </h3>
+            <select id="facet-claim" class="form-select" name="claim"
+              aria-describedby="registry-search-hint">
+              <option value="">Tutti</option>
+            </select>
+          </div>
+        </div>
+      </fieldset>
+      <p id="registry-search-hint" class="form-text mb-0">
+        Usa +, -, virgolette e campo:valore. I menu compilano legal_type:, issuer:, as: e claim:.
       </p>
       <p id="registry-search-error" class="text-danger" role="alert" hidden></p>
     </form>
 
-    <div class="row">
-      <section class="col-lg-4 mb-4" aria-labelledby="results-heading">
+    <div class="explorer-mobile-tabs d-lg-none mb-3" role="tablist" aria-label="Viste">
+      <button type="button" class="btn btn-outline-primary" role="tab" id="tab-list" aria-controls="pane-list"
+        aria-selected="true">Lista</button>
+      <button type="button" class="btn btn-outline-primary" role="tab" id="tab-graph" aria-controls="pane-graph"
+        aria-selected="false">Grafo</button>
+    </div>
+
+    <div class="explorer-panes">
+      <section id="pane-list" class="explorer-pane is-active" aria-labelledby="results-heading">
         <h2 id="results-heading" class="h5">Risultati</h2>
-        <p id="results-count" class="small" aria-live="polite">Dump non ancora caricato. Esegui npm run dump:pre.</p>
-        <ul id="results-list" class="list-group"></ul>
+        <p id="results-count" class="small" aria-live="polite"></p>
+        <div id="results-list" class="list-group mb-4"></div>
       </section>
-      <section class="col-lg-8 mb-4" aria-labelledby="graph-heading">
-        <h2 id="graph-heading" class="h5">Grafo del registro</h2>
-        <div id="registry-graph" class="registry-graph border" role="img"
-          aria-label="Grafo gerarchico del Registro IT-Wallet">
-          <p class="p-4 mb-0" id="graph-placeholder">Il grafo (Cytoscape.js, layout verticale) verrà reso qui dopo il
-            caricamento della cache.</p>
+
+      <section id="pane-graph" class="explorer-pane is-active" aria-labelledby="graph-heading">
+        <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+          <h2 id="graph-heading" class="h5 mb-0">Grafo del registro</h2>
+          <div class="graph-toolbar btn-group" role="group" aria-labelledby="graph-toolbar-label">
+            <span id="graph-toolbar-label" class="visually-hidden">Zoom grafo</span>
+            <button type="button" class="btn btn-sm btn-outline-primary btn-icon" id="graph-zoom-in"
+              aria-labelledby="graph-zoom-in-label">
+              <svg class="icon icon-primary icon-sm" aria-hidden="true" focusable="false">
+                <use href="./svg/sprites.svg#it-zoom-in"></use>
+              </svg>
+              <span class="visually-hidden" id="graph-zoom-in-label">Ingrandisci</span>
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-primary btn-icon" id="graph-zoom-out"
+              aria-labelledby="graph-zoom-out-label">
+              <svg class="icon icon-primary icon-sm" aria-hidden="true" focusable="false">
+                <use href="./svg/sprites.svg#it-zoom-out"></use>
+              </svg>
+              <span class="visually-hidden" id="graph-zoom-out-label">Riduci</span>
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-primary btn-icon" id="graph-zoom-fit"
+              aria-labelledby="graph-zoom-fit-label">
+              <svg class="icon icon-primary icon-sm" aria-hidden="true" focusable="false">
+                <use href="./svg/sprites.svg#it-maximize"></use>
+              </svg>
+              <span class="visually-hidden" id="graph-zoom-fit-label">Adatta</span>
+            </button>
+          </div>
         </div>
+        <p id="graph-caption" class="small" aria-live="polite"></p>
+        <div id="registry-graph" class="registry-graph" data-ready="false" aria-busy="true"
+          aria-describedby="graph-caption"></div>
       </section>
+      <article id="node-detail" class="node-detail" hidden>
+        <h3 class="h6" id="detail-title"></h3>
+        <div id="detail-body"></div>
+        <div id="credential-offer" hidden aria-labelledby="offer-heading">
+          <h3 class="h6" id="offer-heading">Credential Offer</h3>
+          <p id="offer-disclaimer" class="small"></p>
+          <a id="offer-link" class="d-block text-break mb-2" href="#"></a>
+          <a id="offer-link-haip" class="visually-hidden" href="#">haip</a>
+          <img id="offer-qr" class="offer-qr" alt="" width="192" height="192">
+        </div>
+      </article>
     </div>
     <noscript>
       <p>Per usare l'esploratore del registro è necessario abilitare JavaScript.</p>
@@ -114,15 +223,15 @@
   <div class="offcanvas offcanvas-end" tabindex="-1" id="message-board" aria-labelledby="message-board-title">
     <div class="offcanvas-header">
       <h2 class="offcanvas-title h5" id="message-board-title">Bacheca</h2>
-      <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Chiudi"></button>
+      <button type="button" class="btn-close" data-bs-dismiss="offcanvas" id="message-board-close" aria-label="Chiudi"></button>
     </div>
     <div class="offcanvas-body">
-      <ul id="message-board-list" class="list-unstyled" role="list"></ul>
+      <ul id="message-board-list" class="list-unstyled" role="log" aria-live="polite" aria-relevant="additions"></ul>
     </div>
   </div>
 
   <footer id="page-footer" class="bg-primary text-white py-3" role="contentinfo" tabindex="-1">
-    <div class="container">
+    <div class="container-fluid px-3">
       <nav id="footer-legal-nav" aria-label="Link legali">
         <a id="footer-legal" href="./NOTICE" class="text-white me-4">Note legali</a>
         <a id="footer-docs" href="./docs/REQUIREMENTS.md" class="text-white me-4">Requisiti</a>

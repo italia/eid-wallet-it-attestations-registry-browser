@@ -1,6 +1,6 @@
-# IT-Wallet Registry Explorer
+# eid-wallet-it-attestations-registry-browser
 
-Explorer grafico open source del **Registro IT-Wallet**: catalogo delle credenziali, schemi, claims, fonti autentiche e tassonomia.
+**IT-Wallet Registry Search Engine** — explorer grafico open source del **Registro IT-Wallet**: catalogo delle credenziali, schemi, claims, fonti autentiche e tassonomia.
 
 Il tool è un’applicazione **tutta JavaScript**, statica, servita da **GitHub Pages** (CDN GitHub). All’avvio legge un dump locale dei well-known REST del Trust Anchor, poi aggiorna in background la cache del browser.
 
@@ -8,7 +8,7 @@ Il tool è un’applicazione **tutta JavaScript**, statica, servita da **GitHub 
 
 ## Stato
 
-Scaffold **v0.1.0**: requisiti, architettura, script di dump, CI e guscio HTML accessibile. L’esplorazione grafica e il motore di ricerca sono specificati in `docs/` e da implementare sul framework deciso sotto.
+Applicazione **v0.2.0**: dump REST, grafo Cytoscape, ricerca Lucene-lite con facet HTML, switch collaudo/produzione (Trust Anchor visibile), bacheca per-GET, header allineato a `disco.html`. Requisiti in [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) (versione **0.2.0**).
 
 ## Framework (decisione)
 
@@ -16,9 +16,9 @@ Scaffold **v0.1.0**: requisiti, architettura, script di dump, CI e guscio HTML a
 |--------|--------|--------|
 | Bundler / app | **Vite + JavaScript vanilla (ESM)** | Pagine ufficiali `disco.html` / `it-wallet.html` sono vanilla; GitHub Pages vuole output statico; vincolo «tutto JS». |
 | UI | **Bootstrap Italia** + pattern di `official_resources` | Stessi skip-link, header slim, dropdown lingua, footer legale, WCAG 2.1 AA. |
-| i18n | **i18next** + file JSON `it` / `en` | Stesso stack delle pagine ufficiali. |
+| i18n | JSON `it` / `en` + dropdown `disco.html` (`ITA`/`EN`) | Stessi file e pattern delle pagine ufficiali. |
 | Grafo | **Cytoscape.js** + **cytoscape-dagre** | Layout verticale gerarchico, filtro nodi/archi senza riscrivere il motore grafico. |
-| Ricerca | **Lunr.js** + **lunr-languages** (it) + parser Lucene-lite | Supporto nativo a `+`, `-`, `"frase"`, `campo:valore`, `*`. |
+| Ricerca | Parser **Lucene-lite** in memoria + facet HTML | `+`, `-`, `"frase"`, `campo:valore` (anche quotato), menu `legal_type` / issuer / FA / claim. |
 | QR | **qrcode** (fallback: web component `qr-code` delle official_resources) | Credential Offer come URI `openid-credential-offer://`. |
 | JWT | decoder ESM interno (verifica firma in fase 2) | Il catalogo live è un JWT JOSE, non JSON. |
 
@@ -39,12 +39,25 @@ Dettaglio in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 | [docs/CREDENTIAL_OFFER.md](docs/CREDENTIAL_OFFER.md) | QR / href conformi alle ST |
 | [docs/ACCESSIBILITY.md](docs/ACCESSIBILITY.md) | Mapping sui template `disco.html` / `it-wallet.html` |
 
+## Test
+
+```bash
+npm install
+npx playwright install chromium
+npm test                 # unit + e2e (desktop, tablet, mobile)
+npm run test:unit
+npm run test:a11y
+```
+
+I test Playwright verificano grafo reale (niente placeholder), filtro ricerca e facet, switch pre/prod, offer/QR, bacheca con traccia HTTP, skip-link, axe WCAG 2.1 A/AA, e layout a 1280×800, 768×1024 e 375×667.
+
 ## Avvio locale
 
 ```bash
 npm install
-npm run dump:pre    # scarica i well-known in cache/ (rete verso il Trust Anchor)
-npm run dev         # http://localhost:5173
+npm run dump:pre    # collaudo → cache/manifest-pre.json + cache/pre.ta.wallet.ipzs.it/
+npm run dump:prod   # produzione → cache/manifest-prod.json + cache/ta.wallet.ipzs.it/
+npm run dev         # http://localhost:5173  (?env=prod per il dump di produzione)
 ```
 
 ## Cache
@@ -53,20 +66,16 @@ Il dump **riproduce il path URL** sotto `cache/<host>/…`, senza riscrivere i b
 
 ```text
 cache/
-  manifest.json
+  manifest.json / manifest-pre.json / manifest-prod.json
   pre.ta.wallet.ipzs.it/
     .well-known/it-wallet-registry
     .well-known/credential-catalog      # JWT raw
-    .well-known/schemas
-    .well-known/claims-registry
-    .well-known/authentic-sources
-    .well-known/credential-taxonomy
-    schemas/v1.3.3/mdl.json
-    schemas/v1.3.3/mdl.cddl
+    …
+  ta.wallet.ipzs.it/
     …
 ```
 
-All’avvio l’app carica questo dump, poi prova un refresh live (se il Trust Anchor invia CORS). Gli esiti vanno in **bacheca**, con **Riprova** sugli errori.
+All’avvio l’app carica il dump dell’ambiente scelto (Trust Anchor indicato nel form). Ogni GET compare in **bacheca** (endpoint, status, ms, application type), con **Riprova** sugli errori.
 
 ## CI / CD
 

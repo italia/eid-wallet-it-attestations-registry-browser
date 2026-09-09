@@ -1,10 +1,9 @@
 {
   "meta": {
-    "title": "Esploratore del Registro IT-Wallet",
+    "title": "IT-Wallet Registry Search Engine",
     "description": "Navigazione grafica del catalogo, degli schemi, dei claims, delle fonti autentiche e della tassonomia del Registro IT-Wallet.",
     "brand": "Registro IT-Wallet",
-    "tagline": "Catalogo, schemi, claims, fonti autentiche, tassonomia",
-    "disclaimer": "Strumento non ufficiale, in sola lettura. I registri restano quelli pubblicati dal Trust Anchor."
+    "tagline": "Italian Wallet Ecosystem Catalog about attestation data schemas, attestations and authentic sources"
   },
   "skip": {
     "main": "Vai al contenuto principale",
@@ -16,18 +15,38 @@
   "search": {
     "label": "Cerca nel registro",
     "button": "Cerca",
-    "hint": "Usa +, -, virgolette e campo:valore. Esempi in docs/SEARCH.md.",
-    "placeholder": "+mDL legal_type:pub-eaa -pid \"tessera sanitaria\""
+    "clear": "Cancella",
+    "hint": "Usa +, -, virgolette e campo:valore. I menu compilano legal_type:, issuer:, as: e claim:.",
+    "placeholder": "+mDL legal_type:pub-eaa -pid",
+    "facetsLegend": "Filtri sulla ricerca",
+    "facetAll": "Tutti",
+    "legalType": "legal_type",
+    "issuer": "Emittente",
+    "authenticSource": "Fonte autentica",
+    "claim": "Attributo / claim",
+    "env": "Ambiente",
+    "envPre": "Collaudo (preprod)",
+    "envProd": "Produzione",
+    "trustAnchor": "Trust Anchor:"
   },
   "results": {
     "heading": "Risultati",
     "emptyDump": "Dump non ancora caricato. Esegui npm run dump:pre.",
-    "count": "{{n}} risultati"
+    "count": "{{n}} Attestati"
   },
   "graph": {
     "heading": "Grafo del registro",
-    "placeholder": "Il grafo (Cytoscape.js, layout verticale) verrà reso qui dopo il caricamento della cache.",
-    "aria": "Grafo gerarchico del Registro IT-Wallet"
+    "aria": "Grafo gerarchico del Registro IT-Wallet",
+    "caption": "{{visible}} nodi visibili su {{total}}. Filtro: {{query}}",
+    "all": "tutti",
+    "toolbar": "Zoom grafo",
+    "zoomIn": "Ingrandisci",
+    "zoomOut": "Riduci",
+    "fit": "Adatta"
+  },
+  "mobile": {
+    "list": "Lista",
+    "graph": "Grafo"
   },
   "board": {
     "title": "Bacheca",
@@ -36,7 +55,25 @@
     "retry": "Riprova",
     "ok": "Caricamento riuscito: {{url}}",
     "error": "Errore su {{url}}: {{reason}}",
-    "badge": "{{n}} errori in bacheca"
+    "badge": "{{n}} errori in bacheca",
+    "dumpOk": "Dump {{env}}: {{n}} risorse caricate",
+    "httpStatus": "HTTP",
+    "duration": "{{ms}} ms"
+  },
+  "artifacts": {
+    "heading": "Artefatti",
+    "signed": "Originale firmato",
+    "original": "Originale",
+    "header": "Header",
+    "payload": "Payload",
+    "excerpt": "Estratto in chiaro",
+    "empty": "Nessun artefatto dumpato per questa entità.",
+    "expandAll": "Espandi tutto",
+    "collapseAll": "Comprimi tutto"
+  },
+  "offer": {
+    "heading": "Credential Offer",
+    "disclaimer": "Credential offer generata dal catalogo. Non abilita l'emissione di una istanza specifica perché l'utente non è autenticato e manca issuer_state. Abilita la richiesta di una tipologia di credenziale a seguito dell'autenticazione dell'utente (se elegibile)."
   },
   "footer": {
     "legal": "Note legali",

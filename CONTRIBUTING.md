@@ -10,6 +10,7 @@
 
 ```bash
 npm run dump:pre
+npm run dump:prod
 npm run dev
 npm run build
 ```

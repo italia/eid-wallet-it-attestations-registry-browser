@@ -2,4 +2,4 @@ Vendored official IT-Wallet UI assets (Bootstrap Italia sprites, logos, `header-
 
 `eidas-it-wallet-docs/official_resources/shared-ui/`
 
-See docs/ACCESSIBILITY.md. Until that copy lands, `index.html` uses the Bootstrap Italia CDN for the v0.1 shell.
+See docs/ACCESSIBILITY.md. Until that copy lands, `index.html` uses the Bootstrap Italia CDN for the shell.

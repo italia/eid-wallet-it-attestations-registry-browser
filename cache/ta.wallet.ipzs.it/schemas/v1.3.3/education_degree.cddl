@@ -1,0 +1,157 @@
+; Returned data elements signed by the issuer
+IssuerSigned = {
+  "nameSpaces" : IssuerNameSpacesObjectBytes,
+  ; Data elements in Bytes
+  "issuerAuth" : IssuerAuthObjectBytes ; Mobile security object (MSO) for issuer data authentication in Bytes
+}
+
+IssuerNameSpacesObjectBytes = {
+  "it.ipzs.wallet.ta.education_degree.1" : [
+    #6.24(bstr .cbor Tax_id_code),
+    #6.24(bstr .cbor Education_degrees),
+    #6.24(bstr .cbor Issuing_country),
+    #6.24(bstr .cbor Issuing_authority),
+    #6.24(bstr .cbor Sub),
+    ? #6.24(bstr .cbor Verification)
+  ]
+}
+
+; Digest and element identifiers
+DigestID = uint
+DataElementIdentifier = tstr
+RandomValue = bstr
+
+; Credential elements
+Tax_id_code = {
+  digestID: DigestID,
+  random: RandomValue,
+  elementIdentifier: DataElementIdentifier .enum ("tax_id_code"),
+  elementValue: tstr
+}
+
+Education_degrees = {
+  digestID: DigestID,
+  random: RandomValue,
+  elementIdentifier: DataElementIdentifier .enum ("education_degrees"),
+  elementValue: [1* EducationDegree]
+}
+
+EducationDegree = {
+  institute_name: tstr,
+  programme_type_name: tstr,
+  degree_course_name: tstr,
+  academic_qualification_date: tdate,
+  ? qualification_name: tstr,
+  ? qualification_grade_value: tstr,
+  ? degree_class_name: tstr,
+  ? degree_class: tstr
+}
+
+Issuing_country = {
+  digestID: DigestID,
+  random: RandomValue,
+  elementIdentifier: DataElementIdentifier .enum ("issuing_country"),
+  elementValue: tstr .enum ("IT")
+}
+
+Issuing_authority = {
+  digestID: DigestID,
+  random: RandomValue,
+  elementIdentifier: DataElementIdentifier .enum ("issuing_authority"),
+  elementValue: tstr
+}
+
+Sub = {
+  digestID: DigestID,
+  random: RandomValue,
+  elementIdentifier: DataElementIdentifier .enum ("sub"),
+  elementValue: tstr .regexp "^[a-f0-9] {
+    8}-?[a-f0-9] {
+      4}-?4[a-f0-9] {
+        3
+      }
+    }
+  }
+}
+
+Verification = {
+  digestID: DigestID,
+  random: RandomValue,
+  elementIdentifier: DataElementIdentifier .enum ("verification"),
+  elementValue: VerificationValue
+}
+
+VerificationValue = {
+  trust_framework: tstr .enum ("it_l2+document_proof", "it_cie", "it_wallet", "eudi_wallet"),
+  assurance_level: tstr .enum ("https://ta.wallet.ipzs.it/loa/high", "https://ta.wallet.ipzs.it/loa/substantial")
+}
+
+; Mobile Security Object
+IssuerAuthObjectBytes = #6.18(COSE_Sign1)
+COSE_Sign1 = [ Headers, payload: #6.24(bstr .cbor MobileSecurityObject), signature: bstr ]
+Headers = ( protected: protected_header_map, unprotected: unprotected_header_map )
+protected_header_map = {
+  1 => AlgorithmIdentifier
+}
+unprotected_header_map = {
+  4 => bstr,
+  33 => bstr
+}
+
+MobileSecurityObject = {
+  "version" : tstr .enum ("1.0"),
+  "digestAlgorithm" : tstr .enum ("SHA-256"),
+  "valueDigests" : ValueDigests,
+  "deviceKeyInfo" : DeviceKeyInfo,
+  "docType" : tstr .enum ("it.ipzs.wallet.ta.education_degree.1"),
+  "validityInfo" : ValidityInfo,
+  ? "status" : Status
+}
+
+ValueDigests = {
+  "it.ipzs.wallet.ta.education_degree.1": DigestIDs
+}
+DigestIDs = [1* DigestID]
+
+DeviceKeyInfo = {
+  "deviceKey": COSE_Key,
+  ? "keyInfo": KeyInfo,
+  ? "keyAuthorizations": KeyAuthorizations
+}
+COSE_Key = {
+  1=>tstr/int,
+  ?2=>bstr,
+  ?3=>AlgorithmIdentifier,
+  ?4=>[+(tstr/int)],
+  ?5=>bstr,
+  *label=>values
+}
+label = int/tstr
+values = any
+AlgorithmIdentifier = tstr .enum ("ES256")
+KeyInfo = {
+  * int => any
+}
+KeyAuthorizations = {
+  ? "nameSpaces": AuthorizedNameSpaces,
+  ? "dataElements": AuthorizedDataElements
+}
+AuthorizedNameSpaces = ["it.ipzs.wallet.ta.education_degree.1"]
+AuthorizedDataElements = {
+  "it.ipzs.wallet.ta.education_degree.1": DataElementsArray
+}
+DataElementsArray = [1* DataElementIdentifier]
+
+ValidityInfo = {
+  "signed": tdate,
+  "validFrom": tdate,
+  "validUntil": tdate,
+  ? "expectedUpdate": tdate
+}
+Status = {
+  ? "status_list": StatusListInfo
+}
+StatusListInfo = {
+  "idx": uint,
+  "uri": tstr
+}

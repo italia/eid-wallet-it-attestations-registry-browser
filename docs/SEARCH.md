@@ -4,11 +4,13 @@
 
 Un unico campo, placeholder bilingue («Cerca tipi, legal type, attributi, emittenti, fonti…» / «Search types, legal type, attributes, issuers, sources…»), pattern visivo del search di `it-wallet.html` (icona lente, clear, submit).
 
-A destra (desktop) o sotto (mobile): facet opzionali che **scrivono** nella query (`legal_type:pub-eaa`) invece di un secondo motore.
+Sotto il campo testo, quattro `<select>` HTML (`legal_type`, emittente, fonte autentica, attributo/claim) popolati dal dump. Cambiare un menu **scrive** nella query (`legal_type:pub-eaa`, `issuer:"…"`, `as:"…"`, `claim:family_name`) invece di un secondo motore. `legal_type` elenca sempre `pub-eaa`, `qeaa`, `eaa`; gli altri menu usano valori reali del registro. Requisiti: F-01, A-23.
+
+Sopra la query, un `<select>` **Ambiente** (F-12, A-01) sceglie collaudo (`pre`) o produzione (`prod`) e mostra il Trust Anchor (`https://pre.ta.wallet.ipzs.it` / `https://ta.wallet.ipzs.it`). Lo switch ricarica il dump (`?env=pre|prod`), non è un token Lucene. Alias accettati nel permalink: `preprod`/`collaudo` → `pre`; `produzione`/`production` → `prod`.
 
 Risultati: lista accessibile + filtro grafo (stesso insieme).
 
-## 2. Sintassi (Lucene-lite / Lunr)
+## 2. Sintassi (Lucene-lite)
 
 Allineata a «`+`, `-`, `""` e notazioni note» (Solr/Lunr/Google-advanced):
 
@@ -39,17 +41,17 @@ Query vuota: mostra l’albero completo.
 | `format` | | `dc+sd-jwt`, `mso_mdoc` |
 | `domain` `class` `purpose` | | tassonomia / catalogo |
 | `schema` | | `schemas[].id` |
-| `env` | | `pre`, `prod` |
+| `env` | | **non** un token di ricerca: si cambia con il `<select>` Ambiente / `?env=` (F-12) |
 
 Valori `legal_type` ammessi: `pub-eaa`, `qeaa`, `eaa`. Il PID si cerca con `type:pid`, non come legal type distinto (vedi manuale).
 
 ## 4. Indicizzazione
 
-Ogni nodo del modello (non il JWT raw) è un documento Lunr:
+Ogni nodo del modello (non il JWT raw) è un documento in memoria filtrato da `searchDocuments`:
 
 - `id`, `kind`, `label`, `text` (concatenazione ricercabile)
-- campi facet come sopra
-- pipeline: lunr stemmer EN + `lunr-languages` IT (trim, stopword it/en)
+- campi facet come sopra (`legal_type`, `issuer`, `as`, `claim`, …)
+- matching: AND dei termini non firmati, `+`/`-`, `campo:valore` (valori quotati), `*` in coda al valore
 
 I JWT e i CDDL restano ricercabili via `text` estratto (chiavi JSON, `description`, nomi claim), non via blob binario.
 
@@ -65,4 +67,6 @@ La lista risultati mostra **solo** i match, non gli antenati (gli antenati resta
 
 ## 6. Accessibilità ricerca
 
-Come `it-wallet.html`: `role="search"`, label visivamente nascosta, `aria-describedby` per la sintassi, `role="alert"` per query non parsabile, live region sul conteggio risultati.
+Come `it-wallet.html` per il campo testo: `role="search"`, `aria-describedby` per la sintassi, `role="alert"` per query non parsabile, live region sul conteggio risultati.
+
+I facet e l’ambiente MUST avere `<label>` visibili associate (`for`/`id`), rese come intestazioni (`h2`/`h3`) distinte dal testo di supporto: Ambiente, Cerca, `legal_type`, Emittente, Fonte autentica, Attributo/claim. Il Trust Anchor è un link testuale (non solo icona).
