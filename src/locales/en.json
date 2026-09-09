@@ -1,0 +1,47 @@
+{
+  "meta": {
+    "title": "IT-Wallet Registry Explorer",
+    "description": "Graphical navigation of the IT-Wallet Registry: catalog, schemas, claims, authentic sources and taxonomy.",
+    "brand": "IT-Wallet Registry",
+    "tagline": "Catalog, schemas, claims, authentic sources, taxonomy",
+    "disclaimer": "Unofficial read-only tool. Registries remain those published by the Trust Anchor."
+  },
+  "skip": {
+    "main": "Skip to main content",
+    "search": "Skip to search",
+    "graph": "Skip to graph",
+    "board": "Skip to message board",
+    "footer": "Skip to footer"
+  },
+  "search": {
+    "label": "Search the registry",
+    "button": "Search",
+    "hint": "Use +, -, quotes and field:value. See docs/SEARCH.md.",
+    "placeholder": "+mDL legal_type:pub-eaa -pid \"health card\""
+  },
+  "results": {
+    "heading": "Results",
+    "emptyDump": "Dump not loaded yet. Run npm run dump:pre.",
+    "count": "{{n}} results"
+  },
+  "graph": {
+    "heading": "Registry graph",
+    "placeholder": "The graph (Cytoscape.js, top-down layout) will render here after the cache loads.",
+    "aria": "Hierarchical graph of the IT-Wallet Registry"
+  },
+  "board": {
+    "title": "Message board",
+    "open": "Open the message board",
+    "close": "Close",
+    "retry": "Retry",
+    "ok": "Loaded: {{url}}",
+    "error": "Error on {{url}}: {{reason}}",
+    "badge": "{{n}} errors on the board"
+  },
+  "footer": {
+    "legal": "Legal notes",
+    "docs": "Requirements",
+    "accessibility": "Accessibility"
+  },
+  "noscript": "JavaScript is required to use the registry explorer."
+}

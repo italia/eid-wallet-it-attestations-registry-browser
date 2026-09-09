@@ -1,0 +1,20 @@
+it-wallet-registry-explorer
+===========================
+
+This project is an unofficial, community-oriented explorer for the public
+metadata of the Italian IT-Wallet Registry. It is not a Wallet Instance, not a
+Credential Issuer, and not an official publication of AgID, IPZS, or the
+European Commission.
+
+Registry contents dumped into `cache/` remain metadata published by the National
+Trust Anchor. This tool does not store personal data of natural persons.
+
+Third-party notices
+-------------------
+
+- Bootstrap Italia and the official discovery/selection HTML templates
+  (`disco.html`, `it-wallet.html`) follow the licenses of
+  https://github.com/italia/bootstrap-italia and of
+  https://github.com/italia/eid-wallet-it-docs
+- Cytoscape.js, Lunr, i18next, Vite, qrcode and other npm packages remain under
+  their respective licenses (see `package-lock.json` when generated).

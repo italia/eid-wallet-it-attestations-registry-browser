@@ -1,0 +1,29 @@
+.registry-graph {
+  min-height: 28rem;
+  background: #fff;
+}
+
+.it-header-slim-wrapper-content {
+  min-height: 2.5rem;
+}
+
+#message-board-toggle {
+  position: relative;
+}
+
+#message-board-badge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  font-size: 0.65rem;
+}
+
+.it-skip-links a:focus {
+  position: static;
+  width: auto;
+  height: auto;
+  margin: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  clip: auto;
+  overflow: visible;
+}

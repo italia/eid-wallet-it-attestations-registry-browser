@@ -1,0 +1,178 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SD-JWT EuropeanHealthInsuranceCard Schema",
+  "description": "An object defining the structure of a SD-JWT Verifiable Credential EuropeanHealthInsuranceCard compliant with IT Wallet Specification v1.3.3",
+  "type": "object",
+  "required": [
+    "iss",
+    "sub",
+    "iat",
+    "exp",
+    "issuing_authority",
+    "issuing_country",
+    "status",
+    "cnf",
+    "vct",
+    "_sd",
+    "_sd_alg",
+    "content"
+  ],
+  "properties": {
+    "iss": {
+      "type": "string",
+      "description": "URL string representing the Credential Issuer unique identifier",
+      "format": "uri"
+    },
+    "sub": {
+      "type": "string",
+      "description": "Identifier of the subject of the SD-JWT",
+      "pattern": "^[a-f0-9]{8}-?[a-f0-9]{4}-?4[a-f0-9]{3}-?[89ab][a-f0-9]{3}-?[a-f0-9]{12}\\z$"
+    },
+    "iat": {
+      "type": "number",
+      "description": "UNIX Timestamp with the time of JWT issuance, coded as NumericDate as indicated in RFC 7519"
+    },
+    "exp": {
+      "type": "number",
+      "description": "UNIX Timestamp with the expiry time of the JWT, coded as NumericDate as indicated in RFC 7519"
+    },
+    "nbf": {
+      "type": "number",
+      "description": "UNIX Timestamp with the start time of validity of the JWT, coded as NumericDate as indicated in RFC 7519"
+    },
+    "vct": {
+      "type": "string",
+      "description": "Credential type identifier (URN)."
+    },
+    "vct#integrity": {
+      "type": "string",
+      "description": "A String representing an integrity metadata for ensuring the integrity of the resource referred to by the vct"
+    },
+    "verification": {
+      "type": "object",
+      "required": ["trust_framework", "assurance_level"],
+      "properties": {
+        "trust_framework": {
+          "type": "string",
+          "enum": ["it_l2+document_proof", "it_cie", "it_wallet", "eudi_wallet"]
+        },
+        "assurance_level": {
+          "type": "string",
+          "enum": ["high", "substantial"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "issuing_authority": {
+      "type": "string",
+      "description": "Name of the administrative authority that has issued the SD-JWT VC",
+      "pattern": "^(?!\\s)(?!.*\\s\\s)(?!.*\\s$).+$"
+    },
+    "issuing_country": {
+      "type": "string",
+      "description": "Country of the SD-JWT VC issuing authority, as a two letter country code defined in ISO 3166-1 alpha-2",
+      "enum": ["IT"]
+    },
+    "status": {
+      "type": "object",
+      "required": ["status_list"],
+      "properties": {
+        "status_list": {
+          "type": "object",
+          "required": ["idx", "uri"],
+          "properties": {
+            "idx": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "uri": {
+              "type": "string",
+              "format": "uri"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "cnf": {
+      "type": "object",
+      "required": ["jwk"],
+      "properties": {
+        "jwk": {
+          "type": "object",
+          "required": ["kty", "crv", "x", "y"],
+          "properties": {
+            "alg": {
+              "type": "string",
+              "enum": ["ES256", "ES384", "ES512"]
+            },
+            "key_ops": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "kid": {
+              "type": "string"
+            },
+            "kty": {
+              "type": "string",
+              "enum": ["EC"]
+            },
+            "use": {
+              "type": "string",
+              "enum": ["sig", "enc"]
+            },
+            "x5c": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "x5t": {
+              "type": "string"
+            },
+            "x5t#S256": {
+              "type": "string"
+            },
+            "x5u": {
+              "type": "string",
+              "format": "uri"
+            },
+            "crv": {
+              "type": "string",
+              "enum": ["P-256", "P-384", "P-521"]
+            },
+            "x": {
+              "type": "string"
+            },
+            "y": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "_sd": {
+      "type": "array",
+      "description": "Digests of the disclosures",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    },
+    "_sd_alg": {
+      "type": "string",
+      "description": "Identifier of the hash algorithm used by the Credential Issuer to generate the digests",
+      "enum": ["sha-256"]
+    },
+    "content": {
+      "type": "string",
+      "description": "PDF content in base64 encoded"
+    }
+  },
+  "additionalProperties": false
+}

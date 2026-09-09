@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="it" class="registry-explorer-html">
+
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <title id="tab-title">Esploratore del Registro IT-Wallet</title>
+  <meta name="description"
+    content="Navigazione grafica del catalogo, degli schemi, dei claims, delle fonti autentiche e della tassonomia del Registro IT-Wallet.">
+  <link rel="icon" href="https://cdn.jsdelivr.net/gh/italia/bootstrap-italia@2.16.2/dist/favicon/favicon-32x32.png">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-italia@2.16.2/dist/css/bootstrap-italia.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="./src/css/explorer.css">
+</head>
+
+<body>
+  <nav class="it-skip-links" aria-label="Collegamenti di salto">
+    <a id="skip-main" class="visually-hidden-focusable" href="#main-content">Vai al contenuto principale</a>
+    <a id="skip-search" class="visually-hidden-focusable" href="#registry-search">Vai alla ricerca</a>
+    <a id="skip-graph" class="visually-hidden-focusable" href="#registry-graph">Vai al grafo</a>
+    <a id="skip-board" class="visually-hidden-focusable" href="#message-board">Vai alla bacheca</a>
+    <a id="skip-footer" class="visually-hidden-focusable" href="#page-footer">Vai al piè di pagina</a>
+  </nav>
+
+  <header class="it-header-wrapper" role="banner">
+    <div class="it-header-slim-wrapper bg-primary">
+      <div class="container">
+        <div class="it-header-slim-wrapper-content d-flex justify-content-between align-items-center">
+          <span class="navbar-brand text-white"><strong id="header-region-name">Registro IT-Wallet</strong></span>
+          <div class="it-header-slim-right-zone d-flex align-items-center gap-2">
+            <button type="button" id="message-board-toggle" class="btn btn-link text-white p-2"
+              aria-controls="message-board" aria-expanded="false" data-bs-toggle="offcanvas"
+              data-bs-target="#message-board">
+              <span class="visually-hidden" id="message-board-toggle-label">Apri la bacheca dei messaggi</span>
+              <svg class="icon icon-sm icon-white" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path fill="currentColor"
+                  d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22Zm8-6V11a8 8 0 0 0-6-7.75V3a2 2 0 1 0-4 0v.25A8 8 0 0 0 4 11v5l-2 2v1h20v-1Z" />
+              </svg>
+              <span id="message-board-badge" class="badge bg-danger rounded-pill d-none" aria-hidden="true">0</span>
+            </button>
+            <div class="nav-item dropdown it-header-lang-dropdown">
+              <button type="button" id="languagesDropButton" class="nav-link dropdown-toggle text-white"
+                aria-controls="language-menu" data-bs-toggle="dropdown" aria-haspopup="menu" aria-expanded="false">
+                <span id="header-lang-active-hint" class="visually-hidden">lingua attiva:</span>
+                <span class="it-header-lang-label" aria-hidden="true">ITA</span>
+              </button>
+              <div id="language-menu" class="dropdown-menu dropdown-menu-end">
+                <ul class="link-list" role="menu" aria-labelledby="languagesDropButton">
+                  <li>
+                    <button type="button" class="dropdown-item list-item it-lang-option active" data-lang="it"
+                      role="menuitemradio" aria-checked="true" aria-current="true">
+                      <span lang="it">Italiano</span>
+                    </button>
+                  </li>
+                  <li>
+                    <button type="button" class="dropdown-item list-item it-lang-option" data-lang="en"
+                      role="menuitemradio" aria-checked="false">
+                      <span lang="en">English</span>
+                    </button>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="header-title-section">
+      <div class="container py-3">
+        <h1 class="h3 mb-0" id="page-heading">Esploratore del Registro IT-Wallet</h1>
+        <p class="mb-0 small" id="page-tagline">Catalogo, schemi, claims, fonti autentiche, tassonomia</p>
+      </div>
+    </div>
+  </header>
+
+  <main id="main-content" class="container my-4" aria-labelledby="page-heading">
+    <p class="alert alert-info" id="unofficial-disclaimer" role="note">
+      Strumento non ufficiale, in sola lettura. I registri restano quelli pubblicati dal Trust Anchor.
+    </p>
+
+    <form id="registry-search-form" class="mb-4" role="search">
+      <label for="registry-search" class="form-label" id="registry-search-label">Cerca nel registro</label>
+      <div class="input-group">
+        <input type="search" id="registry-search" name="q" class="form-control"
+          placeholder="+mDL legal_type:pub-eaa -pid &quot;tessera sanitaria&quot;" autocomplete="off"
+          aria-describedby="registry-search-hint">
+        <button class="btn btn-primary" type="submit" id="search-btn">Cerca</button>
+      </div>
+      <p id="registry-search-hint" class="form-text">
+        Usa +, -, virgolette e campo:valore. Esempi in docs/SEARCH.md.
+      </p>
+      <p id="registry-search-error" class="text-danger" role="alert" hidden></p>
+    </form>
+
+    <div class="row">
+      <section class="col-lg-4 mb-4" aria-labelledby="results-heading">
+        <h2 id="results-heading" class="h5">Risultati</h2>
+        <p id="results-count" class="small" aria-live="polite">Dump non ancora caricato. Esegui npm run dump:pre.</p>
+        <ul id="results-list" class="list-group"></ul>
+      </section>
+      <section class="col-lg-8 mb-4" aria-labelledby="graph-heading">
+        <h2 id="graph-heading" class="h5">Grafo del registro</h2>
+        <div id="registry-graph" class="registry-graph border" role="img"
+          aria-label="Grafo gerarchico del Registro IT-Wallet">
+          <p class="p-4 mb-0" id="graph-placeholder">Il grafo (Cytoscape.js, layout verticale) verrà reso qui dopo il
+            caricamento della cache.</p>
+        </div>
+      </section>
+    </div>
+    <noscript>
+      <p>Per usare l'esploratore del registro è necessario abilitare JavaScript.</p>
+    </noscript>
+  </main>
+
+  <div class="offcanvas offcanvas-end" tabindex="-1" id="message-board" aria-labelledby="message-board-title">
+    <div class="offcanvas-header">
+      <h2 class="offcanvas-title h5" id="message-board-title">Bacheca</h2>
+      <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Chiudi"></button>
+    </div>
+    <div class="offcanvas-body">
+      <ul id="message-board-list" class="list-unstyled" role="list"></ul>
+    </div>
+  </div>
+
+  <footer id="page-footer" class="bg-primary text-white py-3" role="contentinfo" tabindex="-1">
+    <div class="container">
+      <nav id="footer-legal-nav" aria-label="Link legali">
+        <a id="footer-legal" href="./NOTICE" class="text-white me-4">Note legali</a>
+        <a id="footer-docs" href="./docs/REQUIREMENTS.md" class="text-white me-4">Requisiti</a>
+        <a id="footer-accessibility" href="./docs/ACCESSIBILITY.md" class="text-white">Accessibilità</a>
+      </nav>
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap-italia@2.16.2/dist/js/bootstrap-italia.bundle.min.js"></script>
+  <script type="module" src="./src/main.js"></script>
+</body>
+
+</html>

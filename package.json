@@ -1,0 +1,46 @@
+{
+  "name": "it-wallet-registry-explorer",
+  "version": "0.1.0",
+  "private": false,
+  "type": "module",
+  "description": "Open-source graphical explorer for the IT-Wallet Registry (catalog, schemas, claims, authentic sources, taxonomy).",
+  "license": "BSD-3-Clause",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "dump": "node scripts/dump-registry.mjs",
+    "dump:pre": "node scripts/dump-registry.mjs --env pre",
+    "dump:prod": "node scripts/dump-registry.mjs --env prod",
+    "sync-cache": "node scripts/sync-cache-public.mjs",
+    "prebuild": "node scripts/sync-cache-public.mjs"
+  },
+  "dependencies": {
+    "bootstrap-italia": "^2.16.2",
+    "cytoscape": "^3.33.1",
+    "cytoscape-dagre": "^2.5.0",
+    "dagre": "^0.8.5",
+    "i18next": "^25.5.2",
+    "i18next-http-backend": "^3.0.2",
+    "lunr": "^2.3.9",
+    "lunr-languages": "^1.14.0",
+    "qrcode": "^1.5.4"
+  },
+  "devDependencies": {
+    "vite": "^7.1.5"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/italia/it-wallet-registry-explorer.git"
+  },
+  "keywords": [
+    "it-wallet",
+    "eudi-wallet",
+    "eidas",
+    "credential-catalog",
+    "openid4vci"
+  ]
+}

@@ -1,0 +1,32 @@
+name: Nightly registry dump
+
+# CD A — aggiorna solo cache/. Non pubblica Pages.
+on:
+  schedule:
+    - cron: '15 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  dump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Dump pre-production Trust Anchor
+        run: node scripts/dump-registry.mjs --env pre --with-issuer-metadata
+      - name: Commit cache if changed
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add cache
+          if git diff --staged --quiet; then
+            echo 'No cache changes'
+          else
+            git commit -m "chore(cache): nightly dump $(date -u +%Y-%m-%d)"
+            git push
+          fi

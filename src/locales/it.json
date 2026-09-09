@@ -1,0 +1,47 @@
+{
+  "meta": {
+    "title": "Esploratore del Registro IT-Wallet",
+    "description": "Navigazione grafica del catalogo, degli schemi, dei claims, delle fonti autentiche e della tassonomia del Registro IT-Wallet.",
+    "brand": "Registro IT-Wallet",
+    "tagline": "Catalogo, schemi, claims, fonti autentiche, tassonomia",
+    "disclaimer": "Strumento non ufficiale, in sola lettura. I registri restano quelli pubblicati dal Trust Anchor."
+  },
+  "skip": {
+    "main": "Vai al contenuto principale",
+    "search": "Vai alla ricerca",
+    "graph": "Vai al grafo",
+    "board": "Vai alla bacheca",
+    "footer": "Vai al piè di pagina"
+  },
+  "search": {
+    "label": "Cerca nel registro",
+    "button": "Cerca",
+    "hint": "Usa +, -, virgolette e campo:valore. Esempi in docs/SEARCH.md.",
+    "placeholder": "+mDL legal_type:pub-eaa -pid \"tessera sanitaria\""
+  },
+  "results": {
+    "heading": "Risultati",
+    "emptyDump": "Dump non ancora caricato. Esegui npm run dump:pre.",
+    "count": "{{n}} risultati"
+  },
+  "graph": {
+    "heading": "Grafo del registro",
+    "placeholder": "Il grafo (Cytoscape.js, layout verticale) verrà reso qui dopo il caricamento della cache.",
+    "aria": "Grafo gerarchico del Registro IT-Wallet"
+  },
+  "board": {
+    "title": "Bacheca",
+    "open": "Apri la bacheca dei messaggi",
+    "close": "Chiudi",
+    "retry": "Riprova",
+    "ok": "Caricamento riuscito: {{url}}",
+    "error": "Errore su {{url}}: {{reason}}",
+    "badge": "{{n}} errori in bacheca"
+  },
+  "footer": {
+    "legal": "Note legali",
+    "docs": "Requisiti",
+    "accessibility": "Accessibilità"
+  },
+  "noscript": "Per usare l'esploratore del registro è necessario abilitare JavaScript."
+}
