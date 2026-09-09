@@ -1,5 +1,5 @@
 import { defineConfig } from 'vite';
-import { cpSync, createReadStream, existsSync, mkdirSync, statSync } from 'node:fs';
+import { cpSync, createReadStream, existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, extname, join, normalize, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -51,18 +51,28 @@ function serveCache() {
       const dest = resolve(root, 'dist', 'cache');
       mkdirSync(dest, { recursive: true });
       cpSync(cacheDir, dest, { recursive: true });
+      writeFileSync(resolve(root, 'dist', '.nojekyll'), '');
     },
   };
 }
 
+const pagesBase = '/eid-wallet-it-attestations-registry-browser/';
+const base = process.env.VITE_BASE || (process.env.GITHUB_ACTIONS ? pagesBase : './');
+
 export default defineConfig({
-  base: './',
+  base,
   publicDir: 'public',
   plugins: [serveCache()],
+  optimizeDeps: {
+    include: ['qrcode'],
+  },
   build: {
     outDir: 'dist',
     sourcemap: true,
     emptyOutDir: true,
+    commonjsOptions: {
+      include: [/qrcode/, /node_modules/],
+    },
   },
   appType: 'spa',
   server: {

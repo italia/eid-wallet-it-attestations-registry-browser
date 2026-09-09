@@ -42,6 +42,8 @@ jobs:
       - run: npm ci
       - run: node scripts/sync-cache-public.mjs
       - run: npm run build
+        env:
+          VITE_BASE: /eid-wallet-it-attestations-registry-browser/
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

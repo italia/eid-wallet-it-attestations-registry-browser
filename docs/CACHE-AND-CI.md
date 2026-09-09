@@ -116,7 +116,8 @@ Chiave IndexedDB = URL assoluto della risorsa TA, non il path Pages.
   - `push` su `src/**`, `index.html`, `package.json`, `vite.config.js`, `public/**`
   - `workflow_dispatch`
   - `workflow_run` completato di nightly (se il nightly non ha potuto pushare sulla stessa ref, resta comunque copribile dal push)
-- Job: `npm ci` → `npm run build` → `actions/upload-pages-artifact` + `actions/deploy-pages`.
+- Job: `npm ci` → `npm run build` (`VITE_BASE=/eid-wallet-it-attestations-registry-browser/`) → `actions/upload-pages-artifact` + `actions/deploy-pages`.
+- GitHub Pages MUST usare **GitHub Actions** (non “Deploy from a branch” sulla root: servirebbe `index.html` sorgente e `import 'qrcode'` fallisce nel browser).
 - Durante il build, `cache/` è copiata in `public/cache/` (script `scripts/sync-cache-public.mjs` o `cp` nel workflow) così Vite la emette in `dist/cache/`.
 
 Separazione voluta: un dump rotto non richiede di toccare l’app; un fix UI non richiede di ri-scaricare il TA.

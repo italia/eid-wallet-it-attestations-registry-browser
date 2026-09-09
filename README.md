@@ -6,6 +6,19 @@ Il tool è un’applicazione **tutta JavaScript**, statica, servita da **GitHub 
 
 > Non è un prodotto ufficiale AgID/IPZS, non è un Wallet e non emette attestati. Contiene solo **metadati di sistema**. Vedi [NOTICE](NOTICE).
 
+## Uso
+
+L’applicazione è pubblicata su GitHub Pages:
+
+**[https://italia.github.io/eid-wallet-it-attestations-registry-browser/](https://italia.github.io/eid-wallet-it-attestations-registry-browser/)**
+
+1. Scegli l’ambiente **Collaudo (preprod)** o **Produzione** (il Trust Anchor usato è indicato sotto lo switch).
+2. Cerca nel registro: testo libero, operatori `+` / `-` / virgolette, oppure i menu `legal_type`, emittente, fonte autentica e claim.
+3. Apri un attestato dalla **lista** o dal **grafo** per vedere metadati, artifact firmati e, se disponibile, il **Credential Offer** (QR / URI). La offer descrive una *tipologia* di credenziale: non emette un’istanza e non autentica l’utente.
+4. La **bacheca** elenca le GET verso dump e well-known (endpoint, status, durata).
+
+Sviluppo in locale: [Avvio locale](#avvio-locale). Sintassi della ricerca: [docs/SEARCH.md](docs/SEARCH.md).
+
 ## Stato
 
 Applicazione **v0.2.0**: dump REST, grafo Cytoscape, ricerca Lucene-lite con facet HTML, switch collaudo/produzione (Trust Anchor visibile), bacheca per-GET, header allineato a `disco.html`. Requisiti in [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) (versione **0.2.0**).

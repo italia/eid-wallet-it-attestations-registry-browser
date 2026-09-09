@@ -134,7 +134,7 @@ function bindChrome() {
     bootDump().catch((err) => {
       window.__ITW_ERROR__ = err.message || String(err);
       board.error({
-        url: `./cache/${currentEnv().manifestFile}`,
+        url: `${import.meta.env.BASE_URL}cache/${currentEnv().manifestFile}`,
         reason: err.message || String(err),
         retry: () => bootDump(),
       });
@@ -483,7 +483,7 @@ async function bootDump() {
     if (err.httpCalls?.length) board.setHttpCalls(err.httpCalls, { retry: () => bootDump() });
     else {
       board.error({
-        url: `./cache/${spec.manifestFile}`,
+        url: `${import.meta.env.BASE_URL}cache/${spec.manifestFile}`,
         reason: err.message || String(err),
         retry: () => bootDump(),
       });
@@ -498,7 +498,7 @@ async function bootDump() {
   if (!manifest.resources?.length) {
     board.setHttpCalls(httpCalls, { retry: () => bootDump() });
     board.error({
-      url: `./cache/${spec.manifestFile}`,
+      url: `${import.meta.env.BASE_URL}cache/${spec.manifestFile}`,
       reason: t('results.emptyDump'),
       retry: () => bootDump(),
     });
@@ -526,7 +526,7 @@ applyLocale(initialLang)
   .catch((err) => {
     window.__ITW_ERROR__ = err.message || String(err);
     board.error({
-      url: `./cache/${currentEnv().manifestFile}`,
+      url: `${import.meta.env.BASE_URL}cache/${currentEnv().manifestFile}`,
       reason: err.message || String(err),
       retry: () => window.location.reload(),
     });

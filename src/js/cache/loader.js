@@ -1,7 +1,12 @@
 import { parseRegistryBody } from './jwt.js';
 import { resolveRegistryEnv } from './environments.js';
 
-export function cacheUrl(path, base = './cache/') {
+export function cacheRoot(dir = 'cache') {
+  const base = import.meta.env?.BASE_URL || './';
+  return `${base}${dir}/`;
+}
+
+export function cacheUrl(path, base = cacheRoot()) {
   const prefix = base.endsWith('/') ? base : `${base}/`;
   return `${prefix}${path.split('/').map(encodeURIComponent).join('/')}`;
 }
@@ -12,7 +17,7 @@ export function manifestUrlsFor(env) {
   if (spec.id === 'pre') files.push('manifest.json');
   const urls = [];
   for (const file of files) {
-    urls.push(`./cache/${file}`, `./public/cache/${file}`);
+    urls.push(`${cacheRoot()}${file}`, `${cacheRoot('public/cache')}${file}`);
   }
   return urls;
 }
@@ -99,7 +104,7 @@ export async function loadDumpManifest(env = 'pre', fetchFn = fetch) {
   throw error;
 }
 
-export async function loadDump(manifest, { fetchFn = fetch, cacheBase = './cache/', httpCalls = [] } = {}) {
+export async function loadDump(manifest, { fetchFn = fetch, cacheBase = cacheRoot(), httpCalls = [] } = {}) {
   const dump = {
     manifest,
     discovery: null,
