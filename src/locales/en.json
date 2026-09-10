@@ -94,7 +94,11 @@
   "footer": {
     "legal": "Legal notes",
     "docs": "Requirements",
-    "accessibility": "Accessibility"
+    "accessibility": "Accessibility",
+    "github": "GitHub repository",
+    "specsLabel": "Aligned with",
+    "specs": "IT-Wallet v1.4.6",
+    "specsHref": "https://italia.github.io/eid-wallet-it-docs/releases/1.4.6/en/"
   },
   "noscript": "JavaScript is required to use the registry explorer."
 }

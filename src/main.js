@@ -278,6 +278,11 @@ function renderStatic(dict) {
   set('footer-legal', dict.footer.legal);
   set('footer-docs', dict.footer.docs);
   set('footer-accessibility', dict.footer.accessibility);
+  set('footer-github', dict.footer.github);
+  set('footer-specs-label', dict.footer.specsLabel);
+  set('footer-specs', dict.footer.specs);
+  const specsLink = document.getElementById('footer-specs');
+  if (specsLink && dict.footer.specsHref) specsLink.setAttribute('href', dict.footer.specsHref);
   set('tab-list', dict.mobile.list);
   set('tab-graph', dict.mobile.graph);
   set('graph-toolbar-label', dict.graph.toolbar);

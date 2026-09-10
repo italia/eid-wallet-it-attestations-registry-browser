@@ -94,7 +94,11 @@
   "footer": {
     "legal": "Note legali",
     "docs": "Requisiti",
-    "accessibility": "Accessibilità"
+    "accessibility": "Accessibilità",
+    "github": "Repository GitHub",
+    "specsLabel": "Allineato a",
+    "specs": "IT-Wallet v1.4.6",
+    "specsHref": "https://italia.github.io/eid-wallet-it-docs/releases/1.4.6/it/"
   },
   "noscript": "Per usare l'esploratore del registro è necessario abilitare JavaScript."
 }
