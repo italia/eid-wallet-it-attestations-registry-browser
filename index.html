@@ -102,11 +102,13 @@
   </header>
 
   <main id="main-content" class="container-fluid px-3 my-4" aria-labelledby="page-heading">
-    <form id="registry-search-form" class="mb-3" role="search">
+    <section id="section-search" class="explorer-section" aria-labelledby="search-section-heading">
+    <h2 id="search-section-heading" class="h4 explorer-section-title">Ricerca</h2>
+    <form id="registry-search-form" class="mb-0" role="search">
       <div class="registry-env-row mb-3">
-        <h2 class="registry-field-heading h5">
+        <h3 class="registry-field-heading h5">
           <label for="registry-env" id="registry-env-label">Ambiente</label>
-        </h2>
+        </h3>
         <select id="registry-env" class="form-select" name="env" aria-describedby="registry-ta">
           <option value="pre">Collaudo (preprod)</option>
           <option value="prod">Produzione</option>
@@ -116,9 +118,9 @@
           <a id="registry-ta-link" href="https://pre.ta.wallet.ipzs.it" rel="noopener">https://pre.ta.wallet.ipzs.it</a>
         </p>
       </div>
-      <h2 class="registry-field-heading h5">
+      <h3 class="registry-field-heading h5">
         <label for="registry-search" id="registry-search-label">Cerca nel registro</label>
-      </h2>
+      </h3>
       <div class="it-wallet-search-group d-flex flex-wrap gap-2">
         <input type="search" id="registry-search" name="q" class="form-control"
           placeholder="+mDL legal_type:pub-eaa -pid" autocomplete="off" enterkeyhint="search"
@@ -126,6 +128,10 @@
         <button class="btn btn-outline-secondary" type="button" id="search-clear-btn" hidden>Cancella</button>
         <button class="btn btn-primary" type="submit" id="search-btn">Cerca</button>
       </div>
+      <p id="registry-search-hint" class="form-text mt-2 mb-0">
+        Usa +, -, virgolette e campo:valore. I menu compilano legal_type:, issuer:, as: e claim:.
+      </p>
+      <p id="registry-search-error" class="text-danger" role="alert" hidden></p>
       <fieldset class="registry-search-facets mt-3">
         <legend class="registry-field-heading h5" id="search-facets-legend">Filtri sulla ricerca</legend>
         <div class="row g-2">
@@ -170,29 +176,26 @@
           </div>
         </div>
       </fieldset>
-      <p id="registry-search-hint" class="form-text mb-0">
-        Usa +, -, virgolette e campo:valore. I menu compilano legal_type:, issuer:, as: e claim:.
-      </p>
-      <p id="registry-search-error" class="text-danger" role="alert" hidden></p>
     </form>
+    </section>
 
     <div class="explorer-mobile-tabs d-lg-none mb-3" role="tablist" aria-label="Viste">
-      <button type="button" class="btn btn-outline-primary" role="tab" id="tab-list" aria-controls="pane-list"
+      <button type="button" class="btn btn-outline-primary" role="tab" id="tab-list" aria-controls="section-results"
         aria-selected="true">Lista</button>
-      <button type="button" class="btn btn-outline-primary" role="tab" id="tab-graph" aria-controls="pane-graph"
+      <button type="button" class="btn btn-outline-primary" role="tab" id="tab-graph" aria-controls="section-graph"
         aria-selected="false">Grafo</button>
     </div>
 
     <div class="explorer-panes">
-      <section id="pane-list" class="explorer-pane is-active" aria-labelledby="results-heading">
-        <h2 id="results-heading" class="h5">Risultati</h2>
+      <section id="section-results" class="explorer-section explorer-pane is-active" aria-labelledby="results-heading">
+        <h2 id="results-heading" class="h4 explorer-section-title">Risultati</h2>
         <p id="results-count" class="small" aria-live="polite"></p>
-        <div id="results-list" class="list-group mb-4"></div>
+        <div id="results-list" class="accordion"></div>
       </section>
 
-      <section id="pane-graph" class="explorer-pane is-active" aria-labelledby="graph-heading">
+      <section id="section-graph" class="explorer-section explorer-pane is-active" aria-labelledby="graph-heading">
         <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
-          <h2 id="graph-heading" class="h5 mb-0">Grafo del registro</h2>
+          <h2 id="graph-heading" class="h4 explorer-section-title mb-0">Grafo del registro</h2>
           <div class="graph-toolbar btn-group" role="group" aria-labelledby="graph-toolbar-label">
             <span id="graph-toolbar-label" class="visually-hidden">Zoom grafo</span>
             <button type="button" class="btn btn-sm btn-outline-primary btn-icon" id="graph-zoom-in"
@@ -222,17 +225,6 @@
         <div id="registry-graph" class="registry-graph" data-ready="false" aria-busy="true"
           aria-describedby="graph-caption"></div>
       </section>
-      <article id="node-detail" class="node-detail" hidden>
-        <h3 class="h6" id="detail-title"></h3>
-        <div id="detail-body"></div>
-        <div id="credential-offer" hidden aria-labelledby="offer-heading">
-          <h3 class="h6" id="offer-heading">Credential Offer</h3>
-          <p id="offer-disclaimer" class="small"></p>
-          <a id="offer-link" class="d-block text-break mb-2" href="#"></a>
-          <a id="offer-link-haip" class="visually-hidden" href="#">haip</a>
-          <img id="offer-qr" class="offer-qr" alt="" width="192" height="192">
-        </div>
-      </article>
     </div>
     <noscript>
       <p>Per usare l'esploratore del registro è necessario abilitare JavaScript.</p>

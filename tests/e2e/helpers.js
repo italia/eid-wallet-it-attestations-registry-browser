@@ -23,7 +23,7 @@ export async function openGraphPane(page, projectName) {
 
 export async function clickGraphNode(page, nodeId) {
   await page.evaluate((id) => {
-    const cy = window.__ITW_EXPLORER__?.cy;
+    const cy = window.__ITW_CY__ || window.__ITW_EXPLORER__?.cy;
     if (!cy) throw new Error('graph is not ready');
     const node = cy.getElementById(id);
     if (!node.nonempty()) throw new Error(`graph node ${id} not found`);

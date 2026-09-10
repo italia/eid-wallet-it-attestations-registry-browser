@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { waitForGraph, openGraphPane } from './helpers.js';
+import { waitForGraph } from './helpers.js';
 
 test.describe('responsive navigation', () => {
   test('header, search and graph remain usable', async ({ page }, testInfo) => {
@@ -21,10 +21,8 @@ test.describe('responsive navigation', () => {
     const isMobile = testInfo.project.name === 'mobile' || (viewport?.width ?? 0) < 992;
     if (isMobile) {
       await expect(page.locator('.explorer-mobile-tabs')).toBeVisible();
-      await expect(page.locator('#pane-list')).toBeVisible();
-      await openGraphPane(page, testInfo.project.name);
-      await expect(page.locator('#pane-graph')).toBeVisible();
-      await expect(page.locator('#pane-list')).toBeHidden();
+      await expect(page.locator('#section-results')).toBeVisible();
+      await expect(page.locator('#section-graph')).toBeVisible();
       const graph = page.locator('#registry-graph');
       const gBox = await graph.boundingBox();
       expect(gBox?.width).toBeGreaterThan(250);
@@ -36,8 +34,9 @@ test.describe('responsive navigation', () => {
       await page.locator('#tab-list').click();
       await expect(page.locator('#results-list button').first()).toBeVisible();
     } else {
-      await expect(page.locator('#pane-list')).toBeVisible();
-      await expect(page.locator('#pane-graph')).toBeVisible();
+      await expect(page.locator('#section-search')).toBeVisible();
+      await expect(page.locator('#section-results')).toBeVisible();
+      await expect(page.locator('#section-graph')).toBeVisible();
       await expect(page.locator('#registry-graph canvas[data-id="layer2-node"]')).toBeVisible();
     }
   });

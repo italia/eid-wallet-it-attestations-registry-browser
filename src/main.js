@@ -6,7 +6,7 @@ import { buildRegistryGraph, facetOptions, visibleClosure } from './js/graph/mod
 import { createRegistryGraphView } from './js/graph/view.js';
 import { getQueryField, matchedNodeIds, parseQuery, searchDocuments, setQueryField } from './js/search/index.js';
 import { artifactsForNode, renderArtifacts } from './js/artifacts/artifacts.js';
-import { configurationIdsFor, credentialOfferHref } from './js/offer/offer.js';
+import { configurationIdsFor, credentialOfferHref, credentialOfferObject, encryptIssuerState, issuerStateUrn } from './js/offer/offer.js';
 import QRCode from 'qrcode';
 
 const state = {
@@ -16,6 +16,7 @@ const state = {
   query: '',
   selectedId: null,
   env: 'pre',
+  offerDraft: { objectId: '', publicKey: '' },
 };
 
 const board = new MessageBoard({
@@ -93,8 +94,8 @@ const els = {
   graph: document.getElementById('registry-graph'),
   graphCaption: document.getElementById('graph-caption'),
   detail: document.getElementById('node-detail'),
-  paneList: document.getElementById('pane-list'),
-  paneGraph: document.getElementById('pane-graph'),
+  paneList: document.getElementById('section-results'),
+  paneGraph: document.getElementById('section-graph'),
   tabList: document.getElementById('tab-list'),
   tabGraph: document.getElementById('tab-graph'),
   facetLegalType: document.getElementById('facet-legal-type'),
@@ -107,12 +108,10 @@ const els = {
 
 function setPane(name) {
   const list = name === 'list';
-  els.paneList.classList.toggle('is-active', list);
-  els.paneGraph.classList.toggle('is-active', !list);
-  els.paneList.hidden = !list && isMobile();
-  els.paneGraph.hidden = list && isMobile();
   els.tabList?.setAttribute('aria-selected', String(list));
   els.tabGraph?.setAttribute('aria-selected', String(!list));
+  const target = list ? els.paneList : els.paneGraph;
+  target?.scrollIntoView({ block: 'start', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
   if (!list) {
     state.view?.resize();
     state.view?.fit();
@@ -224,14 +223,6 @@ function bindChrome() {
   });
 
   window.addEventListener('resize', () => {
-    if (!isMobile()) {
-      els.paneList.hidden = false;
-      els.paneGraph.hidden = false;
-      els.paneList.classList.add('is-active');
-      els.paneGraph.classList.add('is-active');
-    } else {
-      setPane(els.tabGraph?.getAttribute('aria-selected') === 'true' ? 'graph' : 'list');
-    }
     state.view?.fit();
   });
 }
@@ -259,6 +250,7 @@ function renderStatic(dict) {
   set('header-region-name', dict.meta.brand);
   set('page-heading', dict.meta.title);
   set('page-tagline', dict.meta.tagline);
+  set('search-section-heading', dict.search.section);
   set('registry-search-label', dict.search.label);
   set('search-btn', dict.search.button);
   set('registry-search-hint', dict.search.hint);
@@ -398,34 +390,131 @@ function applyQuery(query) {
 function renderResults(docs) {
   if (els.resultsCount) els.resultsCount.textContent = t('results.count', { n: String(docs.length) });
   els.resultsList.replaceChildren();
+  els.resultsList.classList.add('accordion');
   for (const doc of docs) {
+    const collapseId = `${domId(doc.id)}-panel`;
+    const headingId = `${domId(doc.id)}-heading`;
+    const item = document.createElement('div');
+    item.className = 'accordion-item';
+    item.dataset.nodeId = doc.id;
+
+    const heading = document.createElement('h3');
+    heading.className = 'accordion-header';
+    heading.id = headingId;
+
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.className = 'list-group-item list-group-item-action';
+    btn.className = 'accordion-button collapsed';
     btn.dataset.nodeId = doc.id;
     btn.dataset.kind = doc.kind;
+    btn.dataset.bsToggle = 'collapse';
+    btn.dataset.bsTarget = `#${collapseId}`;
+    btn.setAttribute('aria-expanded', 'false');
+    btn.setAttribute('aria-controls', collapseId);
     btn.textContent = doc.label;
-    btn.addEventListener('click', () => selectNode(doc.id, { fromGraph: false }));
-    els.resultsList.appendChild(btn);
+
+    const collapse = document.createElement('div');
+    collapse.id = collapseId;
+    collapse.className = 'accordion-collapse collapse';
+    collapse.setAttribute('aria-labelledby', headingId);
+    collapse.dataset.bsParent = '#results-list';
+    const body = document.createElement('div');
+    body.className = 'accordion-body result-detail';
+    collapse.appendChild(body);
+    collapse.addEventListener('show.bs.collapse', () => {
+      void selectNode(doc.id, { fromGraph: false, fromAccordion: true });
+    });
+
+    heading.appendChild(btn);
+    item.append(heading, collapse);
+    els.resultsList.appendChild(item);
+  }
+  if (state.selectedId && docs.some((d) => d.id === state.selectedId)) {
+    expandResult(state.selectedId);
   }
 }
 
-async function selectNode(id, { fromGraph = false } = {}) {
+function domId(id) {
+  return `result-${String(id).replace(/[^a-zA-Z0-9_-]/g, '-')}`;
+}
+
+function resultPanel(id) {
+  const btn = els.resultsList?.querySelector(`button.accordion-button[data-node-id="${CSS.escape(id)}"]`);
+  if (!btn) return null;
+  return document.getElementById(btn.getAttribute('aria-controls'));
+}
+
+function expandResult(id) {
+  const panel = resultPanel(id);
+  if (!panel) return Promise.resolve(false);
+  if (panel.classList.contains('show')) return Promise.resolve(true);
+  return new Promise((resolve) => {
+    const finish = () => resolve(true);
+    panel.addEventListener('shown.bs.collapse', finish, { once: true });
+    if (window.bootstrap?.Collapse) {
+      window.bootstrap.Collapse.getOrCreateInstance(panel, { toggle: false }).show();
+    } else {
+      panel.classList.add('show');
+      const btn = els.resultsList.querySelector(`button.accordion-button[data-node-id="${CSS.escape(id)}"]`);
+      btn?.classList.remove('collapsed');
+      btn?.setAttribute('aria-expanded', 'true');
+      finish();
+    }
+    window.setTimeout(finish, 700);
+  });
+}
+
+function offerContext(node) {
+  const formats = state.graph.nodes
+    .filter((n) => n.kind === 'schema' && n.credential_type === node.credential_type)
+    .map((n) => n.format);
+  const issuer = state.graph.nodes.find(
+    (n) => n.kind === 'issuer' && state.graph.edges.some((e) => e.source === node.id && e.target === n.id),
+  );
+  const source = state.graph.nodes.find(
+    (n) => n.kind === 'authentic_source' && state.graph.edges.some((e) => e.source === node.id && e.target === n.id),
+  );
+  return {
+    credentialIssuer: issuer?.entity_id || 'https://pre.issuer.wallet.ipzs.it',
+    configurationIds: configurationIdsFor(node.credential_type, formats),
+    authenticSourceId: source?.entity_id || source?.as || '',
+    datasetId: source?.dataset_id || '',
+  };
+}
+
+function field(tag, attrs = {}, text) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'className') el.className = v;
+    else if (k === 'dataset') Object.assign(el.dataset, v);
+    else el.setAttribute(k, v);
+  }
+  if (text != null) el.textContent = text;
+  return el;
+}
+
+async function selectNode(id, { fromGraph = false, fromAccordion = false } = {}) {
   state.selectedId = id;
   const node = state.graph.byId.get(id);
   if (!node) return;
   state.view?.select(id);
   els.graph?.classList.add('has-selection');
-  els.resultsList.querySelectorAll('[data-node-id]').forEach((el) => {
-    el.classList.toggle('active', el.dataset.nodeId === id);
-    el.setAttribute('aria-current', el.dataset.nodeId === id ? 'true' : 'false');
+  els.resultsList.querySelectorAll('button.accordion-button[data-node-id]').forEach((el) => {
+    const on = el.dataset.nodeId === id;
+    el.classList.toggle('active', on);
+    if (on) el.setAttribute('aria-current', 'true');
+    else el.removeAttribute('aria-current');
   });
+  if (!fromAccordion) await expandResult(id);
   await renderDetail(node);
-  if (els.detail) els.detail.hidden = false;
   if (window.__ITW_EXPLORER__) window.__ITW_EXPLORER__.selectedId = id;
   if (fromGraph) {
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    document.getElementById('node-artifacts')?.scrollIntoView({
+    document.getElementById('section-results')?.scrollIntoView({
+      block: 'nearest',
+      behavior: reduceMotion ? 'auto' : 'smooth',
+    });
+    document.getElementById('credential-offer')?.scrollIntoView({
       block: 'nearest',
       behavior: reduceMotion ? 'auto' : 'smooth',
     });
@@ -433,13 +522,15 @@ async function selectNode(id, { fromGraph = false } = {}) {
 }
 
 async function renderDetail(node) {
-  const title = document.getElementById('detail-title');
-  const body = document.getElementById('detail-body');
-  const offerBox = document.getElementById('credential-offer');
-  title.textContent = node.label;
-  body.replaceChildren();
-  const dl = document.createElement('dl');
-  dl.className = 'row mb-0';
+  const panel = resultPanel(node.id);
+  const host = panel?.querySelector('.result-detail');
+  if (!host) return;
+  host.id = 'node-detail';
+  host.replaceChildren();
+
+  const title = field('h3', { className: 'h6', id: 'detail-title' }, node.label);
+  const body = field('div', { id: 'detail-body' });
+  const dl = field('dl', { className: 'row mb-0' });
   const rows = [
     ['kind', node.kind],
     ['credential_type', node.credential_type],
@@ -448,44 +539,153 @@ async function renderDetail(node) {
     ['entity_id', node.entity_id],
   ].filter(([, v]) => v);
   for (const [k, v] of rows) {
-    const dt = document.createElement('dt');
-    dt.className = 'col-sm-4';
-    dt.textContent = k;
-    const dd = document.createElement('dd');
-    dd.className = 'col-sm-8';
-    dd.textContent = v;
+    const dt = field('dt', { className: 'col-sm-4' }, k);
+    const dd = field('dd', { className: 'col-sm-8' }, v);
     dl.append(dt, dd);
   }
   body.appendChild(dl);
 
-  const artifactsHost = document.createElement('div');
-  artifactsHost.id = 'node-artifacts';
+  const artifactsHost = field('div', { id: 'node-artifacts' });
   artifactsHost.setAttribute('aria-labelledby', 'artifacts-heading');
   body.appendChild(artifactsHost);
   renderArtifacts(artifactsHost, artifactsForNode(node, state.dump), t);
 
-  const showOffer = node.kind === 'credential';
-  offerBox.hidden = !showOffer;
-  if (!showOffer) return;
+  host.append(title, body);
 
-  const formats = state.graph.nodes.filter((n) => n.kind === 'schema' && n.credential_type === node.credential_type).map((n) => n.format);
-  const issuer = state.graph.nodes.find((n) => n.kind === 'issuer' && state.graph.edges.some((e) => e.source === node.id && e.target === n.id));
-  const href = credentialOfferHref({
-    credentialIssuer: issuer?.entity_id || 'https://pre.issuer.wallet.ipzs.it',
-    configurationIds: configurationIdsFor(node.credential_type, formats),
+  if (node.kind !== 'credential') return;
+  host.appendChild(buildOfferShell());
+  bindOfferForm(node);
+  await refreshOffer(node);
+}
+
+function buildOfferShell() {
+  const box = field('div', { id: 'credential-offer', className: 'credential-offer mt-3' });
+  box.setAttribute('aria-labelledby', 'offer-heading');
+  box.append(
+    field('h3', { className: 'h6', id: 'offer-heading' }, t('offer.heading')),
+    field('p', { className: 'small', id: 'offer-disclaimer' }, t('offer.disclaimer')),
+  );
+
+  const form = field('form', { id: 'offer-state-form', className: 'offer-state-form mb-3' });
+  const fieldset = field('fieldset', { className: 'offer-state-fieldset' });
+  fieldset.append(field('legend', { className: 'h6', id: 'offer-state-legend' }, t('offer.stateLegend')));
+
+  const objWrap = field('div', { className: 'mb-3' });
+  objWrap.append(
+    field('label', { className: 'form-label', for: 'offer-object-id', id: 'offer-object-id-label' }, t('offer.objectId')),
+    field('input', {
+      id: 'offer-object-id',
+      className: 'form-control',
+      name: 'objectId',
+      autocomplete: 'off',
+      value: state.offerDraft.objectId,
+    }),
+    field('p', { className: 'form-text', id: 'offer-object-id-hint' }, t('offer.objectIdHint')),
+  );
+
+  const keyWrap = field('div', { className: 'mb-3' });
+  const keyArea = field('textarea', {
+    id: 'offer-enc-key',
+    className: 'form-control',
+    name: 'publicKey',
+    rows: '4',
+    spellcheck: 'false',
   });
+  keyArea.value = state.offerDraft.publicKey;
+  keyWrap.append(
+    field('label', { className: 'form-label', for: 'offer-enc-key', id: 'offer-enc-key-label' }, t('offer.publicKey')),
+    keyArea,
+    field('p', { className: 'form-text', id: 'offer-enc-key-hint' }, t('offer.publicKeyHint')),
+  );
+  fieldset.append(objWrap, keyWrap);
+  form.append(fieldset);
+  form.addEventListener('submit', (ev) => ev.preventDefault());
+
+  const urnLabel = field('p', { className: 'small mb-1', id: 'offer-urn-label' }, t('offer.urn'));
+  const urn = field('code', { id: 'offer-urn', className: 'd-block text-break mb-3' });
+  const jsonLabel = field('p', { className: 'small mb-1', id: 'offer-json-label' }, t('offer.json'));
+  const jsonPre = field('pre', { id: 'offer-json', className: 'artifact-pre offer-json' });
+  const err = field('p', { id: 'offer-enc-error', className: 'text-danger small', role: 'alert' });
+  err.hidden = true;
+
+  const urlLabel = field('h4', { className: 'h6 mt-3 mb-1', id: 'offer-url-label' }, t('offer.url'));
+  const link = field('a', { id: 'offer-link', className: 'd-block text-break mb-2', href: '#' });
+  link.setAttribute('aria-labelledby', 'offer-url-label');
+  const haip = field('a', { id: 'offer-link-haip', className: 'visually-hidden', href: '#' }, 'haip');
+  const qrLabel = field('h4', { className: 'h6 mt-3 mb-2', id: 'offer-qr-label' }, t('offer.qr'));
+  const qr = field('img', { id: 'offer-qr', className: 'offer-qr', width: '192', height: '192', alt: '' });
+  qr.setAttribute('aria-labelledby', 'offer-qr-label');
+
+  box.append(form, urnLabel, urn, jsonLabel, jsonPre, err, urlLabel, link, haip, qrLabel, qr);
+  return box;
+}
+
+function bindOfferForm(node) {
+  const objectInput = document.getElementById('offer-object-id');
+  const keyInput = document.getElementById('offer-enc-key');
+  const onChange = () => {
+    state.offerDraft.objectId = objectInput?.value || '';
+    state.offerDraft.publicKey = keyInput?.value || '';
+    window.clearTimeout(bindOfferForm.timer);
+    bindOfferForm.timer = window.setTimeout(() => void refreshOffer(node), 280);
+  };
+  objectInput?.addEventListener('input', onChange);
+  keyInput?.addEventListener('input', onChange);
+}
+
+let offerGen = 0;
+
+async function refreshOffer(node) {
+  const gen = ++offerGen;
+  const ctx = offerContext(node);
+  const urn = issuerStateUrn({
+    authenticSourceId: ctx.authenticSourceId,
+    datasetId: ctx.datasetId,
+    objectId: state.offerDraft.objectId,
+  });
+  const urnEl = document.getElementById('offer-urn');
+  const errEl = document.getElementById('offer-enc-error');
+  if (urnEl) urnEl.textContent = urn || t('offer.urnMissing');
+  if (errEl) {
+    errEl.hidden = true;
+    errEl.textContent = '';
+  }
+
+  let issuerState;
+  if (urn && state.offerDraft.publicKey.trim()) {
+    try {
+      issuerState = await encryptIssuerState(urn, state.offerDraft.publicKey);
+    } catch {
+      if (gen !== offerGen) return;
+      if (errEl) {
+        errEl.hidden = false;
+        errEl.textContent = t('offer.encryptError');
+      }
+    }
+  }
+  if (gen !== offerGen) return;
+
+  const body = credentialOfferObject({
+    credentialIssuer: ctx.credentialIssuer,
+    configurationIds: ctx.configurationIds,
+    issuerState,
+  });
+  const jsonEl = document.getElementById('offer-json');
+  if (jsonEl) jsonEl.textContent = JSON.stringify(body, null, 2);
+
+  const href = credentialOfferHref({ ...ctx, body });
   const link = document.getElementById('offer-link');
-  link.href = href;
-  link.textContent = href;
+  if (link) {
+    link.href = href;
+    link.textContent = href;
+  }
   const haip = document.getElementById('offer-link-haip');
-  haip.href = credentialOfferHref({
-    credentialIssuer: issuer?.entity_id || 'https://pre.issuer.wallet.ipzs.it',
-    configurationIds: configurationIdsFor(node.credential_type, formats),
-    scheme: 'haip-vci',
-  });
+  if (haip) haip.href = credentialOfferHref({ ...ctx, body, scheme: 'haip-vci' });
   const img = document.getElementById('offer-qr');
-  img.alt = href;
-  img.src = await QRCode.toDataURL(href, { errorCorrectionLevel: 'M', margin: 1, width: 192 });
+  if (img) {
+    img.alt = href;
+    img.src = await QRCode.toDataURL(href, { errorCorrectionLevel: 'M', margin: 1, width: 192 });
+  }
 }
 
 function rebuildGraph() {
@@ -505,7 +705,6 @@ function rebuildGraph() {
   if (keepId && state.graph.byId.has(keepId)) {
     void selectNode(keepId);
   }
-  if (isMobile()) setPane('list');
 }
 
 function exposeTestApi(visibleIds, resultDocs) {
@@ -524,9 +723,9 @@ function exposeTestApi(visibleIds, resultDocs) {
       ]),
     ),
     selectedId: state.selectedId,
-    cy: state.view?.cy || null,
     httpCalls: state.dump?.httpCalls || [],
   };
+  window.__ITW_CY__ = state.view?.cy || null;
 }
 
 let dumpGeneration = 0;

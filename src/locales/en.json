@@ -13,6 +13,7 @@
     "footer": "Skip to footer"
   },
   "search": {
+    "section": "Search",
     "label": "Search the registry",
     "button": "Search",
     "clear": "Clear",
@@ -76,7 +77,19 @@
   },
   "offer": {
     "heading": "Credential Offer",
-    "disclaimer": "Credential offer generated from the catalog. It does not enable issuance of a specific instance because the user is not authenticated and issuer_state is missing. It enables a request for a credential type after the user authenticates (if eligible)."
+    "disclaimer": "Credential offer generated from the catalog. Without an encrypted issuer_state it only enables a request for a credential type after authentication (if eligible). The form below is an example: it does not use the PDND GetAttributeClaims key.",
+    "json": "JSON object",
+    "urn": "issuer_state URN (plaintext)",
+    "urnMissing": "URN cannot be built: authentic source entity_id or dataset_id is missing.",
+    "stateLegend": "issuer_state (optional, example)",
+    "objectId": "objectId",
+    "objectIdHint": "Identifier of the instance at the Authentic Source. If empty, the URN omits the objectId segment.",
+    "publicKey": "Encryption public key (PEM or JWK)",
+    "publicKeyHint": "RSA-OAEP-256 / A256GCM. If set, the URN is encrypted and placed in grants.authorization_code.issuer_state.",
+    "encryptError": "Could not encrypt the URN with the given key.",
+    "update": "Update offer",
+    "url": "URL same device flow",
+    "qr": "QR-Code cross device flow"
   },
   "footer": {
     "legal": "Legal notes",

@@ -7,7 +7,7 @@ import { loadDump, timedFetch } from '../../src/js/cache/loader.js';
 import { resolveRegistryEnv } from '../../src/js/cache/environments.js';
 import { artifactsForNode, formatArtifactView } from '../../src/js/artifacts/artifacts.js';
 import { jsonPreview, tryParseJson } from '../../src/js/artifacts/json-tree.js';
-import { configurationIdsFor, credentialOfferHref } from '../../src/js/offer/offer.js';
+import { configurationIdsFor, credentialOfferHref, credentialOfferObject, encryptIssuerState, issuerStateUrn } from '../../src/js/offer/offer.js';
 import { loadDumpFromDisk } from '../helpers/dump.js';
 
 describe('JWT catalog', () => {
@@ -200,5 +200,40 @@ describe('credential offer', () => {
     assert.equal(json.credential_issuer, 'https://pre.issuer.wallet.ipzs.it');
     assert.ok(json.grants.authorization_code);
     assert.equal(json.grants.authorization_code.issuer_state, undefined);
+  });
+
+  it('builds the ST issuer_state URN with optional objectId', () => {
+    assert.equal(
+      issuerStateUrn({ authenticSourceId: 'https://www.mit.gov.it', datasetId: 'mDL' }),
+      'urn:it-wallet:credential-offer:https://www.mit.gov.it:mDL',
+    );
+    assert.equal(
+      issuerStateUrn({ authenticSourceId: 'https://www.mit.gov.it', datasetId: 'mDL', objectId: 'abc-1' }),
+      'urn:it-wallet:credential-offer:https://www.mit.gov.it:mDL:abc-1',
+    );
+    assert.equal(issuerStateUrn({ authenticSourceId: 'https://www.mit.gov.it' }), '');
+  });
+
+  it('encrypts the URN into compact JWE issuer_state', async () => {
+    const pair = await crypto.subtle.generateKey(
+      { name: 'RSA-OAEP', modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: 'SHA-256' },
+      true,
+      ['encrypt', 'decrypt'],
+    );
+    const jwk = await crypto.subtle.exportKey('jwk', pair.publicKey);
+    const urn = issuerStateUrn({
+      authenticSourceId: 'https://www.mit.gov.it',
+      datasetId: 'mDL',
+      objectId: 'obj-9',
+    });
+    const jwe = await encryptIssuerState(urn, JSON.stringify(jwk));
+    assert.equal(jwe.split('.').length, 5);
+    assert.match(jwe, /^eyJ/);
+    const body = credentialOfferObject({
+      credentialIssuer: 'https://pre.issuer.wallet.ipzs.it',
+      configurationIds: ['mso_mdoc_mDL'],
+      issuerState: jwe,
+    });
+    assert.equal(body.grants.authorization_code.issuer_state, jwe);
   });
 });

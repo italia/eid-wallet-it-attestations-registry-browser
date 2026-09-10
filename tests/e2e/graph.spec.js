@@ -152,5 +152,12 @@ test.describe('graph and search UI', () => {
     await expect(page.locator('#offer-qr')).toHaveAttribute('alt', href);
     const qrBox = await page.locator('#offer-qr').boundingBox();
     expect(qrBox?.width).toBeGreaterThan(80);
+    await expect(page.locator('#offer-json')).toContainText('"credential_issuer"');
+    await expect(page.locator('#offer-json')).toContainText('authorization_code');
+    await expect(page.locator('#offer-url-label')).toHaveText(/URL same device flow/);
+    await expect(page.locator('#offer-qr-label')).toHaveText(/QR-Code cross device flow/);
+    await expect(page.locator('#offer-object-id')).toBeVisible();
+    await expect(page.locator('#offer-enc-key')).toBeVisible();
+    await expect(page.locator('#offer-urn')).toContainText('urn:it-wallet:credential-offer:');
   });
 });

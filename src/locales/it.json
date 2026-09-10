@@ -13,6 +13,7 @@
     "footer": "Vai al piè di pagina"
   },
   "search": {
+    "section": "Ricerca",
     "label": "Cerca nel registro",
     "button": "Cerca",
     "clear": "Cancella",
@@ -76,7 +77,19 @@
   },
   "offer": {
     "heading": "Credential Offer",
-    "disclaimer": "Credential offer generata dal catalogo. Non abilita l'emissione di una istanza specifica perché l'utente non è autenticato e manca issuer_state. Abilita la richiesta di una tipologia di credenziale a seguito dell'autenticazione dell'utente (se elegibile)."
+    "disclaimer": "Credential offer generata dal catalogo. Senza issuer_state cifrato abilita solo la richiesta di una tipologia di credenziale dopo l'autenticazione (se elegibile). Il form sotto è esemplificativo: non usa la chiave PDND GetAttributeClaims.",
+    "json": "Oggetto JSON",
+    "urn": "URN issuer_state (in chiaro)",
+    "urnMissing": "URN non costruibile: manca entity_id della fonte autentica o dataset_id.",
+    "stateLegend": "issuer_state (opzionale, esemplificativo)",
+    "objectId": "objectId",
+    "objectIdHint": "Identificativo dell'istanza presso la Fonte Autentica. Se vuoto, l'URN omette il segmento objectId.",
+    "publicKey": "Chiave pubblica di cifratura (PEM o JWK)",
+    "publicKeyHint": "RSA-OAEP-256 / A256GCM. Se presente, l'URN viene cifrato e inserito in grants.authorization_code.issuer_state.",
+    "encryptError": "Impossibile cifrare l'URN con la chiave indicata.",
+    "update": "Aggiorna offer",
+    "url": "URL same device flow",
+    "qr": "QR-Code cross device flow"
   },
   "footer": {
     "legal": "Note legali",
