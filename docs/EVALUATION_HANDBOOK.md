@@ -1,66 +1,66 @@
-# Valutazione del *Manuale breve — Infrastruttura del Registro IT-Wallet*
+# Review of the *Short handbook — IT-Wallet Registry infrastructure*
 
-Fonte valutata: `handbooks/it/credential-catalog/manuale-infrastruttura-registro-it-wallet.md` nel repository `eid-wallet-it-docs` (ST di riferimento **v1.4.6**, verifica sistemi live **3 settembre 2026**).
+Source reviewed: `handbooks/it/credential-catalog/manuale-infrastruttura-registro-it-wallet.md` in the `eid-wallet-it-docs` repository (Technical Specifications **v1.4.6**, live systems check **3 September 2026**).
 
-Questo documento dice cosa il manuale dà all’explorer e dove il tool deve andare oltre.
+This document says what the handbook gives the explorer and where the tool must go further.
 
-## Giudizio
+## Judgement
 
-Il manuale è una guida di lettura **efficace** per giuristi e tecnici amministrativi. Distingue con chiarezza:
+The handbook is an **effective** reading guide for lawyers and administrative technicians. It clearly distinguishes:
 
-- **cosa è** un attestato (`legal_type` nel Catalogo) da **come è fatto** (Registro degli Schemi);
-- chi **decide i contenuti** (AgID / Organismo di Vigilanza) da chi **pubblica e firma** (Trust Anchor IPZS);
-- metadati di sistema da dati dei cittadini.
+- **what** an attestation is (`legal_type` in the Catalog) from **how it is built** (Schema Registry);
+- who **decides contents** (AgID / Supervisory Body) from who **publishes and signs** (IPZS Trust Anchor);
+- system metadata from citizen data.
 
-Per un explorer grafico è la mappa concettuale giusta. Non è, e non pretende di essere, una specifica di API client: mancano CORS, negoziazione contenuto reale, WAF, paginazione e il mapping verso Credential Offer.
+For a graph explorer it is the right conceptual map. It is not, and does not claim to be, a client API specification: CORS, real content negotiation, WAF, pagination and mapping to Credential Offer are missing.
 
-## Cosa adottare così com’è
+## What to adopt as-is
 
-| Punto del manuale | Impatto sul tool |
-|-------------------|------------------|
-| Porta unica `/.well-known/it-wallet-registry` | Radice del grafo e primo URL del dump. |
-| Sei elenchi + federazione | Nodi di primo livello: Catalogo, Schemi, Claims, Fonti autentiche, Tassonomia. Federazione: dump opzionale. |
-| `legal_type` solo nel Catalogo, su credenziale **e** su `issuers[]` | Facet di ricerca e attributi di nodo; mai cercarlo nello schema. |
-| Valori `pub-eaa`, `qeaa`, `eaa` + caveat sul PID | Vocabolario dei filtri; il PID non va riqualificato come EAA. |
-| Collegamento credenziale → issuer e → authentic source | Archi obbligatori del grafo (requisito utente). |
-| `schema_uri` è la fonte di verità del path, non l’esempio ST `/.well-known/schemas/mdoc/mDL` | Il crawler segue gli URI dichiarati. |
-| Produzione (3/9/2026) senza catalogo/schemi | Switch Ambiente `pre` / `prod` (F-12) e bacheca se 404; dump prod al 9/9/2026 è selezionabile. |
-| `Accept` e filtri di rete | Il dump usa GET (mai HEAD: l’F5 risponde HTML 246 byte). |
+| Handbook point | Impact on the tool |
+|----------------|--------------------|
+| Single door `/.well-known/it-wallet-registry` | Graph root and first dump URL. |
+| Six lists + federation | First-level nodes: Catalog, Schemas, Claims, Authentic sources, Taxonomy. Federation: optional dump. |
+| `legal_type` only in the Catalog, on the credential **and** on `issuers[]` | Search facets and node attributes; never look for it in the schema. |
+| Values `pub-eaa`, `qeaa`, `eaa` + PID caveat | Filter vocabulary; PID must not be reclassified as EAA. |
+| Credential → issuer and → authentic source links | Mandatory graph edges (user requirement). |
+| `schema_uri` is the path source of truth, not the ST example `/.well-known/schemas/mdoc/mDL` | The crawler follows declared URIs. |
+| Production (3/9/2026) without catalog/schemas | Environment switch `pre` / `prod` (F-12) and board on 404; prod dump as of 9/9/2026 is selectable. |
+| `Accept` and network filters | The dump uses GET (never HEAD: F5 answers 246 bytes of HTML). |
 
-## Scostamenti operativi rispetto al testo (rilevati il 9 settembre 2026)
+## Operational gaps versus the text (observed 9 September 2026)
 
-Verifica da questo workspace verso `https://pre.ta.wallet.ipzs.it`.
+Check from this workspace against `https://pre.ta.wallet.ipzs.it`.
 
-1. **Catalogo JWT-only in collaudo.** `Accept: application/json` su `/.well-known/credential-catalog` restituisce `No acceptable representation`. Senza `Accept`, il body è un JWT JOSE (`typ: JOSE`, `cty: application/json`). Il dump deve salvare il JWT **così com’è**; l’UI lo decodifica. Il manuale invita a chiedere JSON: per il catalogo live non funziona.
-2. **HEAD ingannevole.** `HEAD` sui well-known passa dal WAF (HTML). Solo `GET` è affidabile.
-3. **Discovery JSON ok, catalogo no.** Lo stesso host negozia JSON sul discovery e JWT sul catalogo. Il crawler deve adattare `Accept` per risorsa, non globalmente.
-4. **L10n `/.well-known/l10n/…`.** Alcuni path sono rifiutati dal WAF (`Request Rejected`). Il dump li tenta, registra l’errore nell’indice (`manifest-pre.json` / `manifest-prod.json`), non fallisce l’intero run.
-5. **Etichetta schema `v1.3.3` vs ST v1.4.6.** Confermata dal manuale; il tool mostra la versione dichiarata dal registro, non la “corregge”.
-6. **Paginazione.** Le ST dicono che le API dati DEVONO paginare. In collaudo gli elenchi sono well-known monolitici. Il crawler deve comunque seguire `next` / `links` se compaiono.
-7. **Tabella “sei elenchi” vs federazione.** Il paragrafo 4 elenca anche la Federazione (settimo elenco). L’explorer grafico di v1 copre i cinque registri dati + discovery; la federazione è dump opzionale (`ITW_DUMP_FEDERATION`).
+1. **JWT-only catalog in pre-production.** `Accept: application/json` on `/.well-known/credential-catalog` returns `No acceptable representation`. With no `Accept`, the body is a JOSE JWT (`typ: JOSE`, `cty: application/json`). The dump MUST save the JWT **as-is**; the UI decodes it. The handbook invites asking for JSON: that does not work for the live catalog.
+2. **Misleading HEAD.** `HEAD` on well-knowns goes through the WAF (HTML). Only `GET` is reliable.
+3. **Discovery JSON ok, catalog not.** The same host negotiates JSON on discovery and JWT on the catalog. The crawler MUST adapt `Accept` per resource, not globally.
+4. **L10n `/.well-known/l10n/…`.** Some paths are rejected by the WAF (`Request Rejected`). The dump tries them, records the error in the index (`manifest-pre.json` / `manifest-prod.json`), and does not fail the whole run.
+5. **Schema label `v1.3.3` vs ST v1.4.6.** Confirmed by the handbook; the tool shows the version declared by the registry, it does not “correct” it.
+6. **Pagination.** The specifications say data APIs MUST paginate. In pre-production the lists are monolithic well-knowns. The crawler MUST still follow `next` / `links` if they appear.
+7. **“Six lists” table vs federation.** Paragraph 4 also lists Federation (seventh list). The v1 graph explorer covers the five data registries + discovery; federation is an optional dump (`ITW_DUMP_FEDERATION`).
 
-## Errori di lettura del manuale da non ripetere nel tool
+## Handbook misreadings not to repeat in the tool
 
-Allineati al § 10 del manuale:
+Aligned with handbook § 10:
 
-1. Non usare i path di esempio delle ST come URL reali.
-2. Non assegnare `legal_type` a uno schema o a un claim.
-3. Non unire Catalogo e Registro degli Schemi in un unico nodo “tipo”.
-4. Non trattare PID, Pub-EAA e QEAA come sinonimi.
-5. Non assumere che produzione abbia gli stessi well-known di collaudo.
-6. Non interpretare una pagina HTML di blocco come «risorsa inesistente».
+1. Do not use ST example paths as real URLs.
+2. Do not assign `legal_type` to a schema or a claim.
+3. Do not merge Catalog and Schema Registry into a single “type” node.
+4. Do not treat PID, Pub-EAA and QEAA as synonyms.
+5. Do not assume production has the same well-knowns as pre-production.
+6. Do not interpret a WAF HTML block page as “resource missing”.
 
-## Cosa il manuale non copre (e il tool deve)
+## What the handbook does not cover (and the tool must)
 
-- Motore di ricerca umano con `+`, `-`, `""` e facet HTML (`legal_type`, issuer, FA, claim).
-- Switch collaudo/produzione con URL del Trust Anchor.
-- Grafo verticale filtrato sui risultati.
-- Cache browser vs dump di repo vs nightly CI (`manifest-pre.json` / `manifest-prod.json`).
-- Bacheca: traccia di ogni GET (endpoint, status, tempo, application type) con retry.
-- Credential Offer (QR/href) dalle ST di issuance, non dal registro.
-- Accessibilità del grafo (equivalente tabellare) e header identico a `disco.html`.
-- CORS: un’app su GitHub Pages **non può** rinfrescare il TA se manca `Access-Control-Allow-Origin`. Il dump CI è la fonte di verità; il refresh browser è best-effort.
+- Human search engine with `+`, `-`, `""` and HTML facets (`legal_type`, issuer, authentic source, claim).
+- Pre-production/production switch with Trust Anchor URL.
+- Vertical graph filtered by results.
+- Browser cache vs repo dump vs nightly CI (`manifest-pre.json` / `manifest-prod.json`).
+- Board: trace of every GET (endpoint, status, time, application type) with retry.
+- Credential Offer (QR/href) from the issuance specifications, not from the registry.
+- Graph accessibility (tabular equivalent) and header identical to `disco.html`.
+- CORS: a GitHub Pages app **cannot** refresh the TA if a valid `Access-Control-Allow-Origin` is missing. The CI dump is the source of truth; browser refresh is best-effort. The UI warns with an openid-federation-browser-style banner and links to [CACHE-AND-CI.md](CACHE-AND-CI.md#cors-and-waf).
 
-## Conclusione per il progetto
+## Conclusion for the project
 
-Il manuale è la **fonte semantica** (vocabolario, gerarchia, ruoli, URL di collaudo). Le ST `registry.rst` e `credential-issuance-low-level.rst` sono la **fonte normativa** in caso di contrasto, come lo stesso manuale dichiara. L’explorer implementa il manuale per la navigazione e le ST per JWT, schemi, offer e metadati issuer.
+The handbook is the **semantic source** (vocabulary, hierarchy, roles, pre-production URLs). The `registry.rst` and `credential-issuance-low-level.rst` specifications are the **normative source** in case of conflict, as the handbook itself states. The explorer implements the handbook for navigation and the specifications for JWT, schemas, offer and issuer metadata.

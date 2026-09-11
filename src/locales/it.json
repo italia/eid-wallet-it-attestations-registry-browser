@@ -1,9 +1,9 @@
 {
   "meta": {
-    "title": "IT-Wallet Registry Search Engine",
-    "description": "Navigazione grafica del catalogo, degli schemi, dei claims, delle fonti autentiche e della tassonomia del Registro IT-Wallet.",
-    "brand": "Registro IT-Wallet",
-    "tagline": "Italian attestations and authentic sources wallet ecosystem catalog"
+    "title": "IT-Wallet Attestations Explorer and Demo",
+    "description": "Cerca ed esplora gli attestati IT-Wallet dal registro pubblico: catalogo, schemi, claim, fonti autentiche, tassonomia e credenziali di esempio.",
+    "brand": "Attestati IT-Wallet",
+    "tagline": "Cerca nel registro pubblico, ispeziona i metadati dell’issuer e visualizza l’anteprima delle credenziali di esempio."
   },
   "skip": {
     "main": "Vai al contenuto principale",
@@ -34,6 +34,21 @@
     "heading": "Risultati",
     "emptyDump": "Dump non ancora caricato. Esegui npm run dump:pre.",
     "count": "{{n}} Attestati"
+  },
+  "kind": {
+    "credential": "Credenziale",
+    "issuer": "Emittente",
+    "authentic_source": "Fonte autentica",
+    "authentic_sources": "Fonti autentiche",
+    "schema": "Schema",
+    "schemas": "Schemi",
+    "claim": "Claim",
+    "claims": "Claims",
+    "domain": "Dominio",
+    "class": "Classe",
+    "catalog": "Catalogo",
+    "taxonomy": "Tassonomia",
+    "registry": "Registro"
   },
   "graph": {
     "heading": "Grafo del registro",
@@ -66,13 +81,10 @@
     "liveRefresh": "Refresh live dal Trust Anchor…",
     "schemaPathNote": "Path schemi dichiarati dal registro: /schemas/v1.3.3/… (non l’esempio ST /.well-known/schemas/mdoc/mDL)",
     "integrityMismatch": "{{n}} schemi con schema_uri#integrity diverso dal body scaricato",
-    "corsTitle": "Refresh live bloccato dal browser (CORS)",
-    "corsBody": "Il dump locale resta visibile. Per riprovare dal Trust Anchor con un’estensione CORS:",
-    "corsStep1": "Installa un’estensione del tipo “Allow CORS: Access-Control-Allow-Origin” (Chrome/Edge/Firefox).",
-    "corsStep2": "Attivala solo per questa sessione e consenti gli host pre.ta.wallet.ipzs.it e ta.wallet.ipzs.it.",
-    "corsStep3": "Ricarica l’explorer, apri di nuovo la bacheca e premi Riprova sulla GET fallita.",
-    "corsStep4": "Disattiva l’estensione quando hai finito: sblocca CORS su tutti i siti.",
-    "corsWarn": "Non è un requisito di produzione: il dump CI resta la fonte di verità. Alcune risposte del TA inviano Access-Control-Allow-Origin: *,* (valore non valido per i browser)."
+    "corsBanner": "Né un proxy CORS né un componente aggiuntivo che disabilita CORS (ad esempio Allow CORS) è attivo. Le richieste HTTP live verso il Trust Anchor potrebbero fallire.",
+    "corsBody": "Il dump locale resta visibile. Le richieste HTTP live verso il Trust Anchor sono fallite (CORS). Istruzioni dettagliate su GitHub.",
+    "corsReadMore": "Leggi di più",
+    "corsDocsHref": "https://github.com/italia/eid-wallet-it-attestations-registry-browser/blob/main/docs/CACHE-AND-CI.md#cors-and-waf"
   },
   "artifacts": {
     "heading": "Artefatti",
@@ -81,6 +93,7 @@
     "diagnostic": "Notazione diagnostica CBOR",
     "header": "Header",
     "payload": "Payload",
+    "decoded": "JSON decodificato",
     "excerpt": "Estratto in chiaro",
     "empty": "Nessun artefatto dumpato per questa entità.",
     "expandAll": "Espandi tutto",
@@ -95,7 +108,25 @@
     "reconstructed": "Disclosure, key binding e claim",
     "mdocExcerpt": "Struttura mdoc decodificata",
     "empty": "Nessuno schema nel dump da cui costruire una credenziale di esempio.",
-    "error": "Impossibile firmare la credenziale di esempio."
+    "error": "Impossibile firmare la credenziale di esempio.",
+    "cardHeading": "Credential demo UI",
+    "cardHint": "Anteprima tipo smartcard. Nome, colori e etichette dei claim arrivano da credential_configuration_id quando il metadata li contiene; altrimenti si usa uno stile di fallback. Solo esemplificazione.",
+    "cardIssuer": "Emittente",
+    "yes": "Sì",
+    "no": "No"
+  },
+  "issuer": {
+    "heading": "Credential issuer",
+    "empty": "Nessun metadato OpenID4VCI dell’issuer nel dump per questo tipo di credenziale.",
+    "mismatchHeading": "openid-credential-issuer e openid-federation hanno contenuti difformi",
+    "mismatchMissingIssuer": "{{url}} non è nel dump.",
+    "mismatchMissingFederation": "{{url}} non è nel dump.",
+    "mismatchMissingNested": "openid-federation non contiene metadata.openid_credential_issuer.",
+    "mismatchIssSub": "iss ({{iss}}) e sub ({{sub}}) della federation differiscono.",
+    "mismatchIssuerId": "{{path}} è difforme: {{left}} vs {{right}}.",
+    "mismatchOnlyIssuer": "{{path}} è presente solo in openid-credential-issuer ({{value}}).",
+    "mismatchOnlyFederation": "{{path}} è presente solo in metadata.openid_credential_issuer di openid-federation ({{value}}).",
+    "mismatchField": "{{path}} è difforme: {{left}} vs {{right}}."
   },
   "offer": {
     "heading": "Credential Offer",

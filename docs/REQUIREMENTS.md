@@ -1,266 +1,290 @@
-# Requisiti — IT-Wallet Registry Search Engine
+# Requirements — IT-Wallet Attestations Explorer and Demo
 
-Versione requisiti: **0.4.0**  
-Origine: richiesta di progetto + valutazione del [manuale del registro](EVALUATION_HANDBOOK.md) + Specifiche Tecniche IT-Wallet v1.4.6 + aggiornamenti UI (facet di ricerca, header `disco.html`, switch Trust Anchor, traccia HTTP in bacheca).
+Requirements version: **0.5.0**  
+Source: project request + review of the [registry handbook](EVALUATION_HANDBOOK.md) + IT-Wallet Technical Specifications v1.4.6 + UI updates (search facets, `disco.html` header, Trust Anchor switch, HTTP traces on the message board).
 
-Priorità: **MUST** / **SHOULD** / **MAY** (RFC 2119).
+Priority: **MUST** / **SHOULD** / **MAY** (RFC 2119).
 
-Changelog 0.4.0: sul nodo `credential`, data model (JSON Schema / CDDL) e credenziale di esempio (`dc+sd-jwt` e `mso_mdoc` DeviceResponse ISO 18013-5 in hex BINASCII + notazione diagnostica, claim dal CDDL) con avviso di sola esemplificazione e link a `demo/keys/`; form offer precompilato con la RSA di demo; simbolo IT-Wallet (Negative White) nello slim header.  
-Changelog 0.3.0: F-05 refresh live + IndexedDB, F-07 retry per-risorsa, A-03 `?node=`, F-02 OR/()/wildcard/boost, A-05/A-06 verifica JWT e SRI, A-10 `issuers[].id`, nightly prod, guida CORS in bacheca.  
-Changelog 0.2.0: F-01 facet HTML, F-06 traccia per-chiamata, F-08 etichette `ITA`/`EN`, F-12 ambiente/TA, NF-07 identità visiva header `disco.html`, A-01/A-03/A-17/A-20 allineati all’implementazione.
-
----
-
-## 1. Obiettivo
-
-Consentire a giuristi, tecnici PA e sviluppatori di **navigare graficamente** i metadati pubblici del Registro IT-Wallet (catalogo, schemi, claims, fonti autentiche, tassonomia), con un **motore di ricerca umano** e una **cache** alimentata da dump REST fedeli.
-
-Il tool è statico, open source, servito dalla CDN GitHub Pages.
+Changelog 0.5.0: on each `credential` result, a Credential issuer section with `{issuer_id}/.well-known/openid-credential-issuer` and `{issuer_id}/.well-known/openid-federation` (original JWT/JSON, decoded JSON, matching `credential_configuration_id` excerpt), and a warning when the OpenID4VCI contents diverge; a **Credential demo UI** smartcard that uses `credential_configuration` display metadata (name, colours, claim labels) when present; each search result has a Bootstrap Italia kind icon (`it-card` for credentials).  
+Changelog 0.4.0: on the `credential` node, data model (JSON Schema / CDDL) and demo credential (`dc+sd-jwt` and `mso_mdoc` ISO 18013-5 DeviceResponse as BINASCII hex + diagnostic notation, claims from the CDDL) with an illustration-only warning and link to `demo/keys/`; offer form pre-filled with the demo RSA key; IT-Wallet symbol (Negative White) in the slim header; page-level CORS warning (openid-federation-browser pattern) when live Trust Anchor HTTP requests fail.  
+Changelog 0.3.0: F-05 live refresh + IndexedDB, F-07 per-resource retry, A-03 `?node=`, F-02 OR/()/wildcard/boost, A-05/A-06 JWT and SRI verification, A-10 `issuers[].id`, nightly prod, CORS guidance.  
+Changelog 0.2.0: F-01 HTML facets, F-06 per-call traces, F-08 `ITA`/`EN` labels, F-12 environment/TA, NF-07 `disco.html` header identity, A-01/A-03/A-17 aligned with the implementation. A-20 (CSP) remains SHOULD and is not in `index.html`.
 
 ---
 
-## 2. Requisiti funzionali (richiesti)
+## 1. Goal
 
-### F-01 Motore di ricerca
+Let lawyers, public-sector technicians and developers **navigate graphically** the public metadata of the IT-Wallet Registry (catalog, schemas, claims, authentic sources, taxonomy), with a **human search engine** and a **cache** fed by faithful REST dumps.
 
-Il motore MUST indicizzare e filtrare almeno:
+The tool is static, open source, served from the GitHub Pages CDN.
 
-| Dimensione | Campi sorgente |
-|------------|----------------|
-| Tipo credenziale / attestato | `credentials[].credential_type`, `schemas[].credential_type`, nodi tassonomia |
-| Legal type | `credentials[].legal_type` e `credentials[].issuers[].legal_type` (`pub-eaa`, `qeaa`, `eaa`) |
-| Attributo / claim | chiavi del claims registry, `available_claims`, campi schema |
+---
+
+## 2. Functional requirements (required)
+
+### F-01 Search engine
+
+The engine MUST index and filter at least:
+
+| Dimension | Source fields |
+|-----------|----------------|
+| Credential / attestation type | `credentials[].credential_type`, `schemas[].credential_type`, taxonomy nodes |
+| Legal type | `credentials[].legal_type` and `credentials[].issuers[].legal_type` (`pub-eaa`, `qeaa`, `eaa`) |
+| Attribute / claim | claims-registry keys, `available_claims`, schema fields |
 | Issuer | `credentials[].issuers[]` (`entity_id`, `organization_name*`, `organization_code`) |
-| Authentic source | registro FA e `credentials[].authentic_sources[]` |
+| Authentic source | authentic-source registry and `credentials[].authentic_sources[]` |
 
-MUST essere possibile combinare dimensioni (query testuale + facet UI).
+MUST be possible to combine dimensions (text query + UI facets). Each result row MUST show a Bootstrap Italia icon on the left for the node kind: credentials use `it-card` (smartcard); issuers `it-pa`; authentic sources `it-inbox`; schemas `it-file`; claims `it-list`; taxonomy domains `it-folder`.
 
-Il form di ricerca MUST esporre `<select>` HTML, etichettati, popolati dal dump:
+The search form MUST expose labelled HTML `<select>` controls populated from the dump:
 
-| Controllo | Valori | Effetto |
-|-----------|--------|---------|
-| `legal_type` | sempre `pub-eaa`, `qeaa`, `eaa` (+ vuoto = tutti) | scrive `legal_type:` nella query |
-| Emittente | issuer reali del catalogo | scrive `issuer:` |
-| Fonte autentica | FA reali del registro | scrive `as:` |
-| Attributo / claim | claim usati dalle FA | scrive `claim:` |
+| Control | Values | Effect |
+|---------|--------|--------|
+| `legal_type` | always `pub-eaa`, `qeaa`, `eaa` (+ empty = all) | writes `legal_type:` into the query |
+| Issuer | real catalog issuers | writes `issuer:` |
+| Authentic source | real authentic sources | writes `as:` |
+| Attribute / claim | claims used by authentic sources | writes `claim:` |
 
-I menu MUST **scrivere nella stessa query** Lucene-lite (`legal_type:pub-eaa`, `issuer:"…"`, `as:"…"`, `claim:family_name`), non un secondo motore. Dettaglio: [SEARCH.md](SEARCH.md).
+The menus MUST **write into the same** Lucene-lite query (`legal_type:pub-eaa`, `issuer:"…"`, `as:"…"`, `claim:family_name`), not a second engine. Detail: [SEARCH.md](SEARCH.md).
 
-### F-02 Sintassi di query
+### F-02 Query syntax
 
-Il motore MUST accettare le notazioni da [SEARCH.md](SEARCH.md):
+The engine MUST accept the notations in [SEARCH.md](SEARCH.md):
 
-- termini in AND implicito
-- `+termine` (obbligo), `-termine` (esclusione)
-- `"frase esatta"`
-- `campo:valore` (es. `legal_type:pub-eaa`, `issuer:ipzs`, `claim:family_name`)
+- implicit AND of terms
+- `+term` (required), `-term` (exclusion)
+- `"exact phrase"`
+- `field:value` (e.g. `legal_type:pub-eaa`, `issuer:ipzs`, `claim:family_name`)
 - `*` / `?` (wildcard)
-- `termine^2` (boost)
-- raggruppamento con `()`
+- `term^2` (boost)
+- grouping with `()`
 
-SHOULD essere disponibile un riassunto in linguaggio naturale della query interpretata (`query.understood`).
+SHOULD provide a natural-language summary of the interpreted query (`query.understood`).
 
-### F-03 Dump cache da REST, gerarchia fedele
+### F-03 REST dump cache, faithful hierarchy
 
-Uno script MUST scaricare le risorse REST del registro **senza trasformare i body**, salvandole sotto `cache/<host>/<path>` come in [CACHE-AND-CI.md](CACHE-AND-CI.md).
+A script MUST download registry REST resources **without transforming bodies**, storing them under `cache/<host>/<path>` as in [CACHE-AND-CI.md](CACHE-AND-CI.md).
 
-MUST partire da `/.well-known/it-wallet-registry` e seguire `endpoints.*` e gli URI derivati (`schema_uri`, bundle l10n se raggiungibili).
+MUST start from `/.well-known/it-wallet-registry` and follow `endpoints.*` and derived URIs (`schema_uri`, l10n bundles if reachable).
 
-MUST registrare ogni fetch negli indici di dump (URL, status, content-type / application type, hash, timestamp, `duration_ms`, errore).
+MUST record every fetch in the dump indexes (URL, status, content-type / application type, hash, timestamp, `duration_ms`, error).
 
-MUST scrivere `cache/manifest-pre.json` e `cache/manifest-prod.json` (un indice per Trust Anchor). `cache/manifest.json` MUST restare il dump di default di collaudo (`pre`) per compatibilità.
+MUST write `cache/manifest-pre.json` and `cache/manifest-prod.json` (one index per Trust Anchor). `cache/manifest.json` MUST remain the default pre-production (`pre`) dump for compatibility.
 
-### F-04 CI GitHub Pages con due CD
+### F-04 GitHub Pages CI with two CD pipelines
 
-1. **Nightly CD** MUST aggiornare la cache nel repository (cron + `workflow_dispatch`).
-2. **Cache CD** MUST pubblicare GitHub Pages quando la cache (o l’app) cambia.
+1. **Nightly CD** MUST update the cache in the repository (cron + `workflow_dispatch`).
+2. **Cache CD** MUST publish GitHub Pages when the cache (or the app) changes.
 
-Dettaglio: [CACHE-AND-CI.md](CACHE-AND-CI.md).
+Detail: [CACHE-AND-CI.md](CACHE-AND-CI.md).
 
-### F-05 Refresh cache browser all’avvio
+### F-05 Browser cache refresh on startup
 
-Al load l’app MUST:
+On load the app MUST:
 
-1. Mostrare subito i dati del dump servito con l’app (repo / Pages).
-2. In background tentare il refresh dal Trust Anchor verso la cache **del browser** (Cache API + IndexedDB), senza bloccare l’UI.
-3. Se il live differisce dal dump, aggiornare indice, grafo e bacheca.
-4. Se CORS/rete fallisce, restare sul dump e segnalare in bacheca.
+1. Show dump data served with the app (repo / Pages) immediately.
+2. In the background try a Trust Anchor refresh into the **browser** cache (Cache API + IndexedDB), without blocking the UI.
+3. If live data differs from the dump, update index, graph and message board.
+4. If CORS/network fails, stay on the dump, record the failed GETs on the board, and show a page-level warning (`alert alert-warning`, openid-federation-browser pattern) with a GitHub link to CORS instructions ([CACHE-AND-CI.md](CACHE-AND-CI.md#cors-and-waf)).
 
-### F-06 Bacheca messaggi
+### F-06 Message board
 
-MUST esistere una bacheca (drawer o offcanvas Bootstrap Italia) con:
+A message board MUST exist (Bootstrap Italia drawer/offcanvas) with:
 
-- **una riga per ogni chiamata HTTP** avvenuta (manifest + ogni risorsa del dump, tentativi falliti inclusi)
-- per ciascuna riga: **endpoint** (URL del Trust Anchor o URL richiesto), **metodo**, **status code**, **tempo di risposta** (`duration_ms`), **application type** (`Content-Type` / media type, es. `application/json`, `application/jose`)
-- errori con **motivazione** (status HTTP, CORS, JWT non decodificabile, integrity mismatch, 404 produzione, WAF HTML) e pulsante Riprova
-- stato `pending` per i refresh in corso (SHOULD)
-- `role="log"` e `aria-live` per gli annunci
+- **one row per HTTP call** (manifest + every dump resource, failed attempts included)
+- for each row: **endpoint** (Trust Anchor URL or requested URL), **method**, **status code**, **response time** (`duration_ms`), **application type** (`Content-Type` / media type, e.g. `application/json`, `application/jose`)
+- errors with a **reason** (HTTP status, CORS, undecodable JWT, integrity mismatch, production 404, WAF HTML) and a Retry button
+- `pending` state for in-flight refreshes (SHOULD)
+- `role="log"` and `aria-live` for announcements
 
-MUST avere un’**icona nella navbar in alto a destra**, con badge del numero di errori aperti.
+MUST have an **icon in the top-right navbar**, with a badge of open errors.
 
-La bacheca MUST NON riassumere il load in un’unica riga «N risorse caricate» al posto del dettaglio per-chiamata.
+The board MUST NOT summarise the load as a single “N resources loaded” row instead of per-call detail.
 
 ### F-07 Retry
 
-Ogni errore MUST mostrare un pulsante **Riprova** / **Retry** che rilanja solo quella risorsa (o il gruppo dipendente) e aggiorna la riga in bacheca.
+Every error MUST show a **Retry** button that re-runs only that resource (or its dependent group) and updates the board row.
 
-### F-08 Multilingua
+### F-08 Multilingual UI
 
-MUST italiano e inglese, file `src/locales/it.json` e `src/locales/en.json`, dropdown **ITA** / **EN** nell’header slim (markup `disco.html`, NF-07). `document.documentElement.lang` MUST seguire la lingua scelta.
+MUST Italian and English, files `src/locales/it.json` and `src/locales/en.json`, **ITA** / **EN** dropdown in the slim header (`disco.html` markup, NF-07). `document.documentElement.lang` MUST follow the selected language.
 
-SHOULD usare i bundle `localization` del registro quando disponibili; fallback sulle chiavi tecniche (`credential_type`, `l10n_id`).
+SHOULD use registry `localization` bundles when available; fall back to technical keys (`credential_type`, `l10n_id`).
 
-### F-09 Grafo gerarchico verticale
+### F-09 Vertical hierarchical graph
 
-MUST rappresentare i nodi con layout **top-down** (radice in alto):
+MUST render nodes with a **top-down** layout (root at the top):
 
 ```text
 IT-Wallet Registry
- ├── Catalogo
+ ├── Catalog
  │    ├── <credential_type>
  │    │     ├── Issuer(s)
  │    │     └── Authentic source(s)
- ├── Schemi
+ ├── Schemas
  ├── Claims
- ├── Fonti autentiche
- └── Tassonomia
+ ├── Authentic sources
+ └── Taxonomy
 ```
 
-Attestati e credenziali MUST essere collegati a **uno o più** credential issuer e/o authentic source quando il catalogo li dichiara.
+Attestations and credentials MUST be linked to **one or more** credential issuers and/or authentic sources when the catalog declares them.
 
-### F-10 Filtro grafo dai risultati di ricerca
+### F-10 Graph filter from search results
 
-La stessa query MUST filtrare il grafo: restano visibili **solo** i nodi che matchano **più gli antenati gerarchici** (fino alla radice) **più gli archi** che li collegano (issuer, FA, schema del tipo). I nodi non pertinenti MUST essere nascosti, non solo opacizzati, salvo un toggle SHOULD “mostra contesto”.
+The same query MUST filter the graph: only matching nodes remain visible, **plus hierarchical ancestors** (up to the root) **plus the edges** that connect them (issuer, authentic source, schema of that type). Non-matching nodes MUST be hidden, not merely faded, except for a SHOULD “show context” toggle.
 
-### F-11 Credential Offer per attestato
+### F-11 Credential Offer per attestation
 
-Ogni attestato/credenziale MUST offrire:
+Every attestation/credential MUST offer:
 
-- href `openid-credential-offer://` (e SHOULD `haip-vci://` come alias)
-- QR code equivalente
+- `openid-credential-offer://` href (and SHOULD `haip-vci://` as an alias; the alias MAY be visually hidden if the primary link and QR are present)
+- equivalent QR code
 
-conformi alle ST, con i limiti in [CREDENTIAL_OFFER.md](CREDENTIAL_OFFER.md) (offer di discovery, `grants.authorization_code` senza `issuer_state` cifrato PDND).
+aligned with the Technical Specifications, with the limits in [CREDENTIAL_OFFER.md](CREDENTIAL_OFFER.md) (discovery offer, `grants.authorization_code` without a PDND-encrypted `issuer_state`).
 
-### F-12 Switch collaudo / produzione e Trust Anchor
+### F-12 Pre-production / production switch and Trust Anchor
 
-Il form di ricerca MUST includere un `<select>` **Ambiente** con almeno:
+The search form MUST include an **Environment** `<select>` with at least:
 
-| Valore | Etichetta (it) | Trust Anchor |
-|--------|----------------|--------------|
-| `pre` | Collaudo (preprod) | `https://pre.ta.wallet.ipzs.it` |
-| `prod` | Produzione | `https://ta.wallet.ipzs.it` |
+| Value | Label (en) | Trust Anchor |
+|-------|------------|--------------|
+| `pre` | Pre-production | `https://pre.ta.wallet.ipzs.it` |
+| `prod` | Production | `https://ta.wallet.ipzs.it` |
 
-L’UI MUST **indicare il Trust Anchor** dell’ambiente attivo (URL visibile e linkabile). Il cambio ambiente MUST ricaricare il dump corrispondente (`manifest-pre.json` / `manifest-prod.json`) e MUST aggiornare il permalink `?env=pre|prod`. Non è un token della query Lucene.
+The UI MUST **show the Trust Anchor** of the active environment (visible, linkable URL). Changing environment MUST reload the matching dump (`manifest-pre.json` / `manifest-prod.json`) and MUST update the permalink `?env=pre|prod`. It is not a Lucene query token.
 
-Produzione MAY avere catalogo incompleto o assente: l’app MUST non crashare; gli errori restano in bacheca (F-06, F-07).
+Production MAY have an incomplete or missing catalog: the app MUST not crash; errors stay on the board (F-06, F-07).
 
-### F-13 Credenziale di esempio
+### F-13 Demo credential
 
-Sul nodo `credential` MUST mostrare una credenziale di esempio per **ciascun formato** dichiarato nello schema (`dc+sd-jwt`, `mso_mdoc`), firmata con le chiavi fittizie in [`demo/keys/`](../demo/README.md):
+On the `credential` node MUST show a demo credential for **each format** declared in the schema (`dc+sd-jwt`, `mso_mdoc`), signed with the fake keys in [`demo/keys/`](../demo/README.md):
 
-- `dc+sd-jwt`: SD-JWT VC compact, disclosure JSON `[salt, name, value]`, esempio KB-JWT
-- `mso_mdoc`: **DeviceResponse** ISO 18013-5 (`documents[].issuerSigned` + COSE_Sign1), hex BINASCII e notazione diagnostica (`24(<< >>)`, `h'…'`); i claim MUST coincidere con il CDDL (es. `age_over_18` su AV)
+- `dc+sd-jwt`: compact SD-JWT VC, JSON disclosure `[salt, name, value]`, example KB-JWT
+- `mso_mdoc`: ISO 18013-5 **DeviceResponse** (`documents[].issuerSigned` + COSE_Sign1), BINASCII hex and diagnostic notation (`24(<< >>)`, `h'…'`); claims MUST match the CDDL (e.g. `age_over_18` on AV)
 
-MUST comparire un avviso visibile (`role="alert"`) che l’esempio è solo per esemplificazione e **non deve intendersi usabile** (né Wallet, né produzione, né verifica). MUST NON essere un’emissione reale.
+A visible warning (`role="alert"`) MUST state that the example is illustration only and **must not be treated as usable** (Wallet, production, or verification). MUST NOT be a real issuance.
+
+When issuer metadata is in the dump (A-10), the same section MUST also show a **Credential demo UI** smartcard per dumped format:
+
+- `credential_metadata.display` (or legacy `display`) for the matching `credential_configuration_id`: `name`, `description`, `locale`, and — **if present** — `background_color`, `text_color`, `background_image`, `logo`
+- claim labels from `credential_metadata.claims[].display` (path → demo value)
+- issuer `display.logo` / `display.name` when the credential display has no logo
+
+MUST NOT invent colours or logos as if they came from metadata. If display colours are absent, the card MAY use a documented fallback style (IT-Wallet primary blue). Technical JWT/mdoc fields (`iss`, `cnf`, `status`, `_sd`, …) MUST NOT appear as card claims.
+
+### F-14 Credential issuer metadata
+
+On each `credential` result the UI MUST show a **Credential issuer** section for every issuer declared on that credential type:
+
+- metadata URL `{issuer_id}/.well-known/openid-credential-issuer` as a link
+- **original** OpenID4VCI metadata as dumped: compact signed JWT (including embedded JWKS) **or** JSON
+- **decoded JSON** (JOSE payload for JWT; parsed object for JSON)
+- **excerpt** of `credential_configurations_supported` limited to the `credential_configuration_id` values that match this credential type (and its schema formats)
+- in addition, `{issuer_id}/.well-known/openid-federation` as a link, with original entity configuration (typically a signed JWT), decoded JSON, and the same configuration excerpt taken from `metadata.openid_credential_issuer`
+- a visible warning (`role="alert"`) when the two documents are **divergent**: missing counterpart, missing `metadata.openid_credential_issuer`, `iss`/`sub` vs `credential_issuer`, or differing OpenID4VCI fields (JWT `iat`/`exp`/`nbf`/`jti` on the credential-issuer document MUST NOT count as a mismatch)
+
+If the dump has no issuer metadata (A-10), the section MUST still appear and explain that the metadata is missing. MUST NOT invent configuration objects.
 
 ---
 
-## 3. Requisiti non funzionali (richiesti)
+## 3. Non-functional requirements (required)
 
-### NF-01 Template e accessibilità
+### NF-01 Templates and accessibility
 
-MUST riusare struttura e pattern di:
+MUST reuse structure and patterns from:
 
 - `official_resources/discovery-page/disco.html`
 - `official_resources/it-wallet-selection-page/it-wallet.html`
 
-incluso: skip-link, `role="banner"` / `contentinfo`, header slim + lingua, `main` etichettato, footer legale (note, privacy, accessibilità), focus visibile, navigazione da tastiera, contrasto Bootstrap Italia. Vedi [ACCESSIBILITY.md](ACCESSIBILITY.md).
+including: skip-link, `role="banner"` / `contentinfo`, slim header + language, labelled `main`, legal footer (notes, requirements, accessibility, GitHub), visible focus, keyboard navigation, Bootstrap Italia contrast. See [ACCESSIBILITY.md](ACCESSIBILITY.md).
 
-### NF-02 Icona bacheca in navbar
+### NF-02 Board icon in the navbar
 
-L’icona bacheca MUST stare nella **zona destra dell’header slim** (accanto al selettore lingua), non nel titolo di pagina. MUST usare lo stesso pattern `nav-link` dello slim header (non un `btn btn-link` Bootstrap generico).
+The board icon MUST sit in the **right zone of the slim header** (next to the language selector), not in the page title. MUST use the same slim-header `nav-link` pattern (not a generic Bootstrap `btn btn-link`).
 
-### NF-03 Stack JavaScript
+### NF-03 JavaScript stack
 
-MUST essere JavaScript (ESM). Nessun backend runtime. GitHub Actions MAY usare Node solo per dump e build.
+MUST be JavaScript (ESM). No runtime backend. GitHub Actions MAY use Node only for dump and build.
 
-### NF-04 Servizio su CDN GitHub
+### NF-04 Served from the GitHub CDN
 
-MUST essere pubblicabile su GitHub Pages (`base: './'`), senza server applicativo.
+MUST be publishable on GitHub Pages (`base: './'` locally; Pages build MAY set `VITE_BASE` to the repository path), with no application server.
 
-### NF-05 Performance percepita
+### NF-05 Perceived performance
 
-MUST mostrare il dump in meno di 2 s su desktop medio dopo il fetch dei JSON locali. Il refresh live MUST essere asincrono.
+MUST show the dump in under 2 s on a typical desktop after fetching local JSON. Live refresh MUST be asynchronous.
 
-### NF-06 Nessun dato personale
+### NF-06 No personal data
 
-MUST trattare solo metadati di registro. MUST NON loggare query verso terze parti. La cache browser MUST restare in origine (GitHub Pages).
+MUST handle registry metadata only. MUST NOT log queries to third parties. The browser cache MUST stay on the origin (GitHub Pages).
 
-### NF-07 Identità visiva header = `disco.html`
+### NF-07 Header visual identity = `disco.html`
 
-I controlli in alto a destra (lingua e bacheca) e il **menu dropdown lingua** MUST essere identici, nello stile e nel markup, a `official_resources/discovery-page/disco.html`:
+Top-right controls (language and board) and the **language dropdown** MUST match, in style and markup, `official_resources/discovery-page/disco.html`:
 
-- trigger lingua: `button.nav-link.dropdown-toggle`, etichetta `ITA` / `EN`, icona `it-expand`, senza caret Bootstrap `::after`
+- language trigger: `button.nav-link.dropdown-toggle`, `ITA` / `EN` label, `it-expand` icon, no Bootstrap `::after` caret
 - menu: `dropdown-menu` + `link-list-wrapper` + `ul.link-list` + `button.dropdown-item.list-item` (`menuitemradio`)
-- offset Popper 24 px tra trigger e menu
-- colori slim `#004D99`, voci menu blu Italia (attivo scuro, hover sottolineato)
+- 24 px Popper offset between trigger and menu
+- slim colours `#004D99`, Italia-blue menu items (dark active, underlined hover)
 
-Dettaglio: [ACCESSIBILITY.md](ACCESSIBILITY.md).
-
----
-
-## 4. Requisiti aggiuntivi (introdotti in sede di progettazione)
-
-Motivati da manuale, ST e vincoli GitHub Pages.
-
-| ID | Priorità | Requisito |
-|----|----------|-----------|
-| A-01 | MUST | Switch **collaudo / produzione** nel form di ricerca (F-12), con URL del Trust Anchor visibile. Produzione può non avere catalogo: bacheca, non crash. |
-| A-02 | MUST | Vista **tabella/lista** equivalente al grafo (WCAG: il canvas non è l’unica modalità). |
-| A-03 | MUST | Deep link: `?q=`, `?env=pre\|prod`, `?node=` ripristinano ricerca, ambiente e selezione. |
-| A-04 | MUST | Catalogo JWT: salvare raw; al click su un’entità mostrare l’artefatto originale firmato e header/payload JOSE in chiaro (`kid`, `alg`). |
-| A-05 | SHOULD | Verifica firma JWT del catalogo con JWKS del Trust Anchor, quando scaricabili. |
-| A-06 | SHOULD | Verifica `schema_uri#integrity` (SRI sha256) dopo il fetch dello schema. |
-| A-07 | MUST | CORS: se il TA non espone `Access-Control-Allow-Origin`, il refresh browser fallisce in modo esplicito; il dump CI resta valido. |
-| A-08 | MUST | Dump con `GET` e `User-Agent` identificabile; **non usare HEAD** (WAF). |
-| A-09 | SHOULD | Tentare bundle l10n; se WAF rifiuta, errore ritriabile in bacheca, UI su `*_l10n_id`. |
-| A-10 | SHOULD | Dump metadati OpenID4VCI di ogni issuer (`/.well-known/openid-credential-issuer`) per `credential_configuration_ids` reali nelle offer. |
-| A-11 | MAY | Dump federazione (`/list`, entity configuration) dietro flag. |
-| A-12 | SHOULD | Diff dump vs live in bacheca (hash o `last_updated`). |
-| A-13 | SHOULD | Permalink e export JSON del sotto-grafo filtrato. |
-| A-14 | MUST | Disclaimer visibile: tool non ufficiale; offer non è un’emissione di produzione; credenziale di esempio solo esemplificativa (`#example-warning`). |
-| A-15 | SHOULD | Rispetto `prefers-reduced-motion` sul layout del grafo. |
-| A-16 | MAY | Export PNG/SVG del grafo visibile. |
-| A-17 | MUST | Indici dump versionati: `manifest.json` (default `pre`), `manifest-pre.json`, `manifest-prod.json`. |
-| A-18 | SHOULD | Rate limiting nel crawler (pausa tra fetch, retry esponenziale su 429/5xx). |
-| A-19 | MUST | Pagine `noscript` e messaggio se JS è disabilitato. |
-| A-20 | SHOULD | Content-Security-Policy compatibile con GitHub Pages (script propri; obiettivo: tutto bundled). |
-| A-21 | MAY | Confronto pre vs prod nella stessa sessione (due radici). |
-| A-22 | SHOULD | Documentare in bacheca lo scostamento path schema (`/schemas/v1.3.3/…` vs esempio ST). |
-| A-23 | MUST | Facet HTML `legal_type` / issuer / FA / claim che scrivono `campo:valore` nella query (F-01). |
-| A-24 | MUST | Bacheca: traccia completa delle GET (endpoint, status, ms, application type) (F-06). |
-| A-25 | MUST | Header slim: simbolo IT-Wallet Negative White, dropdown lingua e campanella allineati a `disco.html` (NF-07). |
-| A-26 | MUST | Dettaglio nodo (lista **e grafo**): artefatti dump (JWS/JSON/CDDL). JWT: originale firmato **oppure** header e payload in chiaro; per credenziali/issuer/FA anche estratto dell’entità. JSON: presentazione indentata con espandi/comprimi di oggetti e array innestati. |
+Detail: [ACCESSIBILITY.md](ACCESSIBILITY.md).
 
 ---
 
-## 5. Fuori ambito (v1)
+## 4. Additional requirements (introduced during design)
 
-- Emissione reale di attestati, cifratura `issuer_state` con chiave PDND, login utente.
-- Archivio di dati dei cittadini, sessioni wallet, WSCD.
-- Modifica dei registri (il tool è read-only).
-- Sostituzione delle Specifiche Tecniche o del Trust Anchor.
-- App nativa / estensione browser.
+Motivated by the handbook, Technical Specifications and GitHub Pages constraints.
+
+| ID | Priority | Requirement |
+|----|----------|-------------|
+| A-01 | MUST | **Pre-production / production** switch in the search form (F-12), with a visible Trust Anchor URL. Production may lack a catalog: board, not crash. |
+| A-02 | MUST | **Table/list** view equivalent to the graph (WCAG: the canvas is not the only mode). |
+| A-03 | MUST | Deep link: `?q=`, `?env=pre\|prod`, `?node=` restore search, environment and selection. |
+| A-04 | MUST | JWT catalog: store raw; on entity click show the signed original artifact and JOSE header/payload in the clear (`kid`, `alg`). |
+| A-05 | SHOULD | Verify the catalog JWT signature with the Trust Anchor JWKS, when downloadable. |
+| A-06 | SHOULD | Verify `schema_uri#integrity` (SRI sha256) after fetching the schema. |
+| A-07 | MUST | CORS: if the TA does not expose a valid `Access-Control-Allow-Origin`, browser refresh fails explicitly; the CI dump remains valid. The UI MUST show a page-level `alert alert-warning` (openid-federation-browser pattern) and a GitHub link to CORS add-on instructions. |
+| A-08 | MUST | Dump with `GET` and an identifiable `User-Agent`; **do not use HEAD** (WAF). |
+| A-09 | SHOULD | Try l10n bundles; if the WAF rejects them, retriable board error, UI on `*_l10n_id`. |
+| A-10 | SHOULD | Dump OpenID4VCI metadata (`/.well-known/openid-credential-issuer`) and the issuer entity configuration (`/.well-known/openid-federation`) of each catalog issuer. |
+| A-11 | MAY | Federation dump (`/list`, entity configuration) behind a flag. |
+| A-12 | SHOULD | Dump vs live diff on the board (hash or `last_updated`). |
+| A-13 | SHOULD | Permalink and JSON export of the filtered sub-graph. |
+| A-14 | MUST | Visible disclaimer: unofficial tool; offer is not a production issuance; demo credential is illustration only (`#example-warning`). |
+| A-15 | SHOULD | Honour `prefers-reduced-motion` on the graph layout. |
+| A-16 | MAY | PNG/SVG export of the visible graph. |
+| A-17 | MUST | Versioned dump indexes: `manifest.json` (default `pre`), `manifest-pre.json`, `manifest-prod.json`. |
+| A-18 | SHOULD | Rate limiting in the crawler (pause between fetches, exponential retry on 429/5xx). |
+| A-19 | MUST | `noscript` pages and a message if JS is disabled. |
+| A-20 | SHOULD | Content-Security-Policy compatible with GitHub Pages (own scripts; goal: fully bundled). Not yet in `index.html`. |
+| A-21 | MAY | Pre vs prod comparison in the same session (two roots). |
+| A-22 | SHOULD | Document on the board the schema path divergence (`/schemas/v1.3.3/…` vs the ST example). |
+| A-23 | MUST | HTML facets `legal_type` / issuer / authentic source / claim that write `field:value` into the query (F-01). |
+| A-24 | MUST | Board: full GET traces (endpoint, status, ms, application type) (F-06). |
+| A-25 | MUST | Slim header: IT-Wallet Negative White symbol, language dropdown and bell aligned with `disco.html` (NF-07). |
+| A-26 | MUST | Node detail (list **and graph**): dump artifacts (JWS/JSON/CDDL). JWT: signed original **or** header and payload in the clear; for credentials/issuers/authentic sources also an entity excerpt. JSON: indented view with expand/collapse of nested objects and arrays. |
 
 ---
 
-## 6. Criteri di accettazione sintetici
+## 5. Out of scope (v1)
 
-1. Clonando il repo e aprendo Pages (o `npm run dev` dopo `npm run dump:pre`) si vede il grafo radicato in «IT-Wallet Registry» con i tipi presenti in catalogo di collaudo.
-2. La query `legal_type:pub-eaa +mDL -pid` riduce lista e grafo a mDL e ai suoi issuer/FA/antenati. I `<select>` `legal_type` / emittente / FA / claim compilano gli stessi token.
-3. La navbar in alto a destra (stile `disco.html`) apre la bacheca; ogni GET del dump è una riga con endpoint, HTTP status, ms e application type; un 404 ha Riprova.
-4. Ogni card attestato mostra QR e link `openid-credential-offer://`.
-5. IT/EN commutano header, bacheca, ricerca e caption del grafo. Il trigger lingua mostra `ITA`/`EN` e il menu `link-list` di `disco.html`.
-6. Il nightly aggiorna `cache/` senza toccare a mano i file. `npm run dump:prod` scrive `manifest-prod.json` sotto `cache/ta.wallet.ipzs.it/`.
-7. Il menu Ambiente mostra Collaudo/Produzione e l’URL del Trust Anchor; `?env=prod` carica il dump di produzione.
-8. Sul nodo `mDL` si vedono SD-JWT e mdoc (hex BINASCII + notazione diagnostica con `issuerSigned`); su `av` c’è `age_over_18`; il riquadro Attenzione linka `demo/keys/` sul repository GitHub.
+- Real attestation issuance, `issuer_state` encryption with the PDND key, user login.
+- Citizen data archives, wallet sessions, WSCD.
+- Mutating the registries (the tool is read-only).
+- Replacing the Technical Specifications or the Trust Anchor.
+- Native app / browser extension.
+
+---
+
+## 6. Short acceptance criteria
+
+1. Cloning the repo and opening Pages (or `npm run dev` after `npm run dump:pre`) shows a graph rooted at “IT-Wallet Registry” with the credential types in the pre-production catalog.
+2. The query `legal_type:pub-eaa +mDL -pid` reduces list and graph to mDL and its issuers/authentic sources/ancestors. The `legal_type` / issuer / authentic source / claim `<select>`s write the same tokens.
+3. The top-right navbar ( `disco.html` style) opens the board; every dump GET is a row with endpoint, HTTP status, ms and application type; a 404 has Retry.
+4. Every attestation card shows a QR and an `openid-credential-offer://` link.
+5. IT/EN switch header, board, search and graph caption. The language trigger shows `ITA`/`EN` and the `link-list` menu of `disco.html`.
+6. Nightly updates `cache/` without hand-editing files. `npm run dump:prod` writes `cache/manifest-prod.json`; REST bodies go under `cache/ta.wallet.ipzs.it/`.
+7. The Environment menu shows Pre-production/Production and the Trust Anchor URL; `?env=prod` loads the production dump.
+8. On the `mDL` node, SD-JWT and mdoc (BINASCII hex + diagnostic notation with `issuerSigned`) are visible; the Credential demo UI shows “Patente di guida” and demo claims (e.g. Mario Rossi); on `av` there is `age_over_18`; the Warning box links `demo/keys/` on the GitHub repository.
+9. With live Trust Anchor GETs blocked (no CORS add-on), `#cors-fault-alert` (`alert alert-warning`) is visible and its Read more link points at the GitHub CORS documentation.
+10. On `mDL`, the Credential issuer section links `https://pre.issuer.wallet.ipzs.it/.well-known/openid-credential-issuer` and `…/openid-federation`, shows original JSON / entity JWT and decoded JSON, and the excerpt contains `dc_sd_jwt_mDL` and `mso_mdoc_mDL` (not `pid`). Aligned documents MUST NOT show a mismatch alert. On `pid`, the credential-issuer original is a signed JWT and the excerpt contains `dc_sd_jwt_pid`.

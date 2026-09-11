@@ -2,13 +2,22 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { buildRegistryGraph, facetOptions, visibleClosure } from '../../src/js/graph/model.js';
 import { getQueryField, matchedNodeIds, parseQuery, quoteFieldValue, searchDocuments, setQueryField, understoodQuery } from '../../src/js/search/index.js';
+import { kindIconId } from '../../src/js/results/kind-icon.js';
 import { checkSri, decodeJwt, parseRegistryBody, sha256Sri, verifyJwt } from '../../src/js/cache/jwt.js';
 import { loadDump, timedFetch } from '../../src/js/cache/loader.js';
+import { isCorsFailure } from '../../src/js/cache/browser.js';
 import { resolveRegistryEnv } from '../../src/js/cache/environments.js';
-import { artifactsForNode, formatArtifactView } from '../../src/js/artifacts/artifacts.js';
+import {
+  artifactsForNode,
+  compareIssuerWellKnown,
+  formatArtifactView,
+  issuerMetadataArtifactsForCredential,
+  issuerWellKnownGroupsForCredential,
+} from '../../src/js/artifacts/artifacts.js';
 import { jsonPreview, tryParseJson } from '../../src/js/artifacts/json-tree.js';
 import { configurationIdsFor, credentialOfferHref, credentialOfferObject, decryptIssuerState, encryptIssuerState, issuerStateUrn } from '../../src/js/offer/offer.js';
 import { demoEncPrivateJwkText, demoEncPublicJwkText } from '../../src/js/demo/material.js';
+import { demoCardModels, isCssColor, pickLocalizedDisplay } from '../../src/js/demo/card.js';
 import { buildDemoCredential, buildDemoCredentials, claimsFromCddl, exampleFromSchema } from '../../src/js/demo/example.js';
 import { encodeCbor, toCborDiag } from '../../src/js/demo/cbor.js';
 import { parseCddlMdoc } from '../../src/js/demo/mdoc.js';
@@ -87,6 +96,80 @@ describe('artifacts', () => {
     const arts = artifactsForNode(schema, dump);
     assert.ok(arts.some((a) => a.excerpt?.credential_type === 'mDL'));
     assert.ok(arts.some((a) => a.path?.includes('mdl.json') && a.raw));
+  });
+
+  it('shows JSON OpenID4VCI issuer metadata and mDL configuration excerpt', () => {
+    const arts = issuerMetadataArtifactsForCredential(graph.byId.get('credential:mDL'), dump);
+    assert.equal(arts.length, 2);
+    assert.equal(arts[0].title, 'openid-credential-issuer');
+    assert.equal(arts[0].jwt, false);
+    assert.equal(arts[0].url, 'https://pre.issuer.wallet.ipzs.it/.well-known/openid-credential-issuer');
+    assert.match(arts[0].raw, /"credential_issuer"/);
+    assert.equal(arts[0].payload.credential_issuer, 'https://pre.issuer.wallet.ipzs.it');
+    assert.ok(arts[0].excerpt.dc_sd_jwt_mDL);
+    assert.ok(arts[0].excerpt.mso_mdoc_mDL);
+    assert.equal(arts[0].excerpt.dc_sd_jwt_mDL.format, 'dc+sd-jwt');
+    assert.match(formatArtifactView(arts[0], 'excerpt'), /"dc_sd_jwt_mDL"/);
+    assert.doesNotMatch(formatArtifactView(arts[0], 'excerpt'), /dc_sd_jwt_pid/);
+    assert.equal(arts[1].title, 'openid-federation');
+    assert.equal(arts[1].jwt, true);
+    assert.equal(arts[1].url, 'https://pre.issuer.wallet.ipzs.it/.well-known/openid-federation');
+    assert.equal(arts[1].payload.iss, 'https://pre.issuer.wallet.ipzs.it');
+    assert.ok(arts[1].payload.metadata.openid_credential_issuer);
+    assert.ok(arts[1].excerpt.dc_sd_jwt_mDL);
+  });
+
+  it('shows signed issuer metadata JWT, federation entity and pid configuration excerpt', () => {
+    const arts = issuerMetadataArtifactsForCredential(graph.byId.get('credential:pid'), dump);
+    assert.equal(arts.length, 2);
+    assert.equal(arts[0].jwt, true);
+    assert.equal(arts[0].url, 'https://pre.eid.wallet.ipzs.it/1-3/.well-known/openid-credential-issuer');
+    assert.match(arts[0].raw, /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\./);
+    assert.ok(arts[0].header?.alg);
+    assert.equal(arts[0].payload.credential_issuer, 'https://pre.eid.wallet.ipzs.it/1-3');
+    assert.ok(arts[0].excerpt.dc_sd_jwt_pid);
+    assert.equal(arts[0].excerpt.dc_sd_jwt_pid.scope, 'pid');
+    assert.match(formatArtifactView(arts[0], 'header'), /alg/);
+    assert.match(formatArtifactView(arts[0], 'payload'), /credential_configurations_supported/);
+    assert.equal(arts[1].title, 'openid-federation');
+    assert.equal(arts[1].url, 'https://pre.eid.wallet.ipzs.it/1-3/.well-known/openid-federation');
+    assert.equal(arts[1].payload.sub, 'https://pre.eid.wallet.ipzs.it/1-3');
+    assert.ok(arts[1].excerpt.dc_sd_jwt_pid);
+  });
+
+  it('does not flag aligned openid-credential-issuer and openid-federation', () => {
+    const groups = issuerWellKnownGroupsForCredential(graph.byId.get('credential:mDL'), dump);
+    assert.equal(groups.length, 1);
+    assert.equal(groups[0].mismatches.length, 0);
+    const pid = issuerWellKnownGroupsForCredential(graph.byId.get('credential:pid'), dump);
+    assert.equal(pid[0].mismatches.length, 0);
+  });
+
+  it('flags when openid-credential-issuer and openid-federation metadata diverge', () => {
+    const iss = 'https://pre.issuer.wallet.ipzs.it';
+    const mutated = {
+      ...dump,
+      issuerFederation: {
+        ...dump.issuerFederation,
+        [iss]: {
+          ...dump.issuerFederation[iss],
+          metadata: {
+            ...dump.issuerFederation[iss].metadata,
+            openid_credential_issuer: {
+              ...dump.issuerFederation[iss].metadata.openid_credential_issuer,
+              credential_endpoint: 'https://evil.example/credential',
+            },
+          },
+        },
+      },
+    };
+    const groups = issuerWellKnownGroupsForCredential(graph.byId.get('credential:mDL'), mutated);
+    assert.ok(groups[0].mismatches.some((m) => m.path === 'credential_endpoint' && m.code === 'field'));
+    const missingFed = compareIssuerWellKnown(dump.issuerMetadata[iss], null, {
+      ociUrl: `${iss}/.well-known/openid-credential-issuer`,
+      fedUrl: `${iss}/.well-known/openid-federation`,
+    });
+    assert.ok(missingFed.some((m) => m.code === 'missing-federation'));
   });
 });
 
@@ -194,6 +277,17 @@ describe('search', () => {
     assert.match(understoodQuery('+mDL -pid', 'it'), /Interpretata/);
     assert.ok(parsed.tokens.some((t) => t.kind === 'field'));
   });
+
+  it('maps result kinds to Bootstrap Italia icons', () => {
+    assert.equal(kindIconId('credential'), 'it-card');
+    assert.equal(kindIconId('issuer'), 'it-pa');
+    assert.equal(kindIconId('authentic_source'), 'it-inbox');
+    assert.equal(kindIconId('schema'), 'it-file');
+    assert.equal(kindIconId('claim'), 'it-list');
+    assert.equal(kindIconId('domain'), 'it-folder');
+    assert.equal(kindIconId('class'), 'it-bookmark');
+    assert.equal(kindIconId('unknown'), 'it-file');
+  });
 });
 
 describe('registry environments', () => {
@@ -239,6 +333,15 @@ describe('http traces', () => {
     assert.equal(catalog.status, 200);
     assert.equal(catalog.applicationType, 'application/jose');
     assert.ok(catalog.durationMs >= 0);
+  });
+});
+
+describe('CORS live faults', () => {
+  it('treats status 0 Failed to fetch as a CORS failure', () => {
+    assert.equal(isCorsFailure({ ok: false, status: 0, error: 'Failed to fetch' }), true);
+    assert.equal(isCorsFailure({ ok: false, status: 0, error: 'Load failed' }), true);
+    assert.equal(isCorsFailure({ ok: false, status: 403, error: 'HTTP 403' }), false);
+    assert.equal(isCorsFailure({ ok: true, status: 200, error: null }), false);
   });
 });
 
@@ -427,6 +530,79 @@ describe('demo credential', () => {
     assert.ok(ns['it.ipzs.wallet.ta.av.1'].some((el) => el.elementIdentifier === 'issuing_authority'));
     assert.match(mdoc.diagnostic, /"elementIdentifier": "age_over_18"/);
     assert.match(mdoc.diagnostic, /24\(<</);
+  });
+
+  it('builds a smartcard model from credential_configuration display metadata', async () => {
+    const node = graph.byId.get('credential:mDL');
+    const items = await buildDemoCredentials(node, dump);
+    const cards = demoCardModels(items, { dump, node, lang: 'it' });
+    assert.equal(cards.length, 2);
+    assert.equal(cards[0].name, 'Patente di guida');
+    assert.match(cards[0].description, /Patente/);
+    assert.equal(cards[0].givenName, 'Mario');
+    assert.equal(cards[0].familyName, 'Rossi');
+    assert.equal(cards[0].configurationId, 'dc_sd_jwt_mDL');
+    assert.equal(cards[0].themedFromMetadata, false);
+    assert.ok(cards[0].claims.some((row) => row.label === 'Numero' && String(row.value).includes('IT-DEMO')));
+    assert.equal(cards[0].claims.some((row) => row.id === 'cnf' || row.id === 'iss'), false);
+    const en = demoCardModels(items, { dump, node, lang: 'en' });
+    assert.equal(en[0].name, 'Mobile Driving Licence');
+    assert.equal(cards[1].configurationId, 'mso_mdoc_mDL');
+    assert.equal(cards[1].name, 'Patente di guida');
+  });
+
+  it('shows Age Verification claims including age_over_18 on the AV card', async () => {
+    const node = graph.byId.get('credential:av');
+    const items = await buildDemoCredentials(node, dump);
+    const cards = demoCardModels(items, { dump, node, lang: 'it' });
+    assert.equal(cards[0].name, 'Età certificata');
+    const age = cards[0].claims.find((row) => row.id === 'age_over_18');
+    assert.equal(age?.label, 'Maggiore età');
+    assert.equal(age?.boolean, true);
+    assert.equal(age?.booleanValue, true);
+  });
+
+  it('applies background_color and text_color from display when present', () => {
+    assert.equal(isCssColor('#112233'), true);
+    assert.equal(isCssColor('blue'), false);
+    assert.equal(pickLocalizedDisplay([{ locale: 'en-US', name: 'EN' }, { locale: 'it-IT', name: 'IT' }], 'it').name, 'IT');
+    const node = { kind: 'credential', credential_type: 'mDL', label: 'mDL' };
+    const dumpLite = {
+      catalog: { credentials: [{ credential_type: 'mDL', issuers: [{ entity_id: 'https://issuer.example' }] }] },
+      issuerMetadata: {
+        'https://issuer.example': {
+          credential_issuer: 'https://issuer.example',
+          display: [{ locale: 'it-IT', name: 'Issuer Demo', logo: { uri: 'https://issuer.example/logo.svg', alt_text: 'logo' } }],
+          credential_configurations_supported: {
+            dc_sd_jwt_mDL: {
+              format: 'dc+sd-jwt',
+              scope: 'mDL',
+              credential_metadata: {
+                display: [
+                  {
+                    locale: 'it-IT',
+                    name: 'Patente colorata',
+                    background_color: '#ffcc00',
+                    text_color: '#111111',
+                  },
+                ],
+                claims: [{ path: ['given_name'], display: [{ locale: 'it-IT', name: 'Nome' }] }],
+              },
+            },
+          },
+        },
+      },
+    };
+    const cards = demoCardModels(
+      [{ format: 'dc+sd-jwt', reconstructed: { given_name: 'Mario', family_name: 'Rossi' } }],
+      { dump: dumpLite, node, lang: 'it' },
+    );
+    assert.equal(cards[0].name, 'Patente colorata');
+    assert.equal(cards[0].backgroundColor, '#ffcc00');
+    assert.equal(cards[0].textColor, '#111111');
+    assert.equal(cards[0].themedFromMetadata, true);
+    assert.equal(cards[0].logoUri, 'https://issuer.example/logo.svg');
+    assert.equal(cards[0].issuerName, 'Issuer Demo');
   });
 
   it('encodes canonical CBOR majors used by mdoc', () => {

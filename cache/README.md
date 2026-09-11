@@ -1,9 +1,9 @@
-# Dump locale del Registro IT-Wallet
+# Local dump of the IT-Wallet Registry
 
-Questa cartella **non** si compila a mano. È scritta da `npm run dump` / dalla CD nightly.
+Do **not** edit this folder by hand. It is written by `npm run dump` / the nightly CD.
 
-- I file sotto `<host>/` sono i body REST **inalterati** (JWT del catalogo incluso).
-- `manifest.json` è l’indice interno del dump di **collaudo** (compatibilità).
-- `manifest-pre.json` / `manifest-prod.json` sono gli indici per ambiente (`pre` → `https://pre.ta.wallet.ipzs.it`, `prod` → `https://ta.wallet.ipzs.it`).
+- Files under `<host>/` are **unaltered** REST bodies (including the catalog JWT).
+- `manifest.json` is the internal index of the **pre-production** dump (compatibility alias).
+- `manifest-pre.json` / `manifest-prod.json` are per-environment indexes (`pre` → `https://pre.ta.wallet.ipzs.it`, `prod` → `https://ta.wallet.ipzs.it`).
 
-Vedi [docs/CACHE-AND-CI.md](../docs/CACHE-AND-CI.md).
+See [docs/CACHE-AND-CI.md](../docs/CACHE-AND-CI.md).

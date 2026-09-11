@@ -1,72 +1,72 @@
-# Grafo gerarchico
+# Hierarchical graph
 
 ## 1. Layout
 
-Cytoscape.js + estensione `cytoscape-dagre`:
+Cytoscape.js + `cytoscape-dagre` extension:
 
-- `rankDir: 'TB'` (radice in alto, foglie in basso)
-- `rankSep` / `nodeSep` tali da non sovrapporre label su desktop
-- nodi compound opzionali per i cinque registri (box Catalogo, Schemi, …)
+- `rankDir: 'TB'` (root at the top, leaves at the bottom)
+- `rankSep` / `nodeSep` such that labels do not overlap on desktop
+- optional compound nodes for the five registries (Catalog, Schemas, … boxes)
 
-Ridotto movimento se `prefers-reduced-motion: reduce` (niente `animate` sul layout).
+Reduced motion if `prefers-reduced-motion: reduce` (no `animate` on the layout).
 
-## 2. Tipi di nodo
+## 2. Node types
 
-| `kind` | Forma / colore (Bootstrap Italia) | Esempio |
+| `kind` | Shape / colour (Bootstrap Italia) | Example |
 |--------|-----------------------------------|---------|
-| `registry` | radice, blu primario | IT-Wallet Registry |
-| `catalog` `schemas` `claims` `authentic_sources` `taxonomy` | contenitori | i cinque elenchi |
-| `credential` | documento | `mDL`, `pid`, `av` |
-| `issuer` | organizzazione | entity_id emittente |
-| `authentic_source` | organizzazione secondaria | MIT / FA |
-| `schema` | ingranaggio | `mDL+mso_mdoc+…` |
-| `claim` | attributo | `family_name` |
-| `domain` `class` `purpose` | tassonomia | `IDENTITY` |
+| `registry` | root, primary blue | IT-Wallet Registry |
+| `catalog` `schemas` `claims` `authentic_sources` `taxonomy` | containers | the five lists |
+| `credential` | document / `it-card` in the list | `mDL`, `pid`, `av` |
+| `issuer` | organisation / `it-pa` | issuer `entity_id` |
+| `authentic_source` | secondary organisation / `it-inbox` | MIT / authentic source |
+| `schema` | gear / `it-file` | `mDL+mso_mdoc+…` |
+| `claim` | attribute / `it-list` | `family_name` |
+| `domain` `class` `purpose` | taxonomy / `it-folder`, `it-bookmark` | `IDENTITY` |
 
-Un issuer o una FA che serve più attestati è **un solo nodo** con più archi.
+An issuer or authentic source that serves several attestations is **one node** with several edges.
 
-## 3. Archi
+## 3. Edges
 
 ```text
 registry → catalog → credential
 credential → issuer
 credential → authentic_source
 registry → schemas → schema
-credential → schema          (stesso credential_type)
+credential → schema          (same credential_type)
 registry → claims → claim
 authentic_source → claim     (available_claims)
 registry → taxonomy → domain → class → credential
 ```
 
-Non si inventano archi issuer↔FA se il catalogo non li dichiara: il percorso è credenziale in mezzo.
+Do not invent issuer↔authentic-source edges if the catalog does not declare them: the path goes through the credential.
 
-## 4. Filtro da ricerca
+## 4. Filter from search
 
-Input: insieme M dei nodi matchati.
+Input: set M of matched nodes.
 
-Visibili:
+Visible:
 
 - M
-- tutti gli antenati fino a `registry` (chiusura gerarchica)
-- per ogni `credential` in M: issuer, FA, schemi collegati
-- archi tra nodi visibili
+- all ancestors up to `registry` (hierarchical closure)
+- for each `credential` in M: linked issuers, authentic sources, schemas
+- edges among visible nodes
 
-Niente “fantasma” dei non-match (default). Toggle SHOULD «mostra resto in grigio».
+No “ghost” of non-matches (default). SHOULD toggle “show the rest in grey”.
 
-## 5. Interazione
+## 5. Interaction
 
-- click / Enter: pannello dettaglio sotto lista e grafo (metadati, **artefatti grezzi** JWS/JSON/CDDL, offer QR)
-- trascinamento: i nodi sono **spostabili** con il mouse (o touch); lo sfondo continua a fare pan
-- tastiera: il grafo NON è l’unico controllo; la lista sopra è sincronizzata
-- layout: il grafo occupa tutta la larghezza disponibile della riga di pagina
-- zoom/pan: pulsanti icona Bootstrap Italia (`it-zoom-in`, `it-zoom-out`, `it-maximize`) e rotella
-- selezione sincronizzata lista ↔ grafo
+- click / Enter: detail panel under list and graph (metadata, **raw artifacts** JWS/JSON/CDDL, offer QR)
+- drag: nodes are **movable** with the mouse (or touch); the background still pans
+- keyboard: the graph is NOT the only control; the list above is synchronised
+- layout: the graph uses the full available width of the page row
+- zoom/pan: Bootstrap Italia icon buttons (`it-zoom-in`, `it-zoom-out`, `it-maximize`) and the wheel
+- list ↔ graph selection stays in sync
 
-## 6. Dati attesi (dump 9/9/2026)
+## 6. Expected data (dump 9/9/2026)
 
-**Collaudo** (`pre`, `https://pre.ta.wallet.ipzs.it`): 10 `credential_type` tutti `pub-eaa`:  
+**Pre-production** (`pre`, `https://pre.ta.wallet.ipzs.it`): 10 `credential_type` values, all `pub-eaa`:  
 `av`, `education_attendance`, `education_degree`, `education_diploma`, `education_enrollment`, `EuropeanDisabilityCard`, `EuropeanHealthInsuranceCard`, `mDL`, `pid`, `residency`.
 
-18 schemi (più formati per tipo). Il grafo deve far vedere **due schemi** (sd-jwt e mdoc) dove entrambi esistono, e un solo formato dove l’inventario è incompleto (PID solo SD-JWT, AV solo mdoc, secondo il manuale).
+18 schemas (more than one format per type). The graph MUST show **two schemas** (sd-jwt and mdoc) where both exist, and a single format where the inventory is incomplete (PID SD-JWT only, AV mdoc only, per the handbook).
 
-**Produzione** (`prod`, `https://ta.wallet.ipzs.it`): dump su disco (`manifest-prod.json`, `cache/ta.wallet.ipzs.it/`). Selezionabile dall’UI (F-12). Il grafo MUST restare usabile anche se il catalogo prod è più magro o in errore (bacheca, non crash).
+**Production** (`prod`, `https://ta.wallet.ipzs.it`): on-disk dump (`cache/manifest-prod.json`, `cache/ta.wallet.ipzs.it/`). Selectable from the UI (F-12). The graph MUST stay usable even if the prod catalog is thinner or in error (board, not crash).

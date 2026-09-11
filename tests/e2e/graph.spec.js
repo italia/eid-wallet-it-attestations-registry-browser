@@ -24,6 +24,10 @@ test.describe('graph and search UI', () => {
     }
 
     await expect(page.locator('#results-list button')).toHaveCount(10);
+    await expect(page.locator('#results-list button[data-kind="credential"] .result-kind-icon use')).toHaveCount(10);
+    await expect(
+      page.locator('#results-list button[data-node-id="credential:mDL"] .result-kind-icon use'),
+    ).toHaveAttribute('href', /#it-card$/);
     await expect(page.locator('#registry-graph .graph-placeholder')).toHaveCount(0);
   });
 
@@ -100,6 +104,22 @@ test.describe('graph and search UI', () => {
     expect(stats.visibleIds).not.toContain('credential:pid');
   });
 
+  test('issuer and schema results use distinct Bootstrap Italia icons', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await waitForGraph(page);
+    await page.locator('#tab-list').click({ force: true }).catch(() => {});
+    await search(page, 'kind:issuer');
+    await expect(page.locator('#results-list button[data-kind="issuer"] .result-kind-icon use').first()).toHaveAttribute(
+      'href',
+      /#it-pa$/,
+    );
+    await search(page, 'kind:schema');
+    await expect(page.locator('#results-list button[data-kind="schema"] .result-kind-icon use').first()).toHaveAttribute(
+      'href',
+      /#it-file$/,
+    );
+  });
+
   test('clicking a graph node shows raw artifacts', async ({ page }, testInfo) => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     await waitForGraph(page);
@@ -141,6 +161,29 @@ test.describe('graph and search UI', () => {
     await expect(page.locator('#artifact-0-excerpt')).toContainText('mDL');
     await expect(page.locator('#artifact-0-excerpt details.json-node').first()).toBeVisible();
     await expect(page.locator('#node-artifacts')).toContainText('data-model');
+    await expect(page.locator('#credential-issuer')).toBeVisible();
+    await expect(page.locator('#issuer-heading')).toBeVisible();
+    await expect(
+      page.locator('#credential-issuer a[href="https://pre.issuer.wallet.ipzs.it/.well-known/openid-credential-issuer"]'),
+    ).toBeVisible();
+    await expect(
+      page.locator('#credential-issuer a[href="https://pre.issuer.wallet.ipzs.it/.well-known/openid-federation"]'),
+    ).toBeVisible();
+    await expect(page.locator('#issuer-mismatch-0')).toHaveCount(0);
+    await expect(page.locator('#issuer-artifact-0-signed')).toContainText('credential_issuer');
+    await expect(page.locator('#issuer-artifact-0-payload-tab')).toBeVisible();
+    await page.locator('#issuer-artifact-0-payload-tab').click();
+    await expect(page.locator('#issuer-artifact-0-payload')).toContainText('credential_configurations_supported');
+    await page.locator('#issuer-artifact-0-excerpt-tab').click();
+    await expect(page.locator('#issuer-artifact-0-excerpt')).toContainText('dc_sd_jwt_mDL');
+    await expect(page.locator('#issuer-artifact-0-excerpt')).toContainText('mso_mdoc_mDL');
+    await expect(page.locator('#issuer-artifact-0-excerpt')).not.toContainText('dc_sd_jwt_pid');
+    await expect(page.locator('#issuer-artifact-1-signed-tab')).toBeVisible();
+    await page.locator('#issuer-artifact-1-payload-tab').click();
+    await expect(page.locator('#issuer-artifact-1-payload')).toContainText('openid_credential_issuer');
+    await expect(page.locator('#issuer-artifact-1-excerpt')).toBeHidden();
+    await page.locator('#issuer-artifact-1-excerpt-tab').click();
+    await expect(page.locator('#issuer-artifact-1-excerpt')).toContainText('dc_sd_jwt_mDL');
     await expect(page.locator('#credential-example')).toBeVisible();
     await expect(page.locator('#example-heading')).toBeVisible();
     const demoWarn = page.locator('#example-warning');
@@ -148,6 +191,13 @@ test.describe('graph and search UI', () => {
     await expect(demoWarn).toHaveClass(/alert-warning/);
     await expect(demoWarn).toHaveAttribute('role', 'alert');
     await expect(page.locator('#example-disclaimer')).toContainText(/esemplificazione|illustration only/i);
+    await expect(page.locator('#example-cards-heading')).toBeVisible();
+    await expect(page.locator('#example-card-0-name')).toContainText('Patente');
+    await expect(page.locator('#example-card-0-fullname')).toContainText('Mario Rossi');
+    await expect(page.locator('#example-card-0-claims')).toContainText('Numero');
+    await expect(page.locator('#example-card-0-claims')).toContainText('IT-DEMO-0001');
+    await expect(page.locator('#example-card-0-config')).toHaveText('dc_sd_jwt_mDL');
+    await expect(page.locator('#example-card-1-config')).toHaveText('mso_mdoc_mDL');
     const keysLink = page.locator('#example-keys-link');
     await expect(keysLink).toBeVisible();
     await expect(keysLink).toHaveText('demo/keys/');
@@ -208,5 +258,30 @@ test.describe('graph and search UI', () => {
     await expect(page.locator('#registry-search')).toHaveValue(/legal_type:pub-eaa/);
     await page.waitForFunction(() => window.__ITW_EXPLORER__?.selectedId === 'credential:mDL');
     expect(new URL(page.url()).searchParams.get('node')).toBe('credential:mDL');
+  });
+
+  test('CORS warning banner when live Trust Anchor requests fail', async ({ page }) => {
+    await page.route('https://pre.ta.wallet.ipzs.it/**', (route) => route.abort());
+    await page.route('https://ta.wallet.ipzs.it/**', (route) => route.abort());
+    await page.goto('/?live=1', { waitUntil: 'domcontentloaded' });
+    await waitForGraph(page);
+    const alert = page.locator('#cors-fault-alert');
+    await expect(alert).toBeVisible({ timeout: 30_000 });
+    await expect(alert).toHaveClass(/alert-warning/);
+    await expect(alert).toHaveAttribute('role', 'alert');
+    await expect(page.locator('#cors-fault-text')).toContainText(/CORS|HTTP/i);
+    const link = page.locator('#cors-fault-link');
+    await expect(link).toBeVisible();
+    await expect(link).toHaveClass(/alert-link/);
+    await expect(link).toHaveAttribute(
+      'href',
+      'https://github.com/italia/eid-wallet-it-attestations-registry-browser/blob/main/docs/CACHE-AND-CI.md#cors-and-waf',
+    );
+    await page.locator('#message-board-toggle').click();
+    await expect(page.locator('#board-cors-help')).toBeVisible();
+    await expect(page.locator('#board-cors-link')).toHaveAttribute(
+      'href',
+      'https://github.com/italia/eid-wallet-it-attestations-registry-browser/blob/main/docs/CACHE-AND-CI.md#cors-and-waf',
+    );
   });
 });

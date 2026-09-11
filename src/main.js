@@ -13,9 +13,15 @@ import {
 import { buildRegistryGraph, facetOptions, visibleClosure } from './js/graph/model.js';
 import { createRegistryGraphView } from './js/graph/view.js';
 import { getQueryField, matchedNodeIds, parseQuery, searchDocuments, setQueryField, understoodQuery } from './js/search/index.js';
-import { artifactsForNode, renderArtifacts } from './js/artifacts/artifacts.js';
+import { kindIconId, kindLabelKey } from './js/results/kind-icon.js';
+import {
+  artifactsForNode,
+  issuerWellKnownGroupsForCredential,
+  renderArtifacts,
+} from './js/artifacts/artifacts.js';
 import { configurationIdsFor, credentialOfferHref, credentialOfferObject, decryptIssuerState, encryptIssuerState, issuerStateUrn } from './js/offer/offer.js';
 import { buildDemoCredentials } from './js/demo/example.js';
+import { demoCardModels } from './js/demo/card.js';
 import { demoEncPrivateJwkText } from './js/demo/material.js';
 import demoEncPublicPem from '../demo/keys/issuer-state-enc.public.pem?raw';
 import QRCode from 'qrcode';
@@ -254,6 +260,7 @@ async function applyLocale(lang) {
       total: cacheLoading.total,
     });
   }
+  if (state.graph) applyQuery(state.query);
 }
 
 function renderStatic(dict) {
@@ -292,13 +299,19 @@ function renderStatic(dict) {
   set('graph-heading', dict.graph.heading);
   set('message-board-title', dict.board.title);
   set('message-board-toggle-label', dict.board.open);
-  set('board-cors-title', dict.board.corsTitle);
+  set('cors-fault-text', dict.board.corsBanner);
   set('board-cors-body', dict.board.corsBody);
-  set('board-cors-step1', dict.board.corsStep1);
-  set('board-cors-step2', dict.board.corsStep2);
-  set('board-cors-step3', dict.board.corsStep3);
-  set('board-cors-step4', dict.board.corsStep4);
-  set('board-cors-warn', dict.board.corsWarn);
+  const corsHref = dict.board.corsDocsHref;
+  const corsLink = document.getElementById('cors-fault-link');
+  if (corsLink) {
+    corsLink.textContent = dict.board.corsReadMore;
+    if (corsHref) corsLink.setAttribute('href', corsHref);
+  }
+  const boardCorsLink = document.getElementById('board-cors-link');
+  if (boardCorsLink) {
+    boardCorsLink.textContent = dict.board.corsReadMore;
+    if (corsHref) boardCorsLink.setAttribute('href', corsHref);
+  }
   set('footer-legal', dict.footer.legal);
   set('footer-docs', dict.footer.docs);
   set('footer-accessibility', dict.footer.accessibility);
@@ -452,7 +465,16 @@ function renderResults(docs) {
     btn.dataset.bsTarget = `#${collapseId}`;
     btn.setAttribute('aria-expanded', 'false');
     btn.setAttribute('aria-controls', collapseId);
-    btn.textContent = doc.label;
+    const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    icon.classList.add('icon', 'icon-primary', 'result-kind-icon');
+    icon.setAttribute('aria-hidden', 'true');
+    icon.setAttribute('focusable', 'false');
+    const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+    use.setAttribute('href', `#${kindIconId(doc.kind)}`);
+    icon.appendChild(use);
+    const kindText = field('span', { className: 'visually-hidden' }, t(kindLabelKey(doc.kind)));
+    const label = field('span', { className: 'result-label' }, doc.label);
+    btn.replaceChildren(icon, kindText, label);
 
     const collapse = document.createElement('div');
     collapse.id = collapseId;
@@ -621,6 +643,9 @@ async function renderDetail(node) {
   host.append(title, body);
 
   if (node.kind !== 'credential') return;
+  const issuerHost = field('div', { id: 'credential-issuer', className: 'credential-issuer mt-3' });
+  body.appendChild(issuerHost);
+  renderCredentialIssuer(issuerHost, node);
   const exampleHost = field('div', { id: 'credential-example', className: 'credential-example mt-3' });
   body.appendChild(exampleHost);
   await renderCredentialExample(exampleHost, node);
@@ -705,6 +730,163 @@ function buildOfferShell() {
   return box;
 }
 
+function previewMismatchValue(value) {
+  if (value == null || value === '') return '';
+  const text = String(value);
+  return text.length > 160 ? `${text.slice(0, 157)}…` : text;
+}
+
+function formatIssuerMismatch(mismatch) {
+  const vars = {
+    url: mismatch.url || '',
+    path: mismatch.path || '',
+    left: previewMismatchValue(mismatch.left),
+    right: previewMismatchValue(mismatch.right),
+    iss: previewMismatchValue(mismatch.left),
+    sub: previewMismatchValue(mismatch.right),
+    value: previewMismatchValue(mismatch.left || mismatch.right),
+  };
+  if (mismatch.code === 'missing-credential-issuer') return t('issuer.mismatchMissingIssuer', vars);
+  if (mismatch.code === 'missing-federation') return t('issuer.mismatchMissingFederation', vars);
+  if (mismatch.code === 'missing-nested-oci') return t('issuer.mismatchMissingNested');
+  if (mismatch.code === 'iss-sub') return t('issuer.mismatchIssSub', vars);
+  if (mismatch.code === 'issuer-id') return t('issuer.mismatchIssuerId', vars);
+  if (mismatch.code === 'only-issuer') return t('issuer.mismatchOnlyIssuer', vars);
+  if (mismatch.code === 'only-federation') return t('issuer.mismatchOnlyFederation', vars);
+  return t('issuer.mismatchField', vars);
+}
+
+function renderCredentialIssuer(host, node) {
+  host.replaceChildren();
+  host.setAttribute('aria-labelledby', 'issuer-heading');
+  host.appendChild(field('h3', { className: 'h6', id: 'issuer-heading' }, t('issuer.heading')));
+  const groups = issuerWellKnownGroupsForCredential(node, state.dump);
+  if (!groups.length) {
+    host.appendChild(field('p', { className: 'form-text', id: 'issuer-empty' }, t('issuer.empty')));
+    return;
+  }
+  groups.forEach((group, gi) => {
+    const wrap = field('div', { className: 'issuer-wellknown', id: `issuer-group-${gi}` });
+    wrap.dataset.issuerId = group.issuerId;
+    if (group.mismatches.length) {
+      const alert = field('div', {
+        id: `issuer-mismatch-${gi}`,
+        className: 'alert alert-warning issuer-mismatch',
+        role: 'alert',
+      });
+      alert.append(
+        field('p', { className: 'alert-heading h6 mb-1', id: `issuer-mismatch-${gi}-title` }, t('issuer.mismatchHeading')),
+        field('p', { className: 'small mb-2', id: `issuer-mismatch-${gi}-lead` }, group.issuerId),
+      );
+      const list = field('ul', { className: 'mb-0', id: `issuer-mismatch-${gi}-list` });
+      for (const mismatch of group.mismatches) {
+        list.appendChild(field('li', {}, formatIssuerMismatch(mismatch)));
+      }
+      alert.appendChild(list);
+      wrap.appendChild(alert);
+    }
+    if (!group.artifacts.length) {
+      wrap.appendChild(
+        field('p', { className: 'form-text', id: gi === 0 ? 'issuer-empty' : `issuer-empty-${gi}` }, t('issuer.empty')),
+      );
+    } else {
+      const arts = field('div', {
+        id: gi === 0 ? 'credential-issuer-artifacts' : `credential-issuer-artifacts-${gi}`,
+      });
+      wrap.appendChild(arts);
+      renderArtifacts(arts, group.artifacts, t, {
+        heading: false,
+        idPrefix: gi === 0 ? 'issuer-artifact' : `issuer-artifact-${gi}`,
+      });
+    }
+    host.appendChild(wrap);
+  });
+}
+
+function renderDemoCard(model, index) {
+  const style = [
+    model.backgroundColor ? `--demo-card-bg: ${model.backgroundColor}` : '',
+    model.textColor ? `--demo-card-fg: ${model.textColor}` : '',
+    model.mutedColor ? `--demo-card-muted: ${model.mutedColor}` : '',
+    model.backgroundImage ? `--demo-card-image: url("${model.backgroundImage}")` : '',
+  ]
+    .filter(Boolean)
+    .join('; ');
+  const card = field('article', {
+    className: `demo-card${model.themedFromMetadata ? ' demo-card--metadata' : ''}`,
+    id: `example-card-${index}`,
+  });
+  card.setAttribute('aria-label', model.name);
+  if (style) card.setAttribute('style', style);
+
+  const header = field('header', { className: 'demo-card-header' });
+  if (model.logoUri) {
+    const logo = field('img', {
+      className: 'demo-card-logo',
+      src: model.logoUri,
+      alt: model.logoAlt || '',
+      id: `example-card-${index}-logo`,
+    });
+    logo.referrerPolicy = 'no-referrer';
+    logo.addEventListener('error', () => {
+      logo.hidden = true;
+    });
+    header.appendChild(logo);
+  }
+  const titles = field('div', { className: 'demo-card-titles' });
+  titles.append(
+    field('p', { className: 'demo-card-name', id: `example-card-${index}-name` }, model.name),
+    field('p', { className: 'demo-card-description', id: `example-card-${index}-description` }, model.description),
+  );
+  header.appendChild(titles);
+  if (model.format) {
+    header.appendChild(field('p', { className: 'demo-card-format', id: `example-card-${index}-format` }, model.format));
+  }
+  card.appendChild(header);
+
+  const identity = field('div', { className: 'demo-card-identity' });
+  const photo = field('div', { className: 'demo-card-photo', id: `example-card-${index}-photo` });
+  photo.setAttribute('aria-hidden', 'true');
+  if (model.photoSrc) {
+    const img = field('img', { className: 'demo-card-photo-img', src: model.photoSrc, alt: '' });
+    img.addEventListener('error', () => {
+      img.remove();
+      photo.textContent = model.initials;
+    });
+    photo.appendChild(img);
+  } else {
+    photo.textContent = model.initials;
+  }
+  const who = field('div', { className: 'demo-card-who' });
+  const fullName = [model.givenName, model.familyName].filter(Boolean).join(' ');
+  if (fullName) who.appendChild(field('p', { className: 'demo-card-fullname', id: `example-card-${index}-fullname` }, fullName));
+  if (model.issuerName) {
+    who.appendChild(field('p', { className: 'demo-card-issuer', id: `example-card-${index}-issuer` }, `${t('example.cardIssuer')}: ${model.issuerName}`));
+  }
+  identity.append(photo, who);
+  card.appendChild(identity);
+
+  if (model.claims.length) {
+    const dl = field('dl', { className: 'demo-card-claims', id: `example-card-${index}-claims` });
+    for (const claim of model.claims) {
+      const wrap = field('div', { className: 'demo-card-claim' });
+      const dt = field('dt', {}, claim.label);
+      if (claim.description) dt.title = claim.description;
+      const dd = field('dd', {});
+      if (claim.boolean) dd.textContent = claim.booleanValue ? t('example.yes') : t('example.no');
+      else dd.textContent = claim.value;
+      wrap.append(dt, dd);
+      dl.appendChild(wrap);
+    }
+    card.appendChild(dl);
+  }
+
+  if (model.configurationId) {
+    card.appendChild(field('p', { className: 'demo-card-config', id: `example-card-${index}-config` }, model.configurationId));
+  }
+  return card;
+}
+
 async function renderCredentialExample(host, node) {
   host.replaceChildren();
   host.setAttribute('aria-labelledby', 'example-heading');
@@ -725,6 +907,19 @@ async function renderCredentialExample(host, node) {
     if (!items.length) {
       host.appendChild(field('p', { className: 'form-text', id: 'example-empty' }, t('example.empty')));
       return;
+    }
+    const models = demoCardModels(items, { dump: state.dump, node, lang: currentLang() });
+    if (models.length) {
+      const cards = field('div', { id: 'example-cards', className: 'example-cards' });
+      cards.setAttribute('aria-labelledby', 'example-cards-heading');
+      cards.append(
+        field('h4', { className: 'h6', id: 'example-cards-heading' }, t('example.cardHeading')),
+        field('p', { className: 'form-text', id: 'example-cards-hint' }, t('example.cardHint')),
+      );
+      const row = field('div', { className: 'example-cards-row', id: 'example-cards-row' });
+      models.forEach((model, index) => row.appendChild(renderDemoCard(model, index)));
+      cards.appendChild(row);
+      host.appendChild(cards);
     }
     const artifacts = items.map((item) => {
       const artifact = item.artifact;
@@ -863,10 +1058,24 @@ function rebuildGraph() {
   }
 }
 
+function liveCorsFaults(calls) {
+  return (calls || []).some((call) => call.source === 'live' && isCorsFailure(call));
+}
+
+function syncCorsFaultUi() {
+  const visible = liveCorsFaults(state.dump?.httpCalls);
+  const alertEl = document.getElementById('cors-fault-alert');
+  if (alertEl) {
+    alertEl.hidden = !visible;
+    alertEl.setAttribute('aria-hidden', visible ? 'false' : 'true');
+  }
+  board.setCorsVisible(visible);
+}
+
 function publishBoard() {
   const calls = state.dump?.httpCalls || [];
   board.setHttpCalls(calls, { retry: retryCall });
-  board.setCorsVisible(calls.some((c) => isCorsFailure(c)));
+  syncCorsFaultUi();
 }
 
 function findManifestEntry(call) {
@@ -967,10 +1176,26 @@ function appendTrustRows(dump) {
   }
 }
 
+async function probeLiveCors(baseUrl) {
+  const url = `${String(baseUrl || '').replace(/\/$/, '')}/.well-known/it-wallet-registry`;
+  const result = await timedFetch(url, fetch, {
+    headers: { Accept: 'application/json, application/jwt;q=0.9, */*;q=0.1' },
+  });
+  result.http.source = 'live';
+  result.http.endpoint = url;
+  return result.http;
+}
+
 async function startLiveRefresh(gen) {
   if (!state.dump) return;
   state.liveRefreshing = true;
   board.setPending(t('board.liveRefresh'));
+  const probe = await probeLiveCors(currentEnv().baseUrl);
+  if (gen !== dumpGeneration) return;
+  if (isCorsFailure(probe)) {
+    upsertHttpCall(probe);
+    publishBoard();
+  }
   const { changed, httpCalls } = await refreshDumpLive(state.dump, {
     shouldAbort: () => gen !== dumpGeneration,
     onCall: (http) => {
@@ -1017,6 +1242,12 @@ async function bootDump() {
   const spec = currentEnv();
   syncEnvUi();
   board.clear();
+  board.setCorsVisible(false);
+  const corsAlert = document.getElementById('cors-fault-alert');
+  if (corsAlert) {
+    corsAlert.hidden = true;
+    corsAlert.setAttribute('aria-hidden', 'true');
+  }
   setCacheLoading({ active: true, current: 0, total: 0 });
   const onProgress = (progress) => {
     if (gen !== dumpGeneration) return;
@@ -1077,6 +1308,7 @@ async function bootDump() {
       /* verification is best-effort */
     }
     state.dump = dump;
+    syncCorsFaultUi();
     publishBoard();
     rebuildGraph();
     const liveParam = new URLSearchParams(location.search).get('live');

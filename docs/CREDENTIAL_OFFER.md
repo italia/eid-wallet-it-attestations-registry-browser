@@ -1,25 +1,25 @@
-# Credential Offer (QR e href)
+# Credential Offer (QR and href)
 
-Riferimenti ST IT-Wallet v1.4.6:
+IT-Wallet Technical Specifications v1.4.6:
 
-- `docs/it/credential-issuance-low-level.rst` — Flusso Credential Offer
+- `docs/it/credential-issuance-low-level.rst` — Credential Offer flow
 - OpenID4VCI § 4 — `credential_offer` / `credential_offer_uri`
-- OpenID4VC HAIP § 4.2 — schema `haip-vci://`
+- OpenID4VC HAIP § 4.2 — `haip-vci://` scheme
 
-## 1. Cosa mostra il tool
+## 1. What the tool shows
 
-Su ogni nodo `credential`:
+On every `credential` node:
 
 1. **Link** `openid-credential-offer://?credential_offer=<urlencoded JSON>`
-2. **Link alias** `haip-vci://?credential_offer=…` (stesso oggetto; le ST dicono che il Wallet MUST accettare entrambi)
-3. **QR** con il payload dell’URI `openid-credential-offer://` (flusso cross-device)
-4. **Form esemplificativo** per `objectId` e chiave pubblica, che può aggiungere `grants.authorization_code.issuer_state` come JWE
+2. **Alias link** `haip-vci://?credential_offer=…` (same object; the specifications say the Wallet MUST accept both). The alias MAY be visually hidden; the primary href and QR remain.
+3. **QR** with the `openid-credential-offer://` URI payload (cross-device flow)
+4. **Example form** for `objectId` and public key, which can add `grants.authorization_code.issuer_state` as a JWE
 
-Non si usa `credential_offer_uri` (by reference): il tool non ospita un endpoint offer lato server.
+`credential_offer_uri` (by reference) is not used: the tool does not host a server-side offer endpoint.
 
-## 2. Oggetto JSON (by value)
+## 2. JSON object (by value)
 
-Senza chiave nel form (se l’utente cancella il campo):
+With the key field cleared:
 
 ```json
 {
@@ -31,71 +31,71 @@ Senza chiave nel form (se l’utente cancella il campo):
 }
 ```
 
-Di default il form è precompilato con la chiave RSA pubblica di demo (`demo/keys/issuer-state-enc.public.pem`). In quel caso `issuer_state` è un JWE compact (RSA-OAEP-256 / A256GCM) dell’URN ST.
+By default the form is pre-filled with the demo RSA public key (`demo/keys/issuer-state-enc.public.pem`). Then `issuer_state` is a compact JWE (RSA-OAEP-256 / A256GCM) of the ST URN.
 
-| Campo ST | Comportamento explorer |
-|----------|------------------------|
-| `credential_issuer` | `issuers[].id` / `issuers[].entity_id` del catalogo. |
-| `credential_configuration_ids` | Chiavi reali da `/.well-known/openid-credential-issuer` se dumpati (A-10). Altrimenti heuristica sotto, etichettata come **derivati**. |
-| `grants.authorization_code` | Oggetto presente (MUST nelle ST). |
-| `issuer_state` | **Omesso** se il campo chiave è vuoto. Altrimenti l’URN ST viene cifrato (RSA-OAEP-256 / A256GCM, JWE compact) e inserito qui. La chiave precompilata è quella **fittizia** pubblicata in [`demo/`](../demo/README.md), non la chiave PDND `GetAttributeClaims`. |
-| `authorization_server` | Incluso solo se i metadati issuer hanno più `authorization_servers`. |
+| ST field | Explorer behaviour |
+|----------|--------------------|
+| `credential_issuer` | Catalog `issuers[].id` / `issuers[].entity_id`. |
+| `credential_configuration_ids` | Real keys from `/.well-known/openid-credential-issuer` if dumped (A-10). Otherwise the heuristic below, labelled **derived**. |
+| `grants.authorization_code` | Object present (MUST in the specifications). |
+| `issuer_state` | **Omitted** if the key field is empty. Otherwise the ST URN is encrypted (RSA-OAEP-256 / A256GCM, compact JWE) and inserted here. The pre-filled key is the **fake** one published in [`demo/`](../demo/README.md), not the PDND `GetAttributeClaims` key. |
+| `authorization_server` | Included only if issuer metadata has more than one `authorization_servers` entry. |
 
-URN in chiaro (mostrato in UI, e di nuovo in chiaro se la JWE si decifra con la chiave privata di demo):
+Plaintext URN (shown in the UI, and again in the clear if the JWE is decrypted with the demo private key):
 
 `urn:it-wallet:credential-offer:{as}:{dataset}[:{object}]`
 
-`as` e `dataset` arrivano dai metadati issuer se presenti, altrimenti dal catalogo / registro FA. `object` è l’`objectId` del form (opzionale).
+`as` and `dataset` come from issuer metadata if present, otherwise from the catalog / authentic-source registry. `object` is the form `objectId` (optional).
 
-## 3. Heuristica `credential_configuration_ids`
+## 3. `credential_configuration_ids` heuristic
 
-Se non è disponibile `credential_configurations_supported`:
+If `credential_configurations_supported` is missing:
 
-| format schema | id candidato |
+| schema format | candidate id |
 |---------------|----------------|
 | `dc+sd-jwt` | `dc_sd_jwt_<credential_type>` |
 | `mso_mdoc` | `mso_mdoc_<credential_type>` |
 
-L’UI MUST etichettare questi id come **derivati**. Quando il dump include i metadati issuer, gli id derivati si sostituiscono con le chiavi reali.
+The UI MUST label these ids as **derived**. When the dump includes issuer metadata, derived ids are replaced with the real keys.
 
 ## 4. Universal Link
 
-Le ST: se il Wallet pubblica `credential_offer_endpoint` HTTPS, SHOULD usarlo. L’explorer non sa quale Wallet l’utente ha installato. Quindi:
+Specifications: if the Wallet publishes an HTTPS `credential_offer_endpoint`, it SHOULD be used. The explorer does not know which Wallet the user installed. Therefore:
 
-- href default = custom scheme
-- SHOULD: copia anche un href `https://…` se l’utente incolla un `credential_offer_endpoint` in un campo opzionale (MAY v1.1)
+- default href = custom scheme
+- SHOULD: also copy an `https://…` href if the user pastes a `credential_offer_endpoint` in an optional field (MAY v1.1)
 
 ## 5. QR
 
-- Libreria `qrcode` livello errore `M`
-- Testo alternativo: URI completo (non «QR code»)
-- Colori: modulo su bianco, contrasto WCAG
-- Download SVG/PNG MAY
+- `qrcode` library, error level `M`
+- Alternative text: full URI (not “QR code”)
+- Colours: module on white, WCAG contrast
+- SVG/PNG download MAY
 
-## 6. Disclaimer obbligatorio (A-14)
+## 6. Required disclaimer (A-14)
 
-Testo i18n accanto a QR/link:
+i18n text next to QR/link:
 
-> Credential offer generata dal catalogo. Senza issuer_state cifrato abilita solo la richiesta di una tipologia di credenziale dopo l'autenticazione (se elegibile). Il form sotto è esemplificativo: non usa la chiave PDND GetAttributeClaims.
+> Credential offer generated from the catalog. Without an encrypted issuer_state it only enables a request for a credential type after authentication (if eligible). The form below is an example: it does not use the PDND GetAttributeClaims key.
 
-## 7. Cosa non fare
+## 7. What not to do
 
-- Non spacciare un JWE di esempio per uno `issuer_state` PDND valido.
-- Non puntare `credential_offer_uri` a GitHub Pages fingendo un issuer.
-- Non inserire dati personali nel JSON (l’`objectId` resta nell’origine browser).
-- Non usare `openid://` (fuori ST).
+- Do not present an example JWE as a valid PDND `issuer_state`.
+- Do not point `credential_offer_uri` at GitHub Pages pretending to be an issuer.
+- Do not put personal data in the JSON (`objectId` stays in the browser origin).
+- Do not use `openid://` (outside the specifications).
 
-## 8. Chiavi di demo e decifratura
+## 8. Demo keys and decryption
 
-Il repository pubblica materiale crittografico **fittizio** in [`demo/`](../demo/README.md) (stesso albero su GitHub: [`demo/keys/`](https://github.com/italia/eid-wallet-it-attestations-registry-browser/tree/main/demo/keys)):
+The repository publishes **fake** cryptographic material in [`demo/`](../demo/README.md) (same tree on GitHub: [`demo/keys/`](https://github.com/italia/eid-wallet-it-attestations-registry-browser/tree/main/demo/keys)):
 
-- RSA-OAEP-256 / A256GCM per cifrare/decifrare `issuer_state`
-- ES256 (P-256) per gli esempi SD-JWT VC; COSE_Sign1 ES256 per l’mdoc `DeviceResponse` (hex BINASCII + notazione diagnostica)
+- RSA-OAEP-256 / A256GCM to encrypt/decrypt `issuer_state`
+- ES256 (P-256) for demo SD-JWT VC; COSE_Sign1 ES256 for the mdoc `DeviceResponse` (BINASCII hex + diagnostic notation)
 
-Per decifrare il JWE mostrato nella offer, da un clone:
+To decrypt the JWE shown in the offer, from a clone:
 
 ```bash
 node scripts/decrypt-issuer-state.mjs --jwe '<compact JWE>'
 ```
 
-Lo script usa `demo/keys/issuer-state-enc.private.jwk.json`. L’UI mostra lo stesso comando e, se la chiave nel form è ancora quella di demo, anche l’URN in chiaro dopo un round-trip.
+The script uses `demo/keys/issuer-state-enc.private.jwk.json`. The UI shows the same command and, if the form key is still the demo key, the plaintext URN after a round-trip.

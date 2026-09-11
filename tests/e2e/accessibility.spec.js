@@ -47,6 +47,7 @@ test.describe('accessibility', () => {
     await expect(page.locator('#cache-loading')).toBeHidden();
     await expect(page.locator('#cache-loading')).toHaveAttribute('aria-hidden', 'true');
     await expect(page.locator('#main-content')).toHaveAttribute('aria-busy', 'false');
+    await expect(page.locator('#cors-fault-alert')).toBeHidden();
 
     await boardBtn.click();
     await expect(page.locator('#message-board')).toBeVisible();
@@ -106,6 +107,6 @@ test.describe('accessibility', () => {
     await page.locator('#languagesDropButton').click();
     await page.locator('.it-lang-option[data-lang="en"]').click();
     await expect(page.locator('html')).toHaveAttribute('lang', 'en');
-    await expect(page.locator('#page-heading')).toContainText('IT-Wallet Registry Search Engine');
+    await expect(page.locator('#page-heading')).toContainText('IT-Wallet Attestations Explorer and Demo');
   });
 });

@@ -45,10 +45,62 @@ function schemaFileResources(schemaRows) {
   return out;
 }
 
+function extraCacheResource(rel, url, kind, type = 'application/json') {
+  const file = join(ROOT, 'cache', rel);
+  if (!existsSync(file)) return null;
+  const parsed = parseRegistryBody(readFileSync(file, 'utf8'), type);
+  return {
+    url,
+    path: rel,
+    kind,
+    content_type: type,
+    json: parsed.json,
+    jwt: parsed.jwt,
+    header: parsed.header || null,
+    raw: parsed.raw,
+  };
+}
+
 export function loadDumpFromDisk() {
   const catalog = resource('.well-known/credential-catalog', 'catalog', 'application/jose');
   const schemas = resource('.well-known/schemas', 'registry');
   const schemaFiles = schemaFileResources(schemas.json.schemas);
+  const issuerJson = extraCacheResource(
+    'pre.issuer.wallet.ipzs.it/.well-known/openid-credential-issuer',
+    'https://pre.issuer.wallet.ipzs.it/.well-known/openid-credential-issuer',
+    'issuer-metadata',
+    'application/json',
+  );
+  const issuerJwt = extraCacheResource(
+    'pre.eid.wallet.ipzs.it/1-3/.well-known/openid-credential-issuer',
+    'https://pre.eid.wallet.ipzs.it/1-3/.well-known/openid-credential-issuer',
+    'issuer-metadata',
+    'application/entity-statement+jwt;charset=UTF-8',
+  );
+  const issuerFedJson = extraCacheResource(
+    'pre.issuer.wallet.ipzs.it/.well-known/openid-federation',
+    'https://pre.issuer.wallet.ipzs.it/.well-known/openid-federation',
+    'issuer-federation',
+    'application/entity-statement+jwt',
+  );
+  const issuerFedJwt = extraCacheResource(
+    'pre.eid.wallet.ipzs.it/1-3/.well-known/openid-federation',
+    'https://pre.eid.wallet.ipzs.it/1-3/.well-known/openid-federation',
+    'issuer-federation',
+    'application/entity-statement+jwt;charset=UTF-8',
+  );
+  const issuerResources = [issuerJson, issuerJwt, issuerFedJson, issuerFedJwt].filter(Boolean);
+  const issuerMetadata = {};
+  const issuerFederation = {};
+  for (const res of issuerResources) {
+    if (res.kind === 'issuer-metadata') {
+      const iss = res.json?.credential_issuer;
+      if (iss) issuerMetadata[iss] = res.json;
+    } else if (res.kind === 'issuer-federation') {
+      const iss = res.json?.iss || res.json?.sub;
+      if (iss) issuerFederation[iss] = res.json;
+    }
+  }
   return {
     discovery: jsonFile('.well-known/it-wallet-registry'),
     catalog: catalog.json,
@@ -56,6 +108,8 @@ export function loadDumpFromDisk() {
     claims: jsonFile('.well-known/claims-registry').claims,
     authenticSources: jsonFile('.well-known/authentic-sources').authentic_sources,
     taxonomy: jsonFile('.well-known/credential-taxonomy'),
+    issuerMetadata,
+    issuerFederation,
     resources: [
       resource('.well-known/it-wallet-registry', 'discovery'),
       resource('.well-known/claims-registry', 'registry'),
@@ -64,6 +118,7 @@ export function loadDumpFromDisk() {
       resource('.well-known/credential-taxonomy', 'registry'),
       schemas,
       ...schemaFiles,
+      ...issuerResources,
     ],
     l10n: {
       catalog: {

@@ -1,59 +1,61 @@
 # eid-wallet-it-attestations-registry-browser
 
-**IT-Wallet Registry Search Engine** — explorer grafico open source del **Registro IT-Wallet**: catalogo delle credenziali, schemi, claims, fonti autentiche e tassonomia.
+**IT-Wallet Attestations Explorer and Demo** — open-source explorer for **IT-Wallet attestations** in the public registry: catalog, schemas, claims, authentic sources, taxonomy, and demo credentials.
 
-Il tool è un’applicazione **tutta JavaScript**, statica, servita da **GitHub Pages** (CDN GitHub). All’avvio legge un dump locale dei well-known REST del Trust Anchor, poi aggiorna in background la cache del browser.
+The tool is an all-**JavaScript** static application served from **GitHub Pages**. On startup it reads a local dump of the Trust Anchor well-known REST endpoints, then refreshes the browser cache in the background.
 
-> Non è un prodotto ufficiale AgID/IPZS, non è un Wallet e non emette attestati. Contiene solo **metadati di sistema**. Vedi [NOTICE](NOTICE).
+> It is not an official AgID/IPZS product, not a Wallet, and it does not issue attestations. It contains **system metadata** only. See [NOTICE](NOTICE).
 
-## Uso
+## Use
 
-L’applicazione è pubblicata su GitHub Pages:
+The application is published on GitHub Pages:
 
 **[https://italia.github.io/eid-wallet-it-attestations-registry-browser/](https://italia.github.io/eid-wallet-it-attestations-registry-browser/)**
 
-1. Scegli l’ambiente **Collaudo (preprod)** o **Produzione** (il Trust Anchor usato è indicato sotto lo switch).
-2. Cerca nel registro: testo libero, operatori `+` / `-` / virgolette, oppure i menu `legal_type`, emittente, fonte autentica e claim.
-3. Apri un attestato dalla **lista** o dal **grafo** per vedere metadati, artifact (catalogo e data model JSON/CDDL), una **credenziale di esempio** firmata con chiavi fittizie, e il **Credential Offer** (QR / URI). La offer descrive una *tipologia* di credenziale: non emette un’istanza reale e non autentica l’utente.
-4. La **bacheca** elenca le GET verso dump e well-known (endpoint, status, durata).
+1. Choose **Pre-production** or **Production** (the Trust Anchor in use is shown under the switch).
+2. Search the registry: free text, `+` / `-` / quotes, or the `legal_type`, issuer, authentic source and claim menus.
+3. Open an attestation from the **list** or the **graph** to see metadata, artifacts (catalog and JSON/CDDL data model), a **demo credential** signed with fake keys, and the **Credential Offer** (QR / URI). The offer describes a *credential type*: it does not issue a real instance and does not authenticate the user.
+4. The **message board** lists GET requests to the dump and well-known endpoints (endpoint, status, duration).
 
-Sviluppo in locale: [Avvio locale](#avvio-locale). Sintassi della ricerca: [docs/SEARCH.md](docs/SEARCH.md).
+If live HTTP requests to the Trust Anchor fail (no CORS add-on such as **Allow CORS**, or an invalid `Access-Control-Allow-Origin`), a warning banner appears — same pattern as [openid-federation-browser](https://github.com/italia/openid-federation-browser). The local dump stays usable. Details: [docs/CACHE-AND-CI.md#cors-and-waf](docs/CACHE-AND-CI.md#cors-and-waf).
 
-## Stato
+Local development: [Run locally](#run-locally). Search syntax: [docs/SEARCH.md](docs/SEARCH.md).
 
-Applicazione **v0.4.0**: dump REST, grafo Cytoscape, ricerca Lucene-lite con facet HTML, switch collaudo/produzione, refresh live best-effort, bacheca per-GET, verifica JWT/SRI, simbolo IT-Wallet in header, data model e credenziale di esempio (SD-JWT e mdoc DeviceResponse in hex + notazione diagnostica, avviso di non usabilità), chiavi fittizie per offer/`issuer_state`. Requisiti in [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) (versione **0.4.0**).
+## Status
 
-## Framework (decisione)
+Application **v0.5.0**: REST dump, Cytoscape graph, Lucene-lite search with HTML facets, pre-production/production switch, best-effort live refresh, per-GET message board, JWT/SRI verification, IT-Wallet symbol in the header, data model and demo credential (SD-JWT and mdoc DeviceResponse as hex + diagnostic notation, not-for-use warning, **smartcard UI** from `credential_configuration` display metadata), **credential issuer metadata** (`openid-credential-issuer` and `openid-federation`, with a warning when they diverge), fake keys for offer/`issuer_state`. Requirements: [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) (version **0.5.0**).
 
-| Strato | Scelta | Perché |
-|--------|--------|--------|
-| Bundler / app | **Vite + JavaScript vanilla (ESM)** | Pagine ufficiali `disco.html` / `it-wallet.html` sono vanilla; GitHub Pages vuole output statico; vincolo «tutto JS». |
-| UI | **Bootstrap Italia** + pattern di `official_resources` | Stessi skip-link, header slim, dropdown lingua, footer legale, WCAG 2.1 AA. |
-| i18n | JSON `it` / `en` + dropdown `disco.html` (`ITA`/`EN`) | Stessi file e pattern delle pagine ufficiali. |
-| Grafo | **Cytoscape.js** + **cytoscape-dagre** | Layout verticale gerarchico, filtro nodi/archi senza riscrivere il motore grafico. |
-| Ricerca | Parser **Lucene-lite** in memoria + facet HTML | `+`, `-`, `"frase"`, `campo:valore` (anche quotato), menu `legal_type` / issuer / FA / claim. |
-| QR | **qrcode** (fallback: web component `qr-code` delle official_resources) | Credential Offer come URI `openid-credential-offer://`. |
-| JWT | decoder ESM interno + verifica ES256 con JWKS del TA (`/.well-known/openid-federation`) | Il catalogo live è un JWT JOSE, non JSON. |
+## Framework (decision)
 
-React, Vue e Svelte sono stati scartati: Bootstrap Italia nelle risorse ufficiali IT-Wallet è consumato come CSS/JS vanilla; un virtual DOM aggiungerebbe attrito senza guadagno sul grafo.
+| Layer | Choice | Why |
+|--------|--------|-----|
+| Bundler / app | **Vite + vanilla JavaScript (ESM)** | Official `disco.html` / `it-wallet.html` pages are vanilla; GitHub Pages needs static output; “JS only” constraint. |
+| UI | **Bootstrap Italia** + `official_resources` patterns | Same skip-links, slim header, language dropdown, legal footer, WCAG 2.1 AA. |
+| i18n | JSON `it` / `en` + `disco.html` dropdown (`ITA`/`EN`) | Same header pattern as the official pages; UI strings live in `src/locales/`. |
+| Graph | **Cytoscape.js** + **cytoscape-dagre** | Vertical hierarchical layout, node/edge filter without rewriting the graph engine. |
+| Search | In-memory **Lucene-lite** parser + HTML facets | `+`, `-`, `"phrase"`, `field:value` (quoted too), `legal_type` / issuer / authentic source / claim menus. |
+| QR | **qrcode** | Credential Offer as `openid-credential-offer://` URI. |
+| JWT | Internal ESM decoder + ES256 verification with the TA JWKS (`/.well-known/openid-federation`) | The live catalog is a JOSE JWT, not JSON. |
 
-Dettaglio in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+React, Vue and Svelte were rejected: official IT-Wallet Bootstrap Italia is consumed as vanilla CSS/JS; a virtual DOM would add friction without helping the graph.
 
-## Documentazione
+Details in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-| Documento | Contenuto |
-|-----------|-----------|
-| [docs/EVALUATION_HANDBOOK.md](docs/EVALUATION_HANDBOOK.md) | Valutazione del *Manuale breve — Infrastruttura del Registro* |
-| [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) | Requisiti funzionali e non funzionali (inclusi quelli aggiunti) |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Framework, moduli, flusso cache |
-| [docs/CACHE-AND-CI.md](docs/CACHE-AND-CI.md) | Dump gerarchico, nightly, GitHub Pages |
-| [docs/SEARCH.md](docs/SEARCH.md) | Sintassi del motore di ricerca |
-| [docs/GRAPH.md](docs/GRAPH.md) | Modello a nodi e filtro gerarchico |
-| [docs/CREDENTIAL_OFFER.md](docs/CREDENTIAL_OFFER.md) | QR / href conformi alle ST |
-| [demo/README.md](demo/README.md) | Chiavi fittizie (firma esempi, cifratura `issuer_state`) |
-| [docs/ACCESSIBILITY.md](docs/ACCESSIBILITY.md) | Mapping sui template `disco.html` / `it-wallet.html` |
+## Documentation
 
-## Test
+| Document | Content |
+|----------|---------|
+| [docs/EVALUATION_HANDBOOK.md](docs/EVALUATION_HANDBOOK.md) | Review of the *Short handbook — Registry infrastructure* |
+| [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) | Functional and non-functional requirements |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Framework, modules, cache flow |
+| [docs/CACHE-AND-CI.md](docs/CACHE-AND-CI.md) | Hierarchical dump, nightly, GitHub Pages, CORS |
+| [docs/SEARCH.md](docs/SEARCH.md) | Search engine syntax |
+| [docs/GRAPH.md](docs/GRAPH.md) | Node model and hierarchical filter |
+| [docs/CREDENTIAL_OFFER.md](docs/CREDENTIAL_OFFER.md) | QR / href aligned with the Technical Specifications |
+| [demo/README.md](demo/README.md) | Fake keys (demo signatures, `issuer_state` encryption) |
+| [docs/ACCESSIBILITY.md](docs/ACCESSIBILITY.md) | Mapping onto `disco.html` / `it-wallet.html` |
+
+## Tests
 
 ```bash
 npm install
@@ -63,41 +65,41 @@ npm run test:unit
 npm run test:a11y
 ```
 
-I test Playwright verificano grafo reale (niente placeholder), filtro ricerca e facet, switch pre/prod, offer/QR, bacheca con traccia HTTP, skip-link, axe WCAG 2.1 A/AA, e layout a 1280×800, 768×1024 e 375×667.
+Playwright checks a real graph (no placeholder), search and facets, pre/prod switch, offer/QR, demo credential (SD-JWT and mdoc hex + diagnostic notation, GitHub `demo/keys/` warning), message board HTTP traces, skip-links, axe WCAG 2.1 A/AA, and layout at 1280×800, 768×1024 and 375×667.
 
-## Avvio locale
+## Run locally
 
 ```bash
 npm install
-npm run dump:pre    # collaudo → cache/manifest-pre.json + cache/pre.ta.wallet.ipzs.it/
-npm run dump:prod   # produzione → cache/manifest-prod.json + cache/ta.wallet.ipzs.it/
-npm run dev         # http://localhost:5173  (?env=prod per il dump di produzione)
+npm run dump:pre    # pre-production → cache/manifest-pre.json + cache/pre.ta.wallet.ipzs.it/
+npm run dump:prod   # production → cache/manifest-prod.json + cache/ta.wallet.ipzs.it/
+npm run dev         # http://127.0.0.1:5173  (?env=prod for the production dump)
 ```
 
 ## Cache
 
-Il dump **riproduce il path URL** sotto `cache/<host>/…`, senza riscrivere i body:
+The dump **mirrors the URL path** under `cache/<host>/…` and does not rewrite bodies:
 
 ```text
 cache/
   manifest.json / manifest-pre.json / manifest-prod.json
   pre.ta.wallet.ipzs.it/
     .well-known/it-wallet-registry
-    .well-known/credential-catalog      # JWT raw
+    .well-known/credential-catalog      # raw JWT
     …
   ta.wallet.ipzs.it/
     …
 ```
 
-All’avvio l’app carica il dump dell’ambiente scelto (Trust Anchor indicato nel form). Ogni GET compare in **bacheca** (endpoint, status, ms, application type), con **Riprova** sugli errori.
+On startup the app loads the dump for the selected environment (Trust Anchor shown in the form). Every GET appears on the **message board** (endpoint, status, ms, application type), with **Retry** on errors.
 
 ## CI / CD
 
-Due pipeline distinte, descritte in [docs/CACHE-AND-CI.md](docs/CACHE-AND-CI.md):
+Two separate pipelines, described in [docs/CACHE-AND-CI.md](docs/CACHE-AND-CI.md):
 
-1. **Nightly** (`.github/workflows/nightly-cache.yml`) — aggiorna `cache/` e fa commit se il dump è cambiato.
-2. **Pages da cache** (`.github/workflows/pages.yml`) — pubblica GitHub Pages quando cambia la cache **o** il codice dell’app.
+1. **Nightly** (`.github/workflows/nightly-cache.yml`) — updates `cache/` and commits if the dump changed.
+2. **Pages from cache** (`.github/workflows/pages.yml`) — publishes GitHub Pages when the cache **or** the app code changes.
 
-## Licenza
+## License
 
-Codice: [BSD-3-Clause](LICENSE). Avvertenze e terze parti: [NOTICE](NOTICE).
+Code: [BSD-3-Clause](LICENSE). Notices and third parties: [NOTICE](NOTICE).

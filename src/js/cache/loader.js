@@ -116,6 +116,7 @@ export async function loadDump(manifest, { fetchFn = fetch, cacheBase = cacheRoo
     authenticSources: [],
     taxonomy: null,
     issuerMetadata: {},
+    issuerFederation: {},
     federationEntity: null,
     l10n: { catalog: {}, claims: {}, authenticSources: {}, taxonomy: {} },
     resources: [],
@@ -178,6 +179,15 @@ export async function loadDump(manifest, { fetchFn = fetch, cacheBase = cacheRoo
   return dump;
 }
 
+function assignIssuerFederation(dump, entry, json) {
+  dump.issuerFederation = dump.issuerFederation || {};
+  const iss =
+    json.iss ||
+    json.sub ||
+    String(entry.url || entry.path || '').replace(/\/\.well-known\/openid-federation\/?$/, '');
+  if (iss) dump.issuerFederation[iss] = json;
+}
+
 export function assignDump(dump, entry, json) {
   if (!json) return;
   const path = entry.path || entry.url || '';
@@ -195,7 +205,14 @@ export function assignDump(dump, entry, json) {
       json.credential_issuer || String(entry.url || path).replace(/\/\.well-known\/openid-credential-issuer\/?$/, '');
     if (iss) dump.issuerMetadata[iss] = json;
   }
-  if (entry.kind === 'federation-entity' || path.includes('openid-federation')) dump.federationEntity = json;
+  if (entry.kind === 'issuer-federation') {
+    assignIssuerFederation(dump, entry, json);
+  } else if (entry.kind === 'federation-entity') {
+    dump.federationEntity = json;
+  } else if (path.includes('openid-federation')) {
+    if (json.metadata?.openid_credential_issuer) assignIssuerFederation(dump, entry, json);
+    else dump.federationEntity = json;
+  }
   const loc = path.match(/\/l10n\/([^/]+)\/(it|en)\.json$/);
   if (loc) {
     const [, kind, lang] = loc;

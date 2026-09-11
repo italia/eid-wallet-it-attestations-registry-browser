@@ -6,7 +6,7 @@ const STORE = 'resources';
 const DB_VERSION = 1;
 
 export function acceptForKind(kind) {
-  if (kind === 'catalog' || kind === 'federation-entity') {
+  if (kind === 'catalog' || kind === 'federation-entity' || kind === 'issuer-federation') {
     return 'application/jwt, application/jose, application/entity-statement+jwt, application/json;q=0.5, */*;q=0.1';
   }
   return 'application/json, application/jwt;q=0.8, */*;q=0.1';
@@ -76,6 +76,7 @@ export function schemaIntegrityMap(dump) {
 
 export async function annotateDumpTrust(dump) {
   dump.issuerMetadata = dump.issuerMetadata || {};
+  dump.issuerFederation = dump.issuerFederation || {};
   const keys = jwksFromFederationPayload(dump.federationEntity || {});
   dump.jwks = keys;
   const catalogRes = (dump.resources || []).find((r) => r.jwt && (r.path || '').includes('credential-catalog'));

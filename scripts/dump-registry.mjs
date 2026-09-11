@@ -4,7 +4,7 @@
  *
  * Bodies are stored byte-for-byte. JWT catalogs are not decoded on disk.
  * Usage:
- *   node scripts/dump-registry.mjs --env pre
+ *   node scripts/dump-registry.mjs --env pre --with-issuer-metadata
  *   node scripts/dump-registry.mjs --env prod --with-federation
  */
 
@@ -162,7 +162,7 @@ function enqueue(url, kind) {
 async function dumpOne({ url, kind }) {
   const path = cachePathFor(url);
   const accept =
-    kind === 'catalog' || kind === 'federation-entity'
+    kind === 'catalog' || kind === 'federation-entity' || kind === 'issuer-federation'
       ? 'application/jwt, application/jose, application/entity-statement+jwt, application/json;q=0.5, */*;q=0.1'
       : 'application/json, application/jwt;q=0.8, */*;q=0.1';
 
@@ -276,12 +276,21 @@ function followParsed(kind, url, json) {
         if (entity) {
           const id = String(entity).replace(/\/$/, '');
           enqueue(`${id}/.well-known/openid-credential-issuer`, 'issuer-metadata');
+          enqueue(`${id}/.well-known/openid-federation`, 'issuer-federation');
         }
       }
     }
   }
 
-  if (kind === 'schema-file' || kind === 'l10n' || kind === 'issuer-metadata' || kind === 'federation-entity') return;
+  if (
+    kind === 'schema-file' ||
+    kind === 'l10n' ||
+    kind === 'issuer-metadata' ||
+    kind === 'issuer-federation' ||
+    kind === 'federation-entity'
+  ) {
+    return;
+  }
 
   const host = new URL(baseUrl).hostname;
   for (const found of collectHttpsUrls(json)) {

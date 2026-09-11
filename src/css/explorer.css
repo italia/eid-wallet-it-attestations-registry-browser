@@ -314,6 +314,24 @@
   font-weight: 600;
 }
 
+#results-list .accordion-button {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+#results-list .result-kind-icon {
+  flex-shrink: 0;
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+#results-list .result-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: start;
+}
+
 .offer-state-fieldset {
   border: 1px solid #d9e6f2;
   border-radius: 4px;
@@ -378,9 +396,152 @@
   min-width: 0;
 }
 
-#example-warning {
+#example-warning,
+.issuer-mismatch {
   margin-top: 0.5rem;
   margin-bottom: 1rem;
+}
+
+.example-cards {
+  margin-top: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.example-cards-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.demo-card {
+  --demo-card-bg: #004d99;
+  --demo-card-fg: #ffffff;
+  --demo-card-muted: rgba(255, 255, 255, 0.78);
+  --demo-card-image: none;
+  flex: 1 1 18rem;
+  max-width: 28rem;
+  min-width: 16rem;
+  border-radius: 1rem;
+  padding: 1.15rem 1.25rem 1rem;
+  color: var(--demo-card-fg);
+  background-color: var(--demo-card-bg);
+  background-image: var(--demo-card-image);
+  background-size: cover;
+  background-position: center;
+  box-shadow: 0 0.45rem 1.25rem rgba(0, 77, 153, 0.22);
+}
+
+.demo-card-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.5rem 0.75rem;
+  margin-bottom: 0.85rem;
+}
+
+.demo-card-logo {
+  max-height: 2rem;
+  max-width: 5.5rem;
+  object-fit: contain;
+}
+
+.demo-card-titles {
+  flex: 1 1 8rem;
+  min-width: 0;
+}
+
+.demo-card-name {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.demo-card-description,
+.demo-card-issuer,
+.demo-card-config {
+  margin: 0.15rem 0 0;
+  font-size: 0.75rem;
+  color: var(--demo-card-muted);
+}
+
+.demo-card-format {
+  margin: 0 0 0 auto;
+  padding: 0.15rem 0.5rem;
+  border: 1px solid var(--demo-card-muted);
+  border-radius: 1rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.02em;
+}
+
+.demo-card-identity {
+  display: flex;
+  gap: 0.85rem;
+  align-items: center;
+  margin-bottom: 0.9rem;
+}
+
+.demo-card-photo {
+  width: 4.25rem;
+  height: 5.25rem;
+  flex-shrink: 0;
+  border-radius: 0.35rem;
+  background: rgba(255, 255, 255, 0.16);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  overflow: hidden;
+}
+
+.demo-card-photo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.demo-card-fullname {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.demo-card-claims {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.55rem 1rem;
+  margin: 0;
+}
+
+.demo-card-claim dt {
+  margin: 0;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--demo-card-muted);
+}
+
+.demo-card-claim dd {
+  margin: 0.1rem 0 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  word-break: break-word;
+}
+
+.demo-card-config {
+  margin-top: 0.75rem;
+  word-break: break-all;
+}
+
+@media (max-width: 575.98px) {
+  .demo-card-claims {
+    grid-template-columns: 1fr;
+  }
+}
+
+.issuer-wellknown + .issuer-wellknown {
+  margin-top: 1.5rem;
 }
 
 .artifact-block {
@@ -615,6 +776,18 @@
   100% {
     transform: translateX(320%);
   }
+}
+
+#cors-fault-alert {
+  font-size: 14px;
+}
+
+#cors-fault-alert .alert-link {
+  margin-left: 10px;
+}
+
+#cors-fault-alert[hidden] {
+  display: none !important;
 }
 
 .board-cors-help {

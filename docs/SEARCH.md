@@ -1,72 +1,72 @@
-# Motore di ricerca
+# Search engine
 
-## 1. Esperienza
+## 1. Experience
 
-Un unico campo, placeholder di esempio (`+mDL legal_type:pub-eaa -pid`, uguale in it/en), pattern visivo del search di `it-wallet.html` (icona lente, clear, submit).
+A single field, example placeholder (`+mDL legal_type:pub-eaa -pid`, the same in it/en), visual pattern of the `it-wallet.html` search (lens icon, clear, submit).
 
-Sotto il campo testo, quattro `<select>` HTML (`legal_type`, emittente, fonte autentica, attributo/claim) popolati dal dump. Cambiare un menu **scrive** nella query (`legal_type:pub-eaa`, `issuer:"…"`, `as:"…"`, `claim:family_name`) invece di un secondo motore. `legal_type` elenca sempre `pub-eaa`, `qeaa`, `eaa`; gli altri menu usano valori reali del registro. Requisiti: F-01, A-23.
+Under the text field, four HTML `<select>`s (`legal_type`, issuer, authentic source, attribute/claim) populated from the dump. Changing a menu **writes** into the query (`legal_type:pub-eaa`, `issuer:"…"`, `as:"…"`, `claim:family_name`) instead of a second engine. `legal_type` always lists `pub-eaa`, `qeaa`, `eaa`; the other menus use real registry values. Requirements: F-01, A-23.
 
-Sopra la query, un `<select>` **Ambiente** (F-12, A-01) sceglie collaudo (`pre`) o produzione (`prod`) e mostra il Trust Anchor (`https://pre.ta.wallet.ipzs.it` / `https://ta.wallet.ipzs.it`). Lo switch ricarica il dump (`?env=pre|prod`), non è un token Lucene. Alias accettati nel permalink: `preprod`/`collaudo` → `pre`; `produzione`/`production` → `prod`.
+Above the query, an **Environment** `<select>` (F-12, A-01) chooses pre-production (`pre`) or production (`prod`) and shows the Trust Anchor (`https://pre.ta.wallet.ipzs.it` / `https://ta.wallet.ipzs.it`). The switch reloads the dump (`?env=pre|prod`); it is not a Lucene token. Permalink aliases: `preprod`/`collaudo` → `pre`; `produzione`/`production` → `prod`.
 
-Risultati: lista accessibile + filtro grafo (stesso insieme). Sotto il campo, `query.understood` riassume in italiano/inglese la query interpretata (OR, raggruppamenti, `+`/`-`).
+Results: accessible list + graph filter (same set). Each list row has a Bootstrap Italia icon for the node kind (`it-card` for credentials). Under the field, `query.understood` summarises the interpreted query in Italian/English (OR, grouping, `+`/`-`).
 
-## 2. Sintassi (Lucene-lite)
+## 2. Syntax (Lucene-lite)
 
-Allineata a «`+`, `-`, `""` e notazioni note» (Solr/Lunr/Google-advanced):
+Aligned with “`+`, `-`, `""` and well-known notations” (Solr/Lunr/Google-advanced):
 
-| Notazione | Significato | Esempio |
-|-----------|-------------|---------|
-| `a b` | entrambi i termini (AND) | `mDL patente` |
-| `+a` | `a` obbligatorio | `+mDL` |
-| `-a` | esclude `a` | `pub-eaa -pid` |
-| `"a b"` | frase | `"tessera sanitaria"` |
-| `campo:valore` | campo normalizzato | `legal_type:qeaa` |
-| `campo:"frase"` | campo + frase | `issuer:"Istituto Poligrafico"` |
-| `a OR b` | disgiunzione | `mDL OR pid` |
-| `(a OR b) +c` | raggruppamento | `(mDL OR av) -eaa` |
+| Notation | Meaning | Example |
+|----------|---------|---------|
+| `a b` | both terms (AND) | `mDL patente` |
+| `+a` | `a` required | `+mDL` |
+| `-a` | exclude `a` | `pub-eaa -pid` |
+| `"a b"` | phrase | `"tessera sanitaria"` |
+| `field:value` | normalised field | `legal_type:qeaa` |
+| `field:"phrase"` | field + phrase | `issuer:"Istituto Poligrafico"` |
+| `a OR b` | disjunction | `mDL OR pid` |
+| `(a OR b) +c` | grouping | `(mDL OR av) -eaa` |
 | `a*` `a?` | wildcard | `education*` |
 | `a^2` | boost | `mDL^3` |
 
-Query vuota: mostra l’albero completo.
+Empty query: show the full tree.
 
-## 3. Campi `campo:`
+## 3. `field:` fields
 
-| Campo | Alias | Sorgente |
-|-------|-------|----------|
-| `type` | `credential_type`, `kind` | tipo nodo o `credential_type` |
-| `legal_type` | `legal` | catalogo (credenziale o issuer) |
-| `claim` | `attr`, `attribute` | claims registry / schema / FA capabilities |
-| `issuer` | `emittente` | `entity_id`, nome, `organization_code` |
-| `as` | `source`, `fa`, `authentic_source` | FA `entity_id`, IPA, nome |
+| Field | Aliases | Source |
+|-------|---------|--------|
+| `type` | `credential_type`, `kind` | node type or `credential_type` |
+| `legal_type` | `legal` | catalog (credential or issuer) |
+| `claim` | `attr`, `attribute` | claims registry / schema / authentic-source capabilities |
+| `issuer` | `emittente` | `entity_id`, name, `organization_code` |
+| `as` | `source`, `fa`, `authentic_source` | authentic source `entity_id`, IPA, name |
 | `format` | | `dc+sd-jwt`, `mso_mdoc` |
-| `domain` `class` `purpose` | | tassonomia / catalogo |
+| `domain` `class` `purpose` | | taxonomy / catalog |
 | `schema` | | `schemas[].id` |
-| `env` | | **non** un token di ricerca: si cambia con il `<select>` Ambiente / `?env=` (F-12) |
+| `env` | | **not** a search token: change with the Environment `<select>` / `?env=` (F-12) |
 
-Valori `legal_type` ammessi: `pub-eaa`, `qeaa`, `eaa`. Il PID si cerca con `type:pid`, non come legal type distinto (vedi manuale).
+Allowed `legal_type` values: `pub-eaa`, `qeaa`, `eaa`. Search PID with `type:pid`, not as a distinct legal type (see the handbook).
 
-## 4. Indicizzazione
+## 4. Indexing
 
-Ogni nodo del modello (non il JWT raw) è un documento in memoria filtrato da `searchDocuments`:
+Each model node (not the raw JWT) is an in-memory document filtered by `searchDocuments`:
 
-- `id`, `kind`, `label`, `text` (concatenazione ricercabile)
-- campi facet come sopra (`legal_type`, `issuer`, `as`, `claim`, …)
-- matching: AND dei termini non firmati, `+`/`-`, `campo:valore` (valori quotati), `*` in coda al valore
+- `id`, `kind`, `label`, `text` (searchable concatenation)
+- facet fields as above (`legal_type`, `issuer`, `as`, `claim`, …)
+- matching: AND of unsigned terms, `+`/`-`, `field:value` (quoted values), trailing `*` on the value
 
-I JWT e i CDDL restano ricercabili via `text` estratto (chiavi JSON, `description`, nomi claim), non via blob binario.
+JWTs and CDDL remain searchable via extracted `text` (JSON keys, `description`, claim names), not via binary blobs.
 
-## 5. Binding col grafo
+## 5. Binding to the graph
 
-`search(query)` restituisce `Set(id)`.
+`search(query)` returns `Set(id)`.
 
-Il grafo visibile = `match ∪ ancestors(match) ∪ requiredEdges(match)`.
+Visible graph = `match ∪ ancestors(match) ∪ requiredEdges(match)`.
 
-`requiredEdges` include sempre, per una credenziale matchata: archi verso issuer, authentic source e schemi di quel `credential_type`.
+`requiredEdges` always includes, for a matched credential: edges to issuers, authentic sources and schemas of that `credential_type`.
 
-La lista risultati mostra **solo** i match, non gli antenati (gli antenati restano nel grafo per contesto gerarchico).
+The result list shows **only** matches, not ancestors (ancestors stay in the graph for hierarchical context).
 
-## 6. Accessibilità ricerca
+## 6. Search accessibility
 
-Come `it-wallet.html` per il campo testo: `role="search"`, `aria-describedby` per la sintassi, `role="alert"` per query non parsabile, live region sul conteggio risultati.
+Like `it-wallet.html` for the text field: `role="search"`, `aria-describedby` for syntax, `role="alert"` for an unparsable query, live region on the result count.
 
-I facet e l’ambiente MUST avere `<label>` visibili associate (`for`/`id`), rese come intestazioni (`h2`/`h3`) distinte dal testo di supporto: Ambiente, Cerca, `legal_type`, Emittente, Fonte autentica, Attributo/claim. Il Trust Anchor è un link testuale (non solo icona).
+Facets and environment MUST have visible associated `<label>`s (`for`/`id`), rendered as headings (`h2`/`h3`) distinct from supporting text: Environment, Search, `legal_type`, Issuer, Authentic source, Attribute/claim. The Trust Anchor is a text link (not icon-only).
