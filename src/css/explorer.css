@@ -4,6 +4,11 @@
   height: min(70vh, 44rem);
   background: #fff;
   border: 1px solid #5c6f82;
+  cursor: grab;
+}
+
+.registry-graph:active {
+  cursor: grabbing;
 }
 
 .it-header-slim-wrapper.bg-primary {
@@ -318,6 +323,11 @@
   display: flex;
   align-items: center;
   gap: 0.65rem;
+}
+
+#results-list > .accordion-item > .accordion-header > .accordion-button,
+.artifacts-accordion .accordion-button {
+  scroll-margin-top: 4.5rem;
 }
 
 #results-list .result-kind-icon {

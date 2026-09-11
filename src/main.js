@@ -20,7 +20,9 @@ import {
   createDetailAccordion,
   isIssuerWellKnownArtifact,
   issuerWellKnownGroupsForCredential,
+  openidCredentialIssuerMetadata,
   renderArtifacts,
+  resolveDumpedIssuerId,
 } from './js/artifacts/artifacts.js';
 import { configurationIdsFor, credentialOfferHref, credentialOfferObject, decryptIssuerState, encryptIssuerState, issuerStateUrn } from './js/offer/offer.js';
 import { buildDemoCredentials } from './js/demo/example.js';
@@ -263,7 +265,7 @@ async function applyLocale(lang) {
       total: cacheLoading.total,
     });
   }
-  if (state.graph) applyQuery(state.query);
+  if (state.graph) applyQuery(state.query, { restoreSelection: false });
 }
 
 function renderStatic(dict) {
@@ -403,7 +405,7 @@ function setEnv(value) {
   writeUrl();
 }
 
-function applyQuery(query) {
+function applyQuery(query, options = {}) {
   state.query = query;
   writeUrl();
   const clearBtn = document.getElementById('search-clear-btn');
@@ -432,7 +434,7 @@ function applyQuery(query) {
     const extra = state.graph.documents.find((d) => d.id === state.selectedId);
     if (extra) resultDocs = [extra, ...resultDocs];
   }
-  renderResults(resultDocs);
+  renderResults(resultDocs, { restoreSelection: options.restoreSelection !== false });
   state.view?.applyVisible(matchIds);
   if (els.graphCaption) {
     els.graphCaption.textContent = t('graph.caption', {
@@ -444,7 +446,7 @@ function applyQuery(query) {
   exposeTestApi(matchIds, resultDocs);
 }
 
-function renderResults(docs) {
+function renderResults(docs, { restoreSelection = true } = {}) {
   if (els.resultsCount) els.resultsCount.textContent = t('results.count', { n: String(docs.length) });
   els.resultsList.replaceChildren();
   els.resultsList.classList.add('accordion');
@@ -483,12 +485,16 @@ function renderResults(docs) {
     collapse.id = collapseId;
     collapse.className = 'accordion-collapse collapse';
     collapse.setAttribute('aria-labelledby', headingId);
-    collapse.dataset.bsParent = '#results-list';
     const body = document.createElement('div');
     body.className = 'accordion-body result-detail';
     collapse.appendChild(body);
     collapse.addEventListener('show.bs.collapse', (ev) => {
       if (ev.target !== collapse) return;
+      els.resultsList.querySelectorAll(':scope > .accordion-item > .accordion-collapse.show').forEach((other) => {
+        if (other === collapse) return;
+        window.bootstrap?.Collapse.getOrCreateInstance(other, { toggle: false }).hide();
+      });
+      if (collapse.querySelector('#node-detail')) return;
       void selectNode(doc.id, { fromGraph: false, fromAccordion: true });
     });
 
@@ -496,7 +502,7 @@ function renderResults(docs) {
     item.append(heading, collapse);
     els.resultsList.appendChild(item);
   }
-  if (state.selectedId && docs.some((d) => d.id === state.selectedId)) {
+  if (restoreSelection && state.selectedId && docs.some((d) => d.id === state.selectedId)) {
     expandResult(state.selectedId);
   }
 }
@@ -551,11 +557,19 @@ function offerContext(node) {
   const source = state.graph.nodes.find(
     (n) => n.kind === 'authentic_source' && state.graph.edges.some((e) => e.source === node.id && e.target === n.id),
   );
-  const metadata = state.dump?.issuerMetadata?.[issuer?.entity_id] || null;
+  const resolvedIssuerId = resolveDumpedIssuerId(state.dump, issuer?.entity_id, {
+    credentialType: node.credential_type,
+    formats,
+  });
+  const metadata =
+    state.dump?.issuerMetadata?.[resolvedIssuerId] ||
+    openidCredentialIssuerMetadata(state.dump?.issuerFederation?.[resolvedIssuerId]) ||
+    null;
   const config = configurationIdsFor(node.credential_type, formats, metadata);
   const metaSource = metadata?.credential_configurations_supported?.[config.ids[0]]?.authentic_sources;
   return {
-    credentialIssuer: issuer?.entity_id || 'https://pre.issuer.wallet.ipzs.it',
+    credentialIssuer:
+      metadata?.credential_issuer || resolvedIssuerId || issuer?.entity_id || 'https://pre.issuer.wallet.ipzs.it',
     configurationIds: config.ids,
     configurationDerived: config.derived,
     authenticSourceId: metaSource?.entity_id || source?.entity_id || source?.as || '',
@@ -596,7 +610,10 @@ function fillExampleDisclaimer(el) {
   if (parts[1]) el.appendChild(document.createTextNode(parts[1]));
 }
 
+let selectGen = 0;
+
 async function selectNode(id, { fromGraph = false, fromAccordion = false } = {}) {
+  const gen = ++selectGen;
   state.selectedId = id;
   writeUrl();
   const node = state.graph.byId.get(id);
@@ -610,7 +627,9 @@ async function selectNode(id, { fromGraph = false, fromAccordion = false } = {})
     else el.removeAttribute('aria-current');
   });
   if (!fromAccordion) await expandResult(id);
-  await renderDetail(node);
+  if (gen !== selectGen) return;
+  await renderDetail(node, gen);
+  if (gen !== selectGen) return;
   if (window.__ITW_EXPLORER__) window.__ITW_EXPLORER__.selectedId = id;
   if (fromGraph) {
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -625,14 +644,31 @@ async function selectNode(id, { fromGraph = false, fromAccordion = false } = {})
   }
 }
 
-async function renderDetail(node) {
+function clearOtherNodeDetails(keepId) {
+  els.resultsList?.querySelectorAll('.result-detail').forEach((el) => {
+    const item = el.closest('[data-node-id]');
+    if (item?.dataset.nodeId === keepId) return;
+    el.removeAttribute('id');
+    el.replaceChildren();
+  });
+}
+
+function offerRootFor(nodeId) {
+  const panel = resultPanel(nodeId);
+  return panel?.querySelector('.credential-offer-body') || panel?.querySelector('#credential-offer') || null;
+}
+
+async function renderDetail(node, gen = selectGen) {
+  if (gen !== selectGen) return;
   const panel = resultPanel(node.id);
   const host = panel?.querySelector('.result-detail');
   if (!host) return;
+  clearOtherNodeDetails(node.id);
   host.id = 'node-detail';
   host.replaceChildren();
+  const resultHeadingId = `${domId(node.id)}-heading`;
+  host.setAttribute('aria-labelledby', resultHeadingId);
 
-  const title = field('h3', { className: 'h6', id: 'detail-title' }, node.label);
   const body = field('div', { id: 'detail-body' });
   const dl = field('dl', { className: 'row mb-0' });
   const rows = [
@@ -666,9 +702,10 @@ async function renderDetail(node) {
     heading: false,
   });
 
-  host.append(title, body);
+  host.appendChild(body);
 
   if (node.kind !== 'credential') return;
+  if (gen !== selectGen) return;
 
   const issuer = appendDetailAccordionItem(accordion, {
     id: 'credential-issuer',
@@ -688,7 +725,6 @@ async function renderDetail(node) {
     toggleId: 'credential-example-toggle',
     panelId: 'credential-example-panel',
   });
-  await renderCredentialExample(example.body, node, { heading: false });
 
   const offer = appendDetailAccordionItem(accordion, {
     id: 'credential-offer',
@@ -698,9 +734,14 @@ async function renderDetail(node) {
     toggleId: 'credential-offer-toggle',
     panelId: 'credential-offer-panel',
   });
-  offer.body.appendChild(buildOfferShell({ heading: false }));
-  bindOfferForm(node);
-  await refreshOffer(node);
+  const offerShell = buildOfferShell({ heading: false });
+  offer.body.appendChild(offerShell);
+  bindOfferForm(node, offerShell);
+  await Promise.all([
+    renderCredentialExample(example.body, node, { heading: false }),
+    refreshOffer(node, offerShell),
+  ]);
+  if (gen !== selectGen) return;
 }
 
 function buildOfferShell(options = {}) {
@@ -1004,54 +1045,75 @@ async function renderCredentialExample(host, node, options = {}) {
   }
 }
 
-function bindOfferForm(node) {
-  const objectInput = document.getElementById('offer-object-id');
-  const keyInput = document.getElementById('offer-enc-key');
+function bindOfferForm(node, root) {
+  const objectInput = root.querySelector('#offer-object-id');
+  const keyInput = root.querySelector('#offer-enc-key');
   const onChange = () => {
     state.offerDraft.objectId = objectInput?.value || '';
     state.offerDraft.publicKey = keyInput?.value || '';
-    window.clearTimeout(bindOfferForm.timer);
-    bindOfferForm.timer = window.setTimeout(() => void refreshOffer(node), 280);
+    window.clearTimeout(root._offerTimer);
+    root._offerTimer = window.setTimeout(() => void refreshOffer(node, root), 280);
   };
   objectInput?.addEventListener('input', onChange);
   keyInput?.addEventListener('input', onChange);
 }
 
-let offerGen = 0;
+function paintOfferHref(root, ctx, body) {
+  const href = credentialOfferHref({ ...ctx, body });
+  const link = root.querySelector('#offer-link');
+  if (link) {
+    link.href = href;
+    link.textContent = href;
+  }
+  const haip = root.querySelector('#offer-link-haip');
+  if (haip) haip.href = credentialOfferHref({ ...ctx, body, scheme: 'haip-vci' });
+  return href;
+}
 
-async function refreshOffer(node) {
-  const gen = ++offerGen;
+async function refreshOffer(node, root = offerRootFor(node.id)) {
+  if (!root?.isConnected) return;
+  const seq = Number(root.dataset.offerSeq || '0') + 1;
+  root.dataset.offerSeq = String(seq);
+  const stillThis = () => root.isConnected && Number(root.dataset.offerSeq) === seq;
+  const q = (id) => root.querySelector(`#${id}`);
+
   const ctx = offerContext(node);
   const urn = issuerStateUrn({
     authenticSourceId: ctx.authenticSourceId,
     datasetId: ctx.datasetId,
     objectId: state.offerDraft.objectId,
   });
-  const urnEl = document.getElementById('offer-urn');
-  const errEl = document.getElementById('offer-enc-error');
+  const urnEl = q('offer-urn');
+  const errEl = q('offer-enc-error');
   if (urnEl) urnEl.textContent = urn || t('offer.urnMissing');
   if (errEl) {
     errEl.hidden = true;
     errEl.textContent = '';
   }
 
+  const pendingBody = credentialOfferObject({
+    credentialIssuer: ctx.credentialIssuer,
+    configurationIds: ctx.configurationIds,
+  });
+  paintOfferHref(root, ctx, pendingBody);
+
   let issuerState;
   if (urn && state.offerDraft.publicKey.trim()) {
     try {
       issuerState = await encryptIssuerState(urn, state.offerDraft.publicKey);
     } catch {
-      if (gen !== offerGen) return;
+      if (!stillThis()) return;
       if (errEl) {
         errEl.hidden = false;
         errEl.textContent = t('offer.encryptError');
       }
     }
   }
-  if (gen !== offerGen) return;
+  if (!stillThis()) return;
 
-  const cmdEl = document.getElementById('offer-decrypt-command');
-  const decEl = document.getElementById('offer-decrypted');
-  const decLabel = document.getElementById('offer-decrypted-label');
+  const cmdEl = q('offer-decrypt-command');
+  const decEl = q('offer-decrypted');
+  const decLabel = q('offer-decrypted-label');
   let decrypted = '';
   if (issuerState) {
     if (cmdEl) {
@@ -1070,33 +1132,33 @@ async function refreshOffer(node) {
     decEl.hidden = !decrypted;
   }
   if (decLabel) decLabel.hidden = !decrypted;
-  if (gen !== offerGen) return;
+  if (!stillThis()) return;
 
   const body = credentialOfferObject({
     credentialIssuer: ctx.credentialIssuer,
     configurationIds: ctx.configurationIds,
     issuerState,
   });
-  const jsonEl = document.getElementById('offer-json');
+  const jsonEl = q('offer-json');
   if (jsonEl) jsonEl.textContent = JSON.stringify(body, null, 2);
-  const derived = document.getElementById('offer-derived');
+  const derived = q('offer-derived');
   if (derived) {
     derived.hidden = !ctx.configurationDerived;
     derived.textContent = t('offer.derivedIds');
   }
 
-  const href = credentialOfferHref({ ...ctx, body });
-  const link = document.getElementById('offer-link');
-  if (link) {
-    link.href = href;
-    link.textContent = href;
+  const href = paintOfferHref(root, ctx, body);
+  let qrData = '';
+  try {
+    qrData = await QRCode.toDataURL(href, { errorCorrectionLevel: 'M', margin: 1, width: 192 });
+  } catch {
+    qrData = '';
   }
-  const haip = document.getElementById('offer-link-haip');
-  if (haip) haip.href = credentialOfferHref({ ...ctx, body, scheme: 'haip-vci' });
-  const img = document.getElementById('offer-qr');
-  if (img) {
+  if (!stillThis()) return;
+  const img = q('offer-qr');
+  if (img && qrData) {
     img.alt = href;
-    img.src = await QRCode.toDataURL(href, { errorCorrectionLevel: 'M', margin: 1, width: 192 });
+    img.src = qrData;
   }
 }
 
@@ -1118,7 +1180,7 @@ function rebuildGraph() {
   els.graph.setAttribute('data-ready', 'true');
   els.graph.setAttribute('aria-busy', 'false');
   populateFacets();
-  applyQuery(state.query);
+  applyQuery(state.query, { restoreSelection: false });
   if (keepId && state.graph.byId.has(keepId)) {
     void selectNode(keepId);
     state.pendingNode = null;

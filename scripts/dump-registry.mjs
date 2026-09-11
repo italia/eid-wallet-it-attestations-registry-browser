@@ -13,7 +13,10 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { resolveRegistryEnv } from '../src/js/cache/environments.js';
-import { version as appVersion } from '../package.json' with { type: 'json' };
+import { canonicalizeIssuerEntityId, issuerWellKnownUrl } from '../src/js/issuers/entity-id.js';
+import pkg from '../package.json' with { type: 'json' };
+
+const appVersion = pkg.version;
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const CACHE_ROOT = join(ROOT, 'cache');
@@ -37,8 +40,9 @@ const baseUrl = (args.base || process.env.ITW_REGISTRY_BASE_URL || envSpec.baseU
 );
 const withFederation =
   args.withFederation || process.env.ITW_DUMP_FEDERATION === 'true';
-const withIssuerMetadata =
-  args.withIssuerMetadata || process.env.ITW_DUMP_ISSUER_METADATA === 'true';
+const withIssuerMetadata = !(
+  args.noIssuerMetadata || process.env.ITW_DUMP_ISSUER_METADATA === 'false'
+);
 
 if (!baseUrl) {
   console.error(`Unknown env "${env}". Use --env pre|prod or --base URL`);
@@ -58,6 +62,7 @@ function parseArgs(argv) {
     else if (a === '--base') out.base = argv[++i];
     else if (a === '--with-federation') out.withFederation = true;
     else if (a === '--with-issuer-metadata') out.withIssuerMetadata = true;
+    else if (a === '--no-issuer-metadata') out.noIssuerMetadata = true;
     else if (a === '--dry-run') out.dryRun = true;
     else if (a === '--help' || a === '-h') out.help = true;
   }
@@ -65,7 +70,7 @@ function parseArgs(argv) {
 }
 
 if (args.help) {
-  console.log(`dump-registry.mjs --env pre|prod [--base URL] [--with-federation] [--with-issuer-metadata] [--dry-run]`);
+  console.log(`dump-registry.mjs --env pre|prod [--base URL] [--with-federation] [--with-issuer-metadata] [--no-issuer-metadata] [--dry-run]`);
   process.exit(0);
 }
 
@@ -120,6 +125,23 @@ function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
+function fetchErrorCode(err) {
+  let current = err;
+  for (let i = 0; i < 5 && current; i += 1) {
+    if (current.code) return String(current.code);
+    current = current.cause;
+  }
+  return '';
+}
+
+function fetchErrorMessage(err) {
+  const msg = err?.message || String(err);
+  const code = fetchErrorCode(err);
+  return code && !msg.includes(code) ? `${msg} (${code})` : msg;
+}
+
+const NON_RETRYABLE_FETCH_CODES = new Set(['ENOTFOUND', 'ENODATA', 'ERR_INVALID_URL']);
+
 async function fetchWithRetry(url, accept) {
   let lastErr;
   for (let attempt = 1; attempt <= 4; attempt += 1) {
@@ -141,10 +163,29 @@ async function fetchWithRetry(url, accept) {
       return { res, buf, contentType };
     } catch (err) {
       lastErr = err;
+      if (NON_RETRYABLE_FETCH_CODES.has(fetchErrorCode(err))) throw err;
       await sleep(400 * 2 ** (attempt - 1));
     }
   }
   throw lastErr;
+}
+
+function isWalletIpzsCredentialIssuer(entityId) {
+  try {
+    const host = new URL(entityId).hostname;
+    if (host.startsWith('verifier.')) return false;
+    return host.endsWith('.wallet.ipzs.it') || host === 'wallet.ipzs.it';
+  } catch {
+    return false;
+  }
+}
+
+function enqueueIssuerWellKnowns(entity, { fromFederationList = false } = {}) {
+  const id = canonicalizeIssuerEntityId(entity);
+  if (!id) return;
+  if (fromFederationList && !isWalletIpzsCredentialIssuer(id)) return;
+  enqueue(issuerWellKnownUrl(id, 'openid-credential-issuer'), 'issuer-metadata');
+  enqueue(issuerWellKnownUrl(id, 'openid-federation'), 'issuer-federation');
 }
 
 function enqueue(url, kind) {
@@ -164,7 +205,9 @@ async function dumpOne({ url, kind }) {
   const accept =
     kind === 'catalog' || kind === 'federation-entity' || kind === 'issuer-federation'
       ? 'application/jwt, application/jose, application/entity-statement+jwt, application/json;q=0.5, */*;q=0.1'
-      : 'application/json, application/jwt;q=0.8, */*;q=0.1';
+      : kind === 'federation-list'
+        ? 'application/json, */*;q=0.1'
+        : 'application/json, application/jwt;q=0.8, */*;q=0.1';
 
   const entry = {
     url,
@@ -226,7 +269,7 @@ async function dumpOne({ url, kind }) {
     console.log(`✓ ${url} → cache/${path} (${entry.bytes} B)`);
   } catch (err) {
     entry.duration_ms = Date.now() - started;
-    entry.error = err.message || String(err);
+    entry.error = fetchErrorMessage(err);
     resources.push(entry);
     console.warn(`! ${url} → ${entry.error}`);
   }
@@ -234,6 +277,20 @@ async function dumpOne({ url, kind }) {
 
 function followParsed(kind, url, json) {
   if (!json) return;
+
+  if (kind === 'federation-list') {
+    if (withIssuerMetadata && Array.isArray(json)) {
+      for (const entity of json) {
+        if (typeof entity === 'string') enqueueIssuerWellKnowns(entity, { fromFederationList: true });
+      }
+    }
+    return;
+  }
+
+  if (kind === 'federation-entity' && withIssuerMetadata) {
+    const list = json.metadata?.federation_entity?.federation_list_endpoint;
+    if (list) enqueue(list, 'federation-list');
+  }
 
   if (kind === 'discovery' && json.endpoints) {
     for (const key of REGISTRY_ENDPOINT_KEYS) {
@@ -273,11 +330,7 @@ function followParsed(kind, url, json) {
     for (const cred of json.credentials) {
       for (const issuer of cred.issuers || []) {
         const entity = issuer.entity_id || issuer.id;
-        if (entity) {
-          const id = String(entity).replace(/\/$/, '');
-          enqueue(`${id}/.well-known/openid-credential-issuer`, 'issuer-metadata');
-          enqueue(`${id}/.well-known/openid-federation`, 'issuer-federation');
-        }
+        if (entity) enqueueIssuerWellKnowns(entity);
       }
     }
   }
@@ -287,7 +340,8 @@ function followParsed(kind, url, json) {
     kind === 'l10n' ||
     kind === 'issuer-metadata' ||
     kind === 'issuer-federation' ||
-    kind === 'federation-entity'
+    kind === 'federation-entity' ||
+    kind === 'federation-list'
   ) {
     return;
   }

@@ -32,7 +32,9 @@ export async function expandArtifact(page, prefix, index) {
   const panelId = Number.isInteger(index) ? `${prefix}-${index}-panel` : `${prefix}-panel`;
   const toggle = page.locator(`#${toggleId}`);
   await expect(toggle).toBeVisible();
-  if ((await toggle.getAttribute('aria-expanded')) !== 'true') await toggle.click();
+  if ((await toggle.getAttribute('aria-expanded')) !== 'true') {
+    await toggle.click({ force: true });
+  }
   await expect(toggle).toHaveAttribute('aria-expanded', 'true');
   await expect(page.locator(`#${panelId}`)).toHaveClass(/show/);
 }

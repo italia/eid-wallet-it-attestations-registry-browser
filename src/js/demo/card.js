@@ -1,6 +1,8 @@
 /** Smartcard view-model from OpenID4VCI credential_configuration display + demo claims. */
 
 import { configurationIdsFor } from '../offer/offer.js';
+import { issuerIdOf } from '../issuers/entity-id.js';
+import { openidCredentialIssuerMetadata, resolveDumpedIssuerId } from '../artifacts/artifacts.js';
 
 const TECHNICAL = new Set([
   'iss',
@@ -27,10 +29,6 @@ const TECHNICAL = new Set([
 ]);
 
 const IDENTITY = new Set(['given_name', 'family_name', 'portrait', 'picture']);
-
-function issuerIdOf(issuer) {
-  return String(issuer?.id || issuer?.entity_id || issuer?.organization_code || '').replace(/\/$/, '');
-}
 
 export function pickLocalizedDisplay(entries, lang = 'it') {
   if (!Array.isArray(entries) || !entries.length) return null;
@@ -212,9 +210,11 @@ function catalogIssuers(dump, credentialType) {
 export function issuerConfigurationForFormat(dump, credentialType, format) {
   const formats = format ? [format] : [];
   for (const issuer of catalogIssuers(dump, credentialType)) {
-    const iid = issuerIdOf(issuer);
+    const iid = resolveDumpedIssuerId(dump, issuerIdOf(issuer), { credentialType, formats });
     if (!iid) continue;
-    const metadata = dump?.issuerMetadata?.[iid] || dump?.issuerFederation?.[iid]?.metadata?.openid_credential_issuer;
+    const metadata =
+      dump?.issuerMetadata?.[iid] ||
+      openidCredentialIssuerMetadata(dump?.issuerFederation?.[iid]);
     if (!metadata) continue;
     const ids = configurationIdsFor(credentialType, formats, metadata);
     for (const id of ids.ids) {

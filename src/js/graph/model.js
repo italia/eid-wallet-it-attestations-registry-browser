@@ -3,6 +3,8 @@
  * Hierarchy: IT-Wallet Registry → five registers → credentials / schemas / claims / FA / taxonomy.
  */
 
+import { issuerIdOf } from '../issuers/entity-id.js';
+
 const CONTAINERS = [
   { id: 'catalog', kind: 'catalog', label: 'Catalogo', labelEn: 'Catalog' },
   { id: 'schemas', kind: 'schemas', label: 'Schemi', labelEn: 'Schemas' },
@@ -16,10 +18,6 @@ export function l10nLookup(bundles, lang, key, fallback) {
   const primary = bundles?.[lang]?.[key];
   const secondary = bundles?.[lang === 'it' ? 'en' : 'it']?.[key];
   return primary || secondary || fallback;
-}
-
-function issuerIdOf(issuer) {
-  return issuer?.id || issuer?.entity_id || issuer?.organization_code || '';
 }
 
 function asIdOf(source) {

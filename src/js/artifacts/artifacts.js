@@ -1,7 +1,8 @@
 /** Resolve dump resources to show when an entity is selected. */
 
 import { renderJsonTree, tryParseJson } from './json-tree.js';
-import { configurationIdsFor } from '../offer/offer.js';
+import { configurationIdsFor, configurationIdsFromMetadata } from '../offer/offer.js';
+import { canonicalizeIssuerEntityId, issuerIdOf, issuerWellKnownUrl } from '../issuers/entity-id.js';
 
 function findResource(dump, predicate) {
   return (dump?.resources || []).find(predicate) || null;
@@ -49,40 +50,76 @@ function fromResource(res, extras = {}) {
   };
 }
 
-function issuerIdOf(issuer) {
-  return issuer?.id || issuer?.entity_id || issuer?.organization_code || '';
-}
-
 function asIdOf(source) {
   return source?.id || source?.entity_id || '';
 }
 
 const JOSE_METADATA_NOISE = new Set(['iat', 'exp', 'nbf', 'jti']);
 
-function wellKnownUrl(issuerId, name) {
-  const id = String(issuerId || '').replace(/\/$/, '');
-  return id ? `${id}/.well-known/${name}` : '';
-}
-
 function issuerMetadataUrl(issuerId) {
-  return wellKnownUrl(issuerId, 'openid-credential-issuer');
+  return issuerWellKnownUrl(issuerId, 'openid-credential-issuer');
 }
 
 function issuerFederationUrl(issuerId) {
-  return wellKnownUrl(issuerId, 'openid-federation');
+  return issuerWellKnownUrl(issuerId, 'openid-federation');
+}
+
+function dumpedIssuerIds(dump) {
+  return new Set([
+    ...Object.keys(dump?.issuerMetadata || {}),
+    ...Object.keys(dump?.issuerFederation || {}),
+  ]);
+}
+
+function issuerHasDump(dump, issuerId) {
+  const id = canonicalizeIssuerEntityId(issuerId);
+  if (!id) return false;
+  if (dump?.issuerMetadata?.[id] || dump?.issuerFederation?.[id]) return true;
+  const oci = issuerMetadataUrl(id);
+  const fed = issuerFederationUrl(id);
+  return (dump?.resources || []).some(
+    (r) => !r.error && (r.url === oci || r.url === fed) && (r.bytes == null || r.bytes > 0),
+  );
+}
+
+function issuerDocScore(dump, issuerId, credentialType, formats) {
+  const doc = dump?.issuerMetadata?.[issuerId] || dump?.issuerFederation?.[issuerId];
+  const meta = openidCredentialIssuerMetadata(doc);
+  if (!meta) return 0;
+  if (credentialType) return configurationIdsFromMetadata(meta, credentialType, formats).ids.length;
+  const supported = meta.credential_configurations_supported;
+  return supported && typeof supported === 'object' ? Object.keys(supported).length : 0;
+}
+
+/** Catalog issuer id, or a dumped issuer whose OpenID4VCI metadata covers the credential. */
+export function resolveDumpedIssuerId(dump, preferredId, { credentialType, formats = [] } = {}) {
+  const preferred = canonicalizeIssuerEntityId(preferredId);
+  if (preferred && issuerHasDump(dump, preferred)) return preferred;
+  let best = '';
+  let bestScore = 0;
+  for (const id of dumpedIssuerIds(dump)) {
+    const score = issuerDocScore(dump, id, credentialType, formats);
+    if (score > bestScore) {
+      bestScore = score;
+      best = id;
+    }
+  }
+  return bestScore > 0 ? best : preferred;
 }
 
 function wellKnownResource(dump, issuerId, name, kind) {
-  const url = wellKnownUrl(issuerId, name);
+  const url = issuerWellKnownUrl(issuerId, name);
   if (!url) return null;
-  return (
+  const res =
     findResource(
       dump,
       (r) =>
+        !r.error &&
         r.kind === kind &&
         (r.url === url || String(r.url || '').replace(/\/$/, '') === url),
-    ) || resourceByUrl(dump, url)
-  );
+    ) || resourceByUrl(dump, url);
+  if (!res || res.error) return null;
+  return res;
 }
 
 function issuerMetadataResource(dump, issuerId) {
@@ -261,7 +298,11 @@ export function issuerWellKnownGroupsForCredential(node, dump) {
   const formats = credentialFormats(dump, node.credential_type);
   const groups = [];
   for (const issuer of cred.issuers || []) {
-    const iid = String(issuerIdOf(issuer)).replace(/\/$/, '');
+    const catalogId = issuerIdOf(issuer);
+    const iid = resolveDumpedIssuerId(dump, catalogId, {
+      credentialType: node.credential_type,
+      formats,
+    });
     if (!iid) continue;
     const ociUrl = issuerMetadataUrl(iid);
     const fedUrl = issuerFederationUrl(iid);
@@ -309,7 +350,7 @@ export function issuerMetadataArtifactsForCredential(node, dump) {
 }
 
 export function issuerWellKnownArtifactsForIssuer(issuerId, dump) {
-  const iid = String(issuerId || '').replace(/\/$/, '');
+  const iid = resolveDumpedIssuerId(dump, issuerId);
   if (!iid || !dump) return [];
   const ociUrl = issuerMetadataUrl(iid);
   const fedUrl = issuerFederationUrl(iid);

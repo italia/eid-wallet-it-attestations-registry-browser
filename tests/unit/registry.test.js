@@ -13,7 +13,9 @@ import {
   formatArtifactView,
   issuerMetadataArtifactsForCredential,
   issuerWellKnownGroupsForCredential,
+  resolveDumpedIssuerId,
 } from '../../src/js/artifacts/artifacts.js';
+import { canonicalizeIssuerEntityId } from '../../src/js/issuers/entity-id.js';
 import { jsonPreview, tryParseJson } from '../../src/js/artifacts/json-tree.js';
 import { configurationIdsFor, credentialOfferHref, credentialOfferObject, decryptIssuerState, encryptIssuerState, issuerStateUrn } from '../../src/js/offer/offer.js';
 import { demoEncPrivateJwkText, demoEncPublicJwkText } from '../../src/js/demo/material.js';
@@ -145,6 +147,71 @@ describe('artifacts', () => {
     assert.equal(arts[1].url, 'https://pre.eid.wallet.ipzs.it/1-3/.well-known/openid-federation');
     assert.equal(arts[1].payload.sub, 'https://pre.eid.wallet.ipzs.it/1-3');
     assert.ok(arts[1].excerpt.dc_sd_jwt_pid);
+  });
+
+  it('collapses a duplicated issuer path before building well-known URLs', () => {
+    assert.equal(
+      canonicalizeIssuerEntityId('https://eid.wallet.ipzs.it/1-3/1-3'),
+      'https://eid.wallet.ipzs.it/1-3',
+    );
+    assert.equal(
+      canonicalizeIssuerEntityId('https://issuer.wallet.ipzs.it/'),
+      'https://issuer.wallet.ipzs.it',
+    );
+  });
+
+  it('uses dumped federation metadata when the catalog issuer host is absent', () => {
+    const fed = {
+      iss: 'https://eaa.wallet.ipzs.it/1-0',
+      sub: 'https://eaa.wallet.ipzs.it/1-0',
+      metadata: {
+        openid_credential_issuer: {
+          credential_issuer: 'https://eaa.wallet.ipzs.it/1-0',
+          credential_configurations_supported: {
+            dc_sd_jwt_mDL: { format: 'dc+sd-jwt', scope: 'mDL' },
+          },
+        },
+      },
+    };
+    const isolated = {
+      catalog: { credentials: [{ credential_type: 'mDL', issuers: [{ id: 'https://issuer.wallet.ipzs.it' }] }] },
+      schemas: [{ credential_type: 'mDL', format: 'dc+sd-jwt' }],
+      issuerMetadata: {},
+      issuerFederation: { 'https://eaa.wallet.ipzs.it/1-0': fed },
+      resources: [
+        {
+          url: 'https://eaa.wallet.ipzs.it/1-0/.well-known/openid-credential-issuer',
+          path: 'eaa.wallet.ipzs.it/1-0/.well-known/openid-credential-issuer',
+          kind: 'issuer-metadata',
+          error: 'WAF or HTML block (HTTP 200)',
+          json: null,
+        },
+        {
+          url: 'https://eaa.wallet.ipzs.it/1-0/.well-known/openid-federation',
+          path: 'eaa.wallet.ipzs.it/1-0/.well-known/openid-federation',
+          kind: 'issuer-federation',
+          json: fed,
+          jwt: true,
+          raw: 'header.payload.sig',
+        },
+      ],
+    };
+    assert.equal(
+      resolveDumpedIssuerId(isolated, 'https://issuer.wallet.ipzs.it', {
+        credentialType: 'mDL',
+        formats: ['dc+sd-jwt'],
+      }),
+      'https://eaa.wallet.ipzs.it/1-0',
+    );
+    const groups = issuerWellKnownGroupsForCredential(
+      { kind: 'credential', credential_type: 'mDL' },
+      isolated,
+    );
+    assert.equal(groups.length, 1);
+    assert.equal(groups[0].issuerId, 'https://eaa.wallet.ipzs.it/1-0');
+    assert.equal(groups[0].artifacts.length, 1);
+    assert.equal(groups[0].artifacts[0].url, 'https://eaa.wallet.ipzs.it/1-0/.well-known/openid-federation');
+    assert.ok(groups[0].artifacts[0].excerpt.dc_sd_jwt_mDL);
   });
 
   it('does not flag aligned openid-credential-issuer and openid-federation', () => {

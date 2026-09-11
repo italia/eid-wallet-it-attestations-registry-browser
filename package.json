@@ -1,6 +1,6 @@
 {
   "name": "eid-wallet-it-attestations-registry-browser",
-  "version": "0.6.0",
+  "version": "0.6.2",
   "private": false,
   "type": "module",
   "description": "IT-Wallet Attestations Explorer and Demo: search the public registry, inspect metadata, and preview demo credentials.",
@@ -12,7 +12,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "dump": "node scripts/dump-registry.mjs",
+    "dump": "node scripts/dump-registry.mjs --with-issuer-metadata",
     "dump:pre": "node scripts/dump-registry.mjs --env pre --with-issuer-metadata",
     "dump:prod": "node scripts/dump-registry.mjs --env prod --with-issuer-metadata",
     "sync-cache": "node scripts/sync-cache-public.mjs",

@@ -81,14 +81,16 @@ Failed resources stay listed (`status` or `error`) so the board can offer Retry 
 3. For each `endpoints.*` of the data registries: GET, save raw; if JWT, decode only in RAM to discover further URIs.
 4. Follow `schema_uri`.
 5. Try `localization.base_uri` (may be WAF-blocked).
-6. Optional: issuer `openid-credential-issuer` and issuer `openid-federation`, Trust Anchor federation.
+6. Issuer `openid-credential-issuer` and issuer `openid-federation` (default; `--no-issuer-metadata` to skip). Catalog issuer ids with a duplicated trailing path (`/1-3/1-3`) are collapsed (`/1-3`) before the well-known URLs are built. The Trust Anchor `federation_list_endpoint` is also followed for `*.wallet.ipzs.it` credential issuers (not `verifier.*`), so live hosts are dumped even when the catalog still names a hostname with no public DNS. Optional Trust Anchor federation crawl (`--with-federation`).
 7. Does not use `HEAD`.
 8. `User-Agent: eid-wallet-it-attestations-registry-browser/<version in package.json> (+https://github.com/italia/eid-wallet-it-attestations-registry-browser)`.
-9. Retry 3× on 429/5xx, backoff.
+9. Retry 3× on 429/5xx, backoff. DNS failures (`ENOTFOUND`) are not retried.
+
+Production catalog issuer `https://issuer.wallet.ipzs.it` currently has no working public HTTP endpoint (connect timeout; no usable A record). The Trust Anchor federation list names the live issuers `https://eaa.wallet.ipzs.it/1-0` (EAA) and `https://eid.wallet.ipzs.it/1-3` (PID). Those well-knowns are stored instead. On some hosts `openid-credential-issuer` is WAF HTML; OpenID4VCI metadata is then taken from `openid-federation`. The explorer maps catalog issuer ids to dumped metadata by credential configuration.
 10. Writes `cache/manifest-{env}.json` and, if `env=pre`, also `cache/manifest.json`.
 11. Records `duration_ms` for every GET (dump response times).
 
-Flags: `--env pre|prod`, `--with-federation`, `--with-issuer-metadata`, `--dry-run`.
+Flags: `--env pre|prod`, `--with-federation`, `--with-issuer-metadata` (default on), `--no-issuer-metadata`, `--dry-run`.
 
 ## 5. Browser cache
 

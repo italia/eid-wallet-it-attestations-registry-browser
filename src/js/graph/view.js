@@ -41,7 +41,6 @@ function stylesheet() {
         shape: 'round-rectangle',
         'border-width': 1,
         'overlay-padding': 4,
-        cursor: 'grab',
       },
     },
     {
@@ -78,7 +77,6 @@ export function createRegistryGraphView(container, graph, { onSelect } = {}) {
     style: stylesheet(),
     minZoom: 0.2,
     maxZoom: 2.5,
-    wheelSensitivity: 1.5,
     autoungrabify: false,
     autounselectify: false,
     userPanningEnabled: true,
@@ -101,12 +99,11 @@ export function createRegistryGraphView(container, graph, { onSelect } = {}) {
   runLayout();
   cy.nodes().grabify();
 
-  cy.on('grab', 'node', (ev) => {
-    ev.target.style('cursor', 'grabbing');
-  });
-  cy.on('free', 'node', (ev) => {
-    ev.target.style('cursor', 'grab');
-  });
+  const setGrabCursor = (on) => {
+    if (container) container.style.cursor = on ? 'grabbing' : '';
+  };
+  cy.on('grab', 'node', () => setGrabCursor(true));
+  cy.on('free', 'node', () => setGrabCursor(false));
 
   cy.on('tap', 'node', (ev) => {
     onSelect?.({ ...ev.target.data(), id: ev.target.id() });

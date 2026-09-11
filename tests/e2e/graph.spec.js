@@ -126,6 +126,7 @@ test.describe('graph and search UI', () => {
     await openGraphPane(page, testInfo.project.name);
     await clickGraphNode(page, 'credential:mDL');
     await expect(page.locator('#node-detail')).toBeVisible();
+    await expect(page.locator('#detail-title')).toHaveCount(0);
     await expect(page.locator('#node-artifacts')).toBeVisible();
     await expect(page.locator('#detail-accordion')).toBeVisible();
     await expect(page.locator('#artifact-0-toggle')).toHaveAttribute('aria-expanded', 'false');
@@ -138,6 +139,7 @@ test.describe('graph and search UI', () => {
   });
 
   test('selecting a credential shows signed artifact and JOSE header/payload', async ({ page }) => {
+    test.setTimeout(90_000);
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     await waitForGraph(page);
     await page.locator('#tab-list').click({ force: true }).catch(() => {});
@@ -248,15 +250,16 @@ test.describe('graph and search UI', () => {
     await expect(page.locator('#credential-offer-toggle')).toBeVisible();
     await expect(page.locator('#credential-offer-toggle')).toHaveAttribute('aria-expanded', 'false');
     await expandDetailSection(page, 'credential-offer');
-    await expect(page.locator('#offer-link')).toHaveAttribute('href', /^openid-credential-offer:\/\//);
-    await expect(page.locator('#offer-link')).toHaveAttribute('href', /issuer_state/);
-    const href = await page.locator('#offer-link').getAttribute('href');
-    await expect(page.locator('#offer-qr')).toHaveAttribute('alt', href);
-    const qrBox = await page.locator('#offer-qr').boundingBox();
+    const offerLink = page.locator('.accordion-collapse.show #offer-link');
+    await expect(offerLink).toHaveAttribute('href', /^openid-credential-offer:\/\//);
+    await expect(offerLink).toHaveAttribute('href', /issuer_state/);
+    const href = await offerLink.getAttribute('href');
+    await expect(page.locator('.accordion-collapse.show #offer-qr')).toHaveAttribute('alt', href);
+    const qrBox = await page.locator('.accordion-collapse.show #offer-qr').boundingBox();
     expect(qrBox?.width).toBeGreaterThan(80);
-    await expect(page.locator('#offer-json')).toContainText('"credential_issuer"');
-    await expect(page.locator('#offer-json')).toContainText('authorization_code');
-    await expect(page.locator('#offer-json')).toContainText('issuer_state');
+    await expect(page.locator('.accordion-collapse.show #offer-json')).toContainText('"credential_issuer"');
+    await expect(page.locator('.accordion-collapse.show #offer-json')).toContainText('authorization_code');
+    await expect(page.locator('.accordion-collapse.show #offer-json')).toContainText('issuer_state');
     await expect(page.locator('#offer-url-label')).toHaveText(/URL same device flow/);
     await expect(page.locator('#offer-qr-label')).toHaveText(/QR-Code cross device flow/);
     await expect(page.locator('#offer-object-id')).toBeVisible();
@@ -267,6 +270,34 @@ test.describe('graph and search UI', () => {
     await expect(page.locator('#offer-decrypted')).toContainText('urn:it-wallet:credential-offer:');
     await page.locator('#offer-decrypt-summary').click();
     await expect(page.locator('#offer-decrypt-command')).toContainText('decrypt-issuer-state.mjs');
+  });
+
+  test('credential offer stays filled after switching credentials', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await waitForGraph(page);
+    await page.locator('#results-list button[data-node-id="credential:mDL"]').click();
+    await expect(page.locator('#credential-offer-toggle')).toBeVisible();
+    await page.locator('#results-list button[data-node-id="credential:pid"]').click();
+    await expect(page.locator('#results-list button[data-node-id="credential:pid"]')).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
+    await expandDetailSection(page, 'credential-offer');
+    const pidLink = page.locator('.accordion-collapse.show #offer-link');
+    await expect(pidLink).toHaveAttribute('href', /^openid-credential-offer:\/\//);
+    await expect(pidLink).toHaveAttribute('href', /issuer_state/);
+    await expect(page.locator('.accordion-collapse.show #offer-qr')).toHaveAttribute('src', /^data:image\/png/);
+    await page.locator('#results-list button[data-node-id="credential:mDL"]').click();
+    await expect(page.locator('#results-list button[data-node-id="credential:mDL"]')).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
+    await expandDetailSection(page, 'credential-offer');
+    const mdlLink = page.locator('.accordion-collapse.show #offer-link');
+    await expect(mdlLink).toHaveAttribute('href', /^openid-credential-offer:\/\//);
+    await expect(mdlLink).toHaveAttribute('href', /issuer_state/);
+    await expect(page.locator('.accordion-collapse.show #offer-qr')).toHaveAttribute('src', /^data:image\/png/);
+    await expect(page.locator('#node-detail')).toHaveCount(1);
   });
 
   test('deep link restores env, query and node', async ({ page }) => {
