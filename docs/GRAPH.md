@@ -55,7 +55,7 @@ No “ghost” of non-matches (default). SHOULD toggle “show the rest in grey�
 
 ## 5. Interaction
 
-- click / Enter: detail panel under list and graph (metadata, **raw artifacts** JWS/JSON/CDDL, offer QR)
+- click / Enter: detail panel under list and graph (metadata, nested accordion of dump artifacts / issuer / demo / offer)
 - drag: nodes are **movable** with the mouse (or touch); the background still pans
 - keyboard: the graph is NOT the only control; the list above is synchronised
 - layout: the graph uses the full available width of the page row

@@ -1,10 +1,11 @@
 # Requirements — IT-Wallet Attestations Explorer and Demo
 
-Requirements version: **0.5.0**  
+Requirements version: **0.6.0**  
 Source: project request + review of the [registry handbook](EVALUATION_HANDBOOK.md) + IT-Wallet Technical Specifications v1.4.6 + UI updates (search facets, `disco.html` header, Trust Anchor switch, HTTP traces on the message board).
 
 Priority: **MUST** / **SHOULD** / **MAY** (RFC 2119).
 
+Changelog 0.6.0: page title **IT-Wallet Attestations Explorer and Demo**; node detail is one nested accordion (dump artifacts, **Credential issuer**, **Credential demo**, **Credential offer**, collapsed by default); issuer well-knowns from the dump also appear as artifacts on issuer nodes.  
 Changelog 0.5.0: on each `credential` result, a Credential issuer section with `{issuer_id}/.well-known/openid-credential-issuer` and `{issuer_id}/.well-known/openid-federation` (original JWT/JSON, decoded JSON, matching `credential_configuration_id` excerpt), and a warning when the OpenID4VCI contents diverge; a **Credential demo UI** smartcard that uses `credential_configuration` display metadata (name, colours, claim labels) when present; each search result has a Bootstrap Italia kind icon (`it-card` for credentials).  
 Changelog 0.4.0: on the `credential` node, data model (JSON Schema / CDDL) and demo credential (`dc+sd-jwt` and `mso_mdoc` ISO 18013-5 DeviceResponse as BINASCII hex + diagnostic notation, claims from the CDDL) with an illustration-only warning and link to `demo/keys/`; offer form pre-filled with the demo RSA key; IT-Wallet symbol (Negative White) in the slim header; page-level CORS warning (openid-federation-browser pattern) when live Trust Anchor HTTP requests fail.  
 Changelog 0.3.0: F-05 live refresh + IndexedDB, F-07 per-resource retry, A-03 `?node=`, F-02 OR/()/wildcard/boost, A-05/A-06 JWT and SRI verification, A-10 `issuers[].id`, nightly prod, CORS guidance.  
@@ -262,7 +263,7 @@ Motivated by the handbook, Technical Specifications and GitHub Pages constraints
 | A-23 | MUST | HTML facets `legal_type` / issuer / authentic source / claim that write `field:value` into the query (F-01). |
 | A-24 | MUST | Board: full GET traces (endpoint, status, ms, application type) (F-06). |
 | A-25 | MUST | Slim header: IT-Wallet Negative White symbol, language dropdown and bell aligned with `disco.html` (NF-07). |
-| A-26 | MUST | Node detail (list **and graph**): dump artifacts (JWS/JSON/CDDL). JWT: signed original **or** header and payload in the clear; for credentials/issuers/authentic sources also an entity excerpt. JSON: indented view with expand/collapse of nested objects and arrays. |
+| A-26 | MUST | Node detail (list **and graph**): dump artifacts (JWS/JSON/CDDL) in a **nested accordion**, collapsed by default. Credentials also include **credential issuer**, **credential demo** and **credential offer** as items of the same accordion. Issuer well-knowns (`openid-credential-issuer`, `openid-federation`) come from the dump. JWT: signed original **or** header and payload in the clear; for credentials/issuers/authentic sources also an entity excerpt. JSON: indented view with expand/collapse of nested objects and arrays. |
 
 ---
 

@@ -15,7 +15,10 @@ import { createRegistryGraphView } from './js/graph/view.js';
 import { getQueryField, matchedNodeIds, parseQuery, searchDocuments, setQueryField, understoodQuery } from './js/search/index.js';
 import { kindIconId, kindLabelKey } from './js/results/kind-icon.js';
 import {
+  appendDetailAccordionItem,
   artifactsForNode,
+  createDetailAccordion,
+  isIssuerWellKnownArtifact,
   issuerWellKnownGroupsForCredential,
   renderArtifacts,
 } from './js/artifacts/artifacts.js';
@@ -484,7 +487,8 @@ function renderResults(docs) {
     const body = document.createElement('div');
     body.className = 'accordion-body result-detail';
     collapse.appendChild(body);
-    collapse.addEventListener('show.bs.collapse', () => {
+    collapse.addEventListener('show.bs.collapse', (ev) => {
+      if (ev.target !== collapse) return;
       void selectNode(doc.id, { fromGraph: false, fromAccordion: true });
     });
 
@@ -512,8 +516,18 @@ function expandResult(id) {
   if (!panel) return Promise.resolve(false);
   if (panel.classList.contains('show')) return Promise.resolve(true);
   return new Promise((resolve) => {
-    const finish = () => resolve(true);
-    panel.addEventListener('shown.bs.collapse', finish, { once: true });
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      resolve(true);
+    };
+    const onShown = (ev) => {
+      if (ev.target !== panel) return;
+      panel.removeEventListener('shown.bs.collapse', onShown);
+      finish();
+    };
+    panel.addEventListener('shown.bs.collapse', onShown);
     if (window.bootstrap?.Collapse) {
       window.bootstrap.Collapse.getOrCreateInstance(panel, { toggle: false }).show();
     } else {
@@ -635,32 +649,76 @@ async function renderDetail(node) {
   }
   body.appendChild(dl);
 
+  const heading = field('h3', { className: 'h6 mt-3', id: 'artifacts-heading' }, t('artifacts.heading'));
   const artifactsHost = field('div', { id: 'node-artifacts' });
   artifactsHost.setAttribute('aria-labelledby', 'artifacts-heading');
-  body.appendChild(artifactsHost);
-  renderArtifacts(artifactsHost, artifactsForNode(node, state.dump), t);
+  const accordion = createDetailAccordion({
+    id: 'detail-accordion',
+    labelledBy: 'artifacts-heading',
+  });
+  artifactsHost.appendChild(accordion);
+  body.append(heading, artifactsHost);
+  const nodeArtifacts = artifactsForNode(node, state.dump);
+  const dumpArtifacts =
+    node.kind === 'credential' ? nodeArtifacts.filter((art) => !isIssuerWellKnownArtifact(art)) : nodeArtifacts;
+  renderArtifacts(artifactsHost, dumpArtifacts, t, {
+    accordion,
+    heading: false,
+  });
 
   host.append(title, body);
 
   if (node.kind !== 'credential') return;
-  const issuerHost = field('div', { id: 'credential-issuer', className: 'credential-issuer mt-3' });
-  body.appendChild(issuerHost);
-  renderCredentialIssuer(issuerHost, node);
-  const exampleHost = field('div', { id: 'credential-example', className: 'credential-example mt-3' });
-  body.appendChild(exampleHost);
-  await renderCredentialExample(exampleHost, node);
-  host.appendChild(buildOfferShell());
+
+  const issuer = appendDetailAccordionItem(accordion, {
+    id: 'credential-issuer',
+    className: 'credential-issuer',
+    title: t('issuer.heading'),
+    headingId: 'issuer-heading',
+    toggleId: 'credential-issuer-toggle',
+    panelId: 'credential-issuer-panel',
+  });
+  renderCredentialIssuer(issuer.body, node, { heading: false });
+
+  const example = appendDetailAccordionItem(accordion, {
+    id: 'credential-example',
+    className: 'credential-example',
+    title: t('example.heading'),
+    headingId: 'example-heading',
+    toggleId: 'credential-example-toggle',
+    panelId: 'credential-example-panel',
+  });
+  await renderCredentialExample(example.body, node, { heading: false });
+
+  const offer = appendDetailAccordionItem(accordion, {
+    id: 'credential-offer',
+    className: 'credential-offer',
+    title: t('offer.heading'),
+    headingId: 'offer-heading',
+    toggleId: 'credential-offer-toggle',
+    panelId: 'credential-offer-panel',
+  });
+  offer.body.appendChild(buildOfferShell({ heading: false }));
   bindOfferForm(node);
   await refreshOffer(node);
 }
 
-function buildOfferShell() {
-  const box = field('div', { id: 'credential-offer', className: 'credential-offer mt-3' });
-  box.setAttribute('aria-labelledby', 'offer-heading');
-  box.append(
-    field('h3', { className: 'h6', id: 'offer-heading' }, t('offer.heading')),
-    field('p', { className: 'small', id: 'offer-disclaimer' }, t('offer.disclaimer')),
-  );
+function buildOfferShell(options = {}) {
+  const withHeading = options.heading !== false;
+  const box = field('div', {
+    className: withHeading ? 'credential-offer mt-3' : 'credential-offer-body',
+  });
+  if (withHeading) {
+    box.id = 'credential-offer';
+    box.setAttribute('aria-labelledby', 'offer-heading');
+    box.append(
+      field('h3', { className: 'h6', id: 'offer-heading' }, t('offer.heading')),
+      field('p', { className: 'small', id: 'offer-disclaimer' }, t('offer.disclaimer')),
+    );
+  } else {
+    box.setAttribute('aria-labelledby', 'offer-heading');
+    box.append(field('p', { className: 'small', id: 'offer-disclaimer' }, t('offer.disclaimer')));
+  }
 
   const form = field('form', { id: 'offer-state-form', className: 'offer-state-form mb-3' });
   const fieldset = field('fieldset', { className: 'offer-state-fieldset' });
@@ -756,10 +814,12 @@ function formatIssuerMismatch(mismatch) {
   return t('issuer.mismatchField', vars);
 }
 
-function renderCredentialIssuer(host, node) {
+function renderCredentialIssuer(host, node, options = {}) {
   host.replaceChildren();
-  host.setAttribute('aria-labelledby', 'issuer-heading');
-  host.appendChild(field('h3', { className: 'h6', id: 'issuer-heading' }, t('issuer.heading')));
+  if (options.heading !== false) {
+    host.setAttribute('aria-labelledby', 'issuer-heading');
+    host.appendChild(field('h3', { className: 'h6', id: 'issuer-heading' }, t('issuer.heading')));
+  }
   const groups = issuerWellKnownGroupsForCredential(node, state.dump);
   if (!groups.length) {
     host.appendChild(field('p', { className: 'form-text', id: 'issuer-empty' }, t('issuer.empty')));
@@ -768,6 +828,9 @@ function renderCredentialIssuer(host, node) {
   groups.forEach((group, gi) => {
     const wrap = field('div', { className: 'issuer-wellknown', id: `issuer-group-${gi}` });
     wrap.dataset.issuerId = group.issuerId;
+    wrap.appendChild(
+      field('p', { className: 'small mb-2', id: gi === 0 ? 'issuer-id' : `issuer-id-${gi}` }, group.issuerId),
+    );
     if (group.mismatches.length) {
       const alert = field('div', {
         id: `issuer-mismatch-${gi}`,
@@ -887,7 +950,7 @@ function renderDemoCard(model, index) {
   return card;
 }
 
-async function renderCredentialExample(host, node) {
+async function renderCredentialExample(host, node, options = {}) {
   host.replaceChildren();
   host.setAttribute('aria-labelledby', 'example-heading');
   const warning = field('div', {
@@ -901,7 +964,11 @@ async function renderCredentialExample(host, node) {
     field('p', { id: 'example-warning-title', className: 'alert-heading h6 mb-1' }, t('example.warningTitle')),
     disclaimer,
   );
-  host.append(field('h3', { className: 'h6', id: 'example-heading' }, t('example.heading')), warning);
+  if (options.heading !== false) {
+    host.append(field('h3', { className: 'h6', id: 'example-heading' }, t('example.heading')), warning);
+  } else {
+    host.append(warning);
+  }
   try {
     const items = await buildDemoCredentials(node, state.dump);
     if (!items.length) {

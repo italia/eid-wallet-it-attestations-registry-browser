@@ -96,7 +96,7 @@ The on-disk dump stays **intact**. The index is derived in memory.
 7. Board: one row per GET (TA endpoint, HTTP status, ms, application type).
 8. `requestIdleCallback` → live refresh for URLs in the manifest (best-effort; CORS). If live GETs fail, `#cors-fault-alert` (`alert alert-warning`) points at the GitHub CORS docs.
 9. For each live call: success / error+retry; if the hash differs, rebuild index and graph without losing the current query.
-10. On a `credential` result: catalog/data-model artifacts, **issuer well-knowns** (`openid-credential-issuer` and `openid-federation`, with a mismatch warning when OpenID4VCI contents diverge), demo credential (**smartcard UI** from `credential_configuration` display metadata when present), Credential Offer.
+10. On a `credential` result: one nested accordion with catalog/data-model dump artifacts, **credential issuer** well-knowns from the dump (`openid-credential-issuer` and `openid-federation`, with a mismatch warning when OpenID4VCI contents diverge), **credential demo** (**smartcard UI** from `credential_configuration` display metadata when present), and **credential offer**.
 
 ## 7. Environments
 

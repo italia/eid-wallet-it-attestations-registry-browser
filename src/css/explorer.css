@@ -297,7 +297,7 @@
   --bs-accordion-btn-color: #17324d;
 }
 
-#results-list .accordion-item {
+#results-list > .accordion-item {
   border: 1px solid #d9e6f2;
   margin-bottom: 0.5rem;
   border-radius: 4px;
@@ -310,11 +310,11 @@
   box-shadow: none;
 }
 
-#results-list .accordion-button:not(.collapsed) {
+#results-list > .accordion-item > .accordion-header > .accordion-button:not(.collapsed) {
   font-weight: 600;
 }
 
-#results-list .accordion-button {
+#results-list > .accordion-item > .accordion-header > .accordion-button {
   display: flex;
   align-items: center;
   gap: 0.65rem;
@@ -544,8 +544,33 @@
   margin-top: 1.5rem;
 }
 
-.artifact-block {
-  margin-top: 1rem;
+.artifacts-accordion {
+  --bs-accordion-border-color: #d9e6f2;
+  --bs-accordion-active-bg: #e6f0fa;
+  --bs-accordion-active-color: #17324d;
+  --bs-accordion-btn-color: #17324d;
+  margin-top: 0.5rem;
+}
+
+.artifacts-accordion .accordion-item {
+  border: 1px solid #d9e6f2;
+  margin-bottom: 0.35rem;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.artifacts-accordion .accordion-button {
+  font-size: 0.95rem;
+}
+
+.artifacts-accordion .accordion-button:focus-visible {
+  outline: 2px solid #0066cc;
+  outline-offset: -2px;
+  box-shadow: none;
+}
+
+.artifacts-accordion .accordion-button:not(.collapsed) {
+  font-weight: 600;
 }
 
 .artifact-pre {

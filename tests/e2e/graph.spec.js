@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { clickGraphNode, openGraphPane, search, waitForGraph } from './helpers.js';
+import { clickGraphNode, expandArtifact, expandDetailSection, openGraphPane, search, waitForGraph } from './helpers.js';
 
 test.describe('graph and search UI', () => {
   test('renders a real node graph from the dump', async ({ page }, testInfo) => {
@@ -127,6 +127,9 @@ test.describe('graph and search UI', () => {
     await clickGraphNode(page, 'credential:mDL');
     await expect(page.locator('#node-detail')).toBeVisible();
     await expect(page.locator('#node-artifacts')).toBeVisible();
+    await expect(page.locator('#detail-accordion')).toBeVisible();
+    await expect(page.locator('#artifact-0-toggle')).toHaveAttribute('aria-expanded', 'false');
+    await expandArtifact(page, 'artifact', 0);
     await expect(page.locator('#artifact-0-signed-tab')).toBeVisible();
     await expect(page.locator('#artifact-0-header-tab')).toBeVisible();
     await expect(page.locator('#artifact-0-payload-tab')).toBeVisible();
@@ -141,6 +144,8 @@ test.describe('graph and search UI', () => {
     await page.locator('#results-list button[data-node-id="credential:mDL"]').click();
     await expect(page.locator('#node-artifacts')).toBeVisible();
     await expect(page.locator('#artifacts-heading')).toBeVisible();
+    await expect(page.locator('#detail-accordion')).toBeVisible();
+    await expandArtifact(page, 'artifact', 0);
     const signed = page.locator('#artifact-0-signed-tab');
     const header = page.locator('#artifact-0-header-tab');
     const payload = page.locator('#artifact-0-payload-tab');
@@ -163,13 +168,15 @@ test.describe('graph and search UI', () => {
     await expect(page.locator('#node-artifacts')).toContainText('data-model');
     await expect(page.locator('#credential-issuer')).toBeVisible();
     await expect(page.locator('#issuer-heading')).toBeVisible();
+    await expect(page.locator('#credential-issuer-toggle')).toHaveAttribute('aria-expanded', 'false');
+    await expandDetailSection(page, 'credential-issuer');
+    await expect(page.locator('#issuer-artifact-0-toggle')).toContainText('openid-credential-issuer');
+    await expect(page.locator('#issuer-artifact-1-toggle')).toContainText('openid-federation');
+    await expect(page.locator('#issuer-mismatch-0')).toHaveCount(0);
+    await expandArtifact(page, 'issuer-artifact', 0);
     await expect(
       page.locator('#credential-issuer a[href="https://pre.issuer.wallet.ipzs.it/.well-known/openid-credential-issuer"]'),
     ).toBeVisible();
-    await expect(
-      page.locator('#credential-issuer a[href="https://pre.issuer.wallet.ipzs.it/.well-known/openid-federation"]'),
-    ).toBeVisible();
-    await expect(page.locator('#issuer-mismatch-0')).toHaveCount(0);
     await expect(page.locator('#issuer-artifact-0-signed')).toContainText('credential_issuer');
     await expect(page.locator('#issuer-artifact-0-payload-tab')).toBeVisible();
     await page.locator('#issuer-artifact-0-payload-tab').click();
@@ -178,6 +185,10 @@ test.describe('graph and search UI', () => {
     await expect(page.locator('#issuer-artifact-0-excerpt')).toContainText('dc_sd_jwt_mDL');
     await expect(page.locator('#issuer-artifact-0-excerpt')).toContainText('mso_mdoc_mDL');
     await expect(page.locator('#issuer-artifact-0-excerpt')).not.toContainText('dc_sd_jwt_pid');
+    await expandArtifact(page, 'issuer-artifact', 1);
+    await expect(
+      page.locator('#credential-issuer a[href="https://pre.issuer.wallet.ipzs.it/.well-known/openid-federation"]'),
+    ).toBeVisible();
     await expect(page.locator('#issuer-artifact-1-signed-tab')).toBeVisible();
     await page.locator('#issuer-artifact-1-payload-tab').click();
     await expect(page.locator('#issuer-artifact-1-payload')).toContainText('openid_credential_issuer');
@@ -186,6 +197,8 @@ test.describe('graph and search UI', () => {
     await expect(page.locator('#issuer-artifact-1-excerpt')).toContainText('dc_sd_jwt_mDL');
     await expect(page.locator('#credential-example')).toBeVisible();
     await expect(page.locator('#example-heading')).toBeVisible();
+    await expect(page.locator('#credential-example-toggle')).toHaveAttribute('aria-expanded', 'false');
+    await expandDetailSection(page, 'credential-example');
     const demoWarn = page.locator('#example-warning');
     await expect(demoWarn).toBeVisible();
     await expect(demoWarn).toHaveClass(/alert-warning/);
@@ -205,11 +218,13 @@ test.describe('graph and search UI', () => {
       'href',
       'https://github.com/italia/eid-wallet-it-attestations-registry-browser/tree/main/demo/keys',
     );
+    await expandArtifact(page, 'example-artifact', 0);
     await expect(page.locator('#example-artifact-0-signed')).toContainText('eyJ');
     await page.locator('#example-artifact-0-excerpt-tab').click();
     await expect(page.locator('#example-artifact-0-excerpt')).toContainText('Mario');
     await expect(page.locator('#example-artifact-0-excerpt')).toContainText('given_name');
     await expect(page.locator('#example-artifact-0-excerpt')).toContainText('kb+jwt');
+    await expandArtifact(page, 'example-artifact', 1);
     await expect(page.locator('#example-artifact-1-signed-tab')).toBeVisible();
     await expect(page.locator('#credential-example')).toContainText('mso_mdoc');
     const mdocHex = (await page.locator('#example-artifact-1-signed').innerText()).trim();
@@ -230,6 +245,9 @@ test.describe('graph and search UI', () => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     await waitForGraph(page);
     await page.locator('#results-list button[data-node-id="credential:mDL"]').click();
+    await expect(page.locator('#credential-offer-toggle')).toBeVisible();
+    await expect(page.locator('#credential-offer-toggle')).toHaveAttribute('aria-expanded', 'false');
+    await expandDetailSection(page, 'credential-offer');
     await expect(page.locator('#offer-link')).toHaveAttribute('href', /^openid-credential-offer:\/\//);
     await expect(page.locator('#offer-link')).toHaveAttribute('href', /issuer_state/);
     const href = await page.locator('#offer-link').getAttribute('href');

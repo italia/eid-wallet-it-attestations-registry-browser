@@ -1,3 +1,5 @@
+import { expect } from '@playwright/test';
+
 export async function waitForGraph(page) {
   await page.waitForSelector('#registry-graph[data-ready="true"]', {
     state: 'attached',
@@ -19,6 +21,20 @@ export async function openGraphPane(page, projectName) {
     const tab = page.locator('#tab-graph');
     if (await tab.isVisible()) await tab.click();
   }
+}
+
+export async function expandDetailSection(page, id) {
+  return expandArtifact(page, id);
+}
+
+export async function expandArtifact(page, prefix, index) {
+  const toggleId = Number.isInteger(index) ? `${prefix}-${index}-toggle` : `${prefix}-toggle`;
+  const panelId = Number.isInteger(index) ? `${prefix}-${index}-panel` : `${prefix}-panel`;
+  const toggle = page.locator(`#${toggleId}`);
+  await expect(toggle).toBeVisible();
+  if ((await toggle.getAttribute('aria-expanded')) !== 'true') await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.locator(`#${panelId}`)).toHaveClass(/show/);
 }
 
 export async function clickGraphNode(page, nodeId) {

@@ -23,7 +23,7 @@ Local development: [Run locally](#run-locally). Search syntax: [docs/SEARCH.md](
 
 ## Status
 
-Application **v0.5.0**: REST dump, Cytoscape graph, Lucene-lite search with HTML facets, pre-production/production switch, best-effort live refresh, per-GET message board, JWT/SRI verification, IT-Wallet symbol in the header, data model and demo credential (SD-JWT and mdoc DeviceResponse as hex + diagnostic notation, not-for-use warning, **smartcard UI** from `credential_configuration` display metadata), **credential issuer metadata** (`openid-credential-issuer` and `openid-federation`, with a warning when they diverge), fake keys for offer/`issuer_state`. Requirements: [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) (version **0.5.0**).
+Application **v0.6.0**: REST dump, Cytoscape graph, Lucene-lite search with HTML facets, pre-production/production switch, best-effort live refresh, per-GET message board, JWT/SRI verification, IT-Wallet symbol in the header, data model and demo credential (SD-JWT and mdoc DeviceResponse as hex + diagnostic notation, not-for-use warning, **smartcard UI** from `credential_configuration` display metadata), **credential issuer metadata** from the dump (`openid-credential-issuer` and `openid-federation`, with a warning when they diverge), nested accordion for dump artifacts / issuer / demo / offer, fake keys for offer/`issuer_state`. Requirements: [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) (version **0.6.0**).
 
 ## Framework (decision)
 

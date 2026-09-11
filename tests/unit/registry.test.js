@@ -89,6 +89,16 @@ describe('artifacts', () => {
     assert.match(jsonPreview(arts[0].excerpt.issuers || []), /^\[/);
     assert.equal(tryParseJson('not-json').ok, false);
     assert.ok(arts.some((a) => String(a.title).includes('data-model')));
+    assert.ok(arts.some((a) => a.title === 'openid-credential-issuer'));
+    assert.ok(arts.some((a) => a.title === 'openid-federation'));
+  });
+
+  it('shows dumped OpenID4VCI well-knowns on an issuer node', () => {
+    const issuer = graph.nodes.find((n) => n.kind === 'issuer' && n.entity_id === 'https://pre.issuer.wallet.ipzs.it');
+    const arts = artifactsForNode(issuer, dump);
+    assert.ok(arts.some((a) => a.title === 'credential-catalog'));
+    assert.ok(arts.some((a) => a.title === 'openid-credential-issuer' && a.raw));
+    assert.ok(arts.some((a) => a.title === 'openid-federation' && a.jwt));
   });
 
   it('shows schema file for a schema node', () => {

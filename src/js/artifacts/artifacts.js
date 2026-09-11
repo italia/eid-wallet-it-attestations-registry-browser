@@ -308,6 +308,33 @@ export function issuerMetadataArtifactsForCredential(node, dump) {
   return issuerWellKnownGroupsForCredential(node, dump).flatMap((group) => group.artifacts);
 }
 
+export function issuerWellKnownArtifactsForIssuer(issuerId, dump) {
+  const iid = String(issuerId || '').replace(/\/$/, '');
+  if (!iid || !dump) return [];
+  const ociUrl = issuerMetadataUrl(iid);
+  const fedUrl = issuerFederationUrl(iid);
+  const ociRes = issuerMetadataResource(dump, iid);
+  const fedRes = issuerFederationResource(dump, iid);
+  const ociDoc = dump.issuerMetadata?.[iid] || ociRes?.json || null;
+  const fedDoc = dump.issuerFederation?.[iid] || fedRes?.json || null;
+  const artifacts = [];
+  const ociArt = artifactFromWellKnown(ociRes, ociDoc, {
+    title: 'openid-credential-issuer',
+    url: ociUrl,
+  });
+  const fedArt = artifactFromWellKnown(fedRes, fedDoc, {
+    title: 'openid-federation',
+    url: fedUrl,
+  });
+  if (ociArt) artifacts.push(ociArt);
+  if (fedArt) artifacts.push(fedArt);
+  return artifacts;
+}
+
+export function isIssuerWellKnownArtifact(artifact) {
+  return artifact?.title === 'openid-credential-issuer' || artifact?.title === 'openid-federation';
+}
+
 export function artifactsForNode(node, dump) {
   if (!node || !dump) return [];
   const out = [];
@@ -345,6 +372,9 @@ export function artifactsForNode(node, dump) {
         });
         if (file) add(file);
       }
+      for (const [i, art] of issuerMetadataArtifactsForCredential(node, dump).entries()) {
+        add({ ...art, idPrefix: 'issuer-artifact', idIndex: i });
+      }
       break;
     }
     case 'issuer': {
@@ -363,6 +393,9 @@ export function artifactsForNode(node, dump) {
           excerptTitle: node.entity_id,
         }),
       );
+      for (const [i, art] of issuerWellKnownArtifactsForIssuer(node.entity_id, dump).entries()) {
+        add({ ...art, idPrefix: 'issuer-artifact', idIndex: i });
+      }
       break;
     }
     case 'schemas':
@@ -453,33 +486,94 @@ function fillArtifactPanel(panel, artifact, paneId, t) {
   panel.appendChild(pre);
 }
 
+export function createDetailAccordion({ id, labelledBy, label } = {}) {
+  const accordion = document.createElement('div');
+  accordion.className = 'accordion artifacts-accordion';
+  if (id) accordion.id = id;
+  if (labelledBy) accordion.setAttribute('aria-labelledby', labelledBy);
+  else if (label) accordion.setAttribute('aria-label', label);
+  return accordion;
+}
+
+export function appendDetailAccordionItem(accordion, { id, title, headingId, toggleId, panelId, className = '' } = {}) {
+  const hid = headingId || `${id}-heading`;
+  const pid = panelId || `${id}-panel`;
+  const tid = toggleId || `${id}-toggle`;
+
+  const item = document.createElement('div');
+  item.className = `accordion-item${className ? ` ${className}` : ''}`;
+  if (id) item.id = id;
+
+  const heading = document.createElement('h4');
+  heading.className = 'accordion-header';
+  heading.id = hid;
+
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'accordion-button collapsed';
+  btn.id = tid;
+  btn.dataset.bsToggle = 'collapse';
+  btn.dataset.bsTarget = `#${pid}`;
+  btn.setAttribute('aria-expanded', 'false');
+  btn.setAttribute('aria-controls', pid);
+  btn.textContent = title;
+  heading.appendChild(btn);
+
+  const collapse = document.createElement('div');
+  collapse.id = pid;
+  collapse.className = 'accordion-collapse collapse';
+  collapse.setAttribute('aria-labelledby', hid);
+
+  const body = document.createElement('div');
+  body.className = 'accordion-body';
+  collapse.appendChild(body);
+  item.append(heading, collapse);
+  accordion.appendChild(item);
+  return { item, heading, toggle: btn, panel: collapse, body };
+}
+
 export function renderArtifacts(container, artifacts, t, options = {}) {
-  container.replaceChildren();
+  const existing = options.accordion || null;
+  if (!existing) container.replaceChildren();
   if (!artifacts.length) {
+    if (existing) return existing;
     const empty = document.createElement('p');
     empty.className = 'form-text';
     empty.textContent = t('artifacts.empty');
     container.appendChild(empty);
-    return;
+    return null;
   }
 
-  if (options.heading !== false) {
+  const headingText = options.heading === false ? t('artifacts.heading') : options.heading || t('artifacts.heading');
+  if (!existing && options.heading !== false) {
     const heading = document.createElement('h3');
     heading.className = 'h6 mt-3';
     heading.id = options.headingId || 'artifacts-heading';
-    heading.textContent = options.heading || t('artifacts.heading');
+    heading.textContent = headingText;
     container.appendChild(heading);
   }
 
-  for (const [index, artifact] of artifacts.entries()) {
-    const block = document.createElement('article');
-    block.className = 'artifact-block';
-    block.dataset.artifactIndex = String(index);
+  const defaultPrefix = options.idPrefix || 'artifact';
+  const accordion =
+    existing ||
+    createDetailAccordion({
+      id: options.accordionId || `${defaultPrefix}-accordion`,
+      labelledBy: options.heading === false ? undefined : options.headingId || 'artifacts-heading',
+      label: headingText,
+    });
 
-    const title = document.createElement('h4');
-    title.className = 'h6 mb-1';
-    title.textContent = artifact.title;
-    block.appendChild(title);
+  for (const [index, artifact] of artifacts.entries()) {
+    const idPrefix = artifact.idPrefix || defaultPrefix;
+    const artIndex = Number.isInteger(artifact.idIndex) ? artifact.idIndex : index;
+    const slot = appendDetailAccordionItem(accordion, {
+      className: 'artifact-block',
+      headingId: `${idPrefix}-${artIndex}-heading`,
+      toggleId: `${idPrefix}-${artIndex}-toggle`,
+      panelId: `${idPrefix}-${artIndex}-panel`,
+      title: artifact.title,
+    });
+    slot.item.dataset.artifactIndex = String(artIndex);
+    const body = slot.body;
 
     if (artifact.url) {
       const meta = document.createElement('p');
@@ -492,7 +586,7 @@ export function renderArtifacts(container, artifacts, t, options = {}) {
       if (artifact.contentType) {
         meta.appendChild(document.createTextNode(` · ${artifact.contentType}`));
       }
-      block.appendChild(meta);
+      body.appendChild(meta);
     }
 
     const panes = [];
@@ -512,13 +606,12 @@ export function renderArtifacts(container, artifacts, t, options = {}) {
     const tablist = document.createElement('div');
     tablist.className = 'artifact-tabs btn-group mb-2';
     tablist.setAttribute('role', 'tablist');
-    tablist.setAttribute('aria-label', t('artifacts.heading'));
+    tablist.setAttribute('aria-label', artifact.title || headingText);
 
     const panels = document.createElement('div');
     for (const [paneId, label] of panes) {
-    const idPrefix = options.idPrefix || 'artifact';
-    const tabId = `${idPrefix}-${index}-${paneId}-tab`;
-    const panelId = `${idPrefix}-${index}-${paneId}`;
+      const tabId = `${idPrefix}-${artIndex}-${paneId}-tab`;
+      const panelId = `${idPrefix}-${artIndex}-${paneId}`;
       const tab = document.createElement('button');
       tab.type = 'button';
       tab.className = 'btn btn-sm btn-outline-primary';
@@ -534,10 +627,10 @@ export function renderArtifacts(container, artifacts, t, options = {}) {
       fillArtifactPanel(panel, artifact, paneId, t);
 
       const activate = () => {
-        tablist.querySelectorAll('[role="tab"]').forEach((btn) => {
-          const on = btn === tab;
-          btn.setAttribute('aria-selected', on ? 'true' : 'false');
-          btn.classList.toggle('active', on);
+        tablist.querySelectorAll('[role="tab"]').forEach((tabBtn) => {
+          const on = tabBtn === tab;
+          tabBtn.setAttribute('aria-selected', on ? 'true' : 'false');
+          tabBtn.classList.toggle('active', on);
         });
         panels.querySelectorAll('[role="tabpanel"]').forEach((el) => {
           el.hidden = el !== panel;
@@ -547,10 +640,9 @@ export function renderArtifacts(container, artifacts, t, options = {}) {
       tablist.appendChild(tab);
       panels.appendChild(panel);
     }
-    block.appendChild(tablist);
-    block.appendChild(panels);
-    const first = tablist.querySelector('[role="tab"]');
-    first?.click();
-    container.appendChild(block);
+    body.append(tablist, panels);
+    tablist.querySelector('[role="tab"]')?.click();
   }
+  if (!existing) container.appendChild(accordion);
+  return accordion;
 }
