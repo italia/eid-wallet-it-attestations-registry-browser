@@ -12,10 +12,10 @@ Riferimenti da copiare (non re-inventare):
 | Elemento ufficiale | Explorer |
 |--------------------|----------|
 | `nav.it-skip-links` → `#main-content`, `#page-footer` | Uguale + skip verso `#registry-graph` e `#message-board` |
-| Header slim `bg-primary` + brand | Brand «Registro IT-Wallet» (i18n) |
+| Header slim `bg-primary` + brand | Simbolo IT-Wallet Negative White (`#header-it-wallet-logo`, `aria-hidden`) + brand «Registro IT-Wallet» (i18n) |
 | Dropdown lingua ITA/EN (`menuitemradio`) | Markup e CSS di `disco.html`: `nav-link.dropdown-toggle`, icona `it-expand`, `link-list-wrapper`, offset Popper 24 px, etichetta `ITA`/`EN` (NF-07) |
 | Zona destra slim | **Campanella bacheca** (`button.nav-link`) **poi** dropdown lingua, stessa riga |
-| `header-title-section` + logo | Logo IT-Wallet da shared-ui |
+| `header-title-section` + logo | Titolo pagina; il simbolo small è già nello slim header (non ripetere il wordmark) |
 | `main#main-content` | Titolo h1 + search + split lista/grafo |
 | Footer legale Note / Privacy / Accessibilità | Link a pagine del progetto o a dichiarazione |
 | `noscript` | Messaggio i18n |
@@ -55,7 +55,8 @@ Copiare da `official_resources/shared-ui/` (con attribuzione in NOTICE):
 - `js/bootstrap-italia.bundle.min.js`
 - `js/header-lang-dropdown.js`
 - `svg/sprites.svg`
-- loghi `img/IT-Wallet-Logo-Primary-BlueItalia.svg`
+- loghi `img/IT-Wallet-Logo-Primary-BlueItalia.svg` (wordmark su fondo chiaro)
+- simbolo small `IT-Wallet-Symbol-Negative-White.svg` (header slim `bg-primary`; già in `public/img/` e `vendor/img/`)
 - font Titillium / Lora / Roboto Mono se si vira il CSS ufficiale
 
 Finché il vendor non è copiato, il guscio `index.html` può puntare al CDN jsDelivr di Bootstrap Italia **solo in sviluppo**; la build Pages SHOULD essere self-contained.

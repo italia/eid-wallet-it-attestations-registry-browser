@@ -86,6 +86,13 @@ export function artifactsForNode(node, dump) {
           excerptTitle: node.credential_type,
         }),
       );
+      const rows = (dump.schemas || []).filter((row) => row.credential_type === node.credential_type);
+      for (const row of rows) {
+        const file = fromResource(resourceByUrl(dump, row.schema_uri), {
+          title: row.format ? `data-model · ${row.format}` : row.schema_uri,
+        });
+        if (file) add(file);
+      }
       break;
     }
     case 'issuer': {
@@ -170,6 +177,7 @@ export function formatArtifactView(artifact, pane) {
 export function artifactViewValue(artifact, pane) {
   if (pane === 'header') return artifact.header;
   if (pane === 'payload') return artifact.payload;
+  if (pane === 'diagnostic') return artifact.diagnostic;
   if (pane === 'excerpt') return artifact.excerpt;
   if (artifact.jwt && artifact.raw) return artifact.raw;
   if (artifact.raw) {
@@ -192,7 +200,7 @@ function fillArtifactPanel(panel, artifact, paneId, t) {
   panel.appendChild(pre);
 }
 
-export function renderArtifacts(container, artifacts, t) {
+export function renderArtifacts(container, artifacts, t, options = {}) {
   container.replaceChildren();
   if (!artifacts.length) {
     const empty = document.createElement('p');
@@ -202,11 +210,13 @@ export function renderArtifacts(container, artifacts, t) {
     return;
   }
 
-  const heading = document.createElement('h3');
-  heading.className = 'h6 mt-3';
-  heading.id = 'artifacts-heading';
-  heading.textContent = t('artifacts.heading');
-  container.appendChild(heading);
+  if (options.heading !== false) {
+    const heading = document.createElement('h3');
+    heading.className = 'h6 mt-3';
+    heading.id = options.headingId || 'artifacts-heading';
+    heading.textContent = options.heading || t('artifacts.heading');
+    container.appendChild(heading);
+  }
 
   for (const [index, artifact] of artifacts.entries()) {
     const block = document.createElement('article');
@@ -240,7 +250,8 @@ export function renderArtifacts(container, artifacts, t) {
     } else if (artifact.raw || artifact.json) {
       panes.push(['signed', t('artifacts.original')]);
     }
-    if (artifact.excerpt) panes.push(['excerpt', t('artifacts.excerpt')]);
+    if (artifact.diagnostic) panes.push(['diagnostic', t('artifacts.diagnostic')]);
+    if (artifact.excerpt) panes.push(['excerpt', artifact.excerptLabel || t('artifacts.excerpt')]);
 
     const tablist = document.createElement('div');
     tablist.className = 'artifact-tabs btn-group mb-2';
@@ -249,8 +260,9 @@ export function renderArtifacts(container, artifacts, t) {
 
     const panels = document.createElement('div');
     for (const [paneId, label] of panes) {
-      const tabId = `artifact-${index}-${paneId}-tab`;
-      const panelId = `artifact-${index}-${paneId}`;
+    const idPrefix = options.idPrefix || 'artifact';
+    const tabId = `${idPrefix}-${index}-${paneId}-tab`;
+    const panelId = `${idPrefix}-${index}-${paneId}`;
       const tab = document.createElement('button');
       tab.type = 'button';
       tab.className = 'btn btn-sm btn-outline-primary';

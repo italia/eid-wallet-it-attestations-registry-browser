@@ -21,6 +21,20 @@
   font-weight: 400 !important;
 }
 
+.navbar-brand.header-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+#header-it-wallet-logo {
+  display: block;
+  width: auto;
+  height: 1.5rem;
+  flex-shrink: 0;
+}
+
 .it-header-slim-wrapper .it-header-slim-right-zone {
   display: flex;
   align-items: center;
@@ -324,6 +338,16 @@
   font-size: 0.8rem;
 }
 
+.offer-decrypt-help summary {
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.offer-decrypt-command {
+  max-height: 8rem;
+  margin-top: 0.5rem;
+}
+
 #pane-graph,
 #section-graph {
   width: 100%;
@@ -352,6 +376,11 @@
 
 .node-detail:not([hidden]) {
   min-width: 0;
+}
+
+#example-warning {
+  margin-top: 0.5rem;
+  margin-bottom: 1rem;
 }
 
 .artifact-block {
@@ -545,6 +574,12 @@
     white-space: nowrap;
   }
 
+  header .it-header-slim-wrapper-content .navbar-brand strong {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
   .it-header-lang-dropdown .nav-link.dropdown-toggle,
   .it-header-lang-dropdown button.nav-link.dropdown-toggle {
     padding-left: 0 !important;
@@ -580,4 +615,13 @@
   100% {
     transform: translateX(320%);
   }
+}
+
+.board-cors-help {
+  border-top: 1px solid #5c6f82;
+  padding-top: 0.75rem;
+}
+
+.board-cors-help[hidden] {
+  display: none;
 }

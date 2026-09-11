@@ -91,6 +91,7 @@ export function buildRegistryGraph(dump, { lang = 'it' } = {}) {
   const schemaRows = dump.schemas || [];
   const authenticSources = dump.authenticSources || [];
   const claimDefs = dump.claims || {};
+  const parentLinks = [];
 
   for (const cred of credentials) {
     const type = cred.credential_type;
@@ -163,7 +164,7 @@ export function buildRegistryGraph(dump, { lang = 'it' } = {}) {
     credNode.text = [credNode.text, credNode.issuer, credNode.as, ...credNode.claim].filter(Boolean).join(' ');
 
     for (const parent of cred.parent_credentials || []) {
-      addEdge(`credential:${parent}`, id, 'parent');
+      parentLinks.push([`credential:${parent}`, id]);
     }
 
     for (const domain of cred.domains || []) {
@@ -178,6 +179,10 @@ export function buildRegistryGraph(dump, { lang = 'it' } = {}) {
       addEdge('taxonomy', did);
       addEdge(id, did, 'in-domain');
     }
+  }
+
+  for (const [parentId, childId] of parentLinks) {
+    if (byId.has(parentId)) addEdge(parentId, childId, 'parent');
   }
 
   for (const schema of schemaRows) {

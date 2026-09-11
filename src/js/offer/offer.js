@@ -4,14 +4,40 @@
  * (urn:it-wallet:credential-offer:{as}:{dataset}[:{object}]).
  */
 
-export function configurationIdsFor(credentialType, formats = []) {
+import { bytesToB64url, decodeSegmentBytes } from '../cache/jwt.js';
+
+export function configurationIdsFor(credentialType, formats = [], metadata) {
+  const fromMeta = configurationIdsFromMetadata(metadata, credentialType, formats);
+  if (fromMeta.ids.length) return fromMeta;
   const ids = [];
   for (const format of formats) {
     if (format === 'dc+sd-jwt') ids.push(`dc_sd_jwt_${credentialType}`);
     else if (format === 'mso_mdoc') ids.push(`mso_mdoc_${credentialType}`);
   }
   if (!ids.length) ids.push(`dc_sd_jwt_${credentialType}`);
-  return ids;
+  return { ids, derived: true };
+}
+
+export function configurationIdsFromMetadata(metadata, credentialType, formats = []) {
+  const configs = metadata?.credential_configurations_supported;
+  if (!configs || typeof configs !== 'object') return { ids: [], derived: false };
+  const type = String(credentialType || '');
+  const wantedFormats = new Set(formats.filter(Boolean));
+  const ids = [];
+  for (const [id, cfg] of Object.entries(configs)) {
+    const format = cfg?.format || '';
+    const scope = cfg?.scope || '';
+    const schemaId = cfg?.schema_id || '';
+    const matchesType =
+      id.endsWith(`_${type}`) ||
+      scope === type ||
+      String(schemaId).startsWith(`${type}+`) ||
+      String(cfg?.vct || '').includes(type);
+    if (!matchesType) continue;
+    if (wantedFormats.size && format && !wantedFormats.has(format)) continue;
+    ids.push(id);
+  }
+  return { ids, derived: false };
 }
 
 export function issuerStateUrn({ authenticSourceId, datasetId, objectId } = {}) {
@@ -43,13 +69,6 @@ export function credentialOfferHref({
   const json = body || credentialOfferObject({ credentialIssuer, configurationIds, issuerState });
   const param = encodeURIComponent(JSON.stringify(json));
   return `${scheme}://?credential_offer=${param}`;
-}
-
-function bytesToB64url(bytes) {
-  const arr = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
-  let bin = '';
-  for (let i = 0; i < arr.length; i++) bin += String.fromCharCode(arr[i]);
-  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
 async function importRsaOaepPublicKey(input) {
@@ -85,4 +104,38 @@ export async function encryptIssuerState(urn, publicKeyInput) {
   return [headerB64, bytesToB64url(encryptedKey), bytesToB64url(iv), bytesToB64url(ciphertext), bytesToB64url(tag)].join(
     '.',
   );
+}
+
+async function importRsaOaepPrivateKey(input) {
+  const trimmed = String(input || '').trim();
+  if (!trimmed) throw new Error('missing private key');
+  if (trimmed.startsWith('{')) {
+    const jwk = JSON.parse(trimmed);
+    return crypto.subtle.importKey('jwk', jwk, { name: 'RSA-OAEP', hash: 'SHA-256' }, false, ['decrypt']);
+  }
+  const pem = trimmed.replace(/-----BEGIN [^-]+-----/g, '').replace(/-----END [^-]+-----/g, '').replace(/\s+/g, '');
+  const der = Uint8Array.from(atob(pem), (c) => c.charCodeAt(0));
+  return crypto.subtle.importKey('pkcs8', der, { name: 'RSA-OAEP', hash: 'SHA-256' }, false, ['decrypt']);
+}
+
+/** Decrypt a compact JWE issuer_state produced by encryptIssuerState. Exemplificativo. */
+export async function decryptIssuerState(jwe, privateKeyInput) {
+  const parts = String(jwe || '').trim().split('.');
+  if (parts.length !== 5) throw new Error('not a compact JWE');
+  const key = await importRsaOaepPrivateKey(privateKeyInput);
+  const headerB64 = parts[0];
+  const cek = new Uint8Array(await crypto.subtle.decrypt({ name: 'RSA-OAEP' }, key, decodeSegmentBytes(parts[1])));
+  const iv = decodeSegmentBytes(parts[2]);
+  const ciphertext = decodeSegmentBytes(parts[3]);
+  const tag = decodeSegmentBytes(parts[4]);
+  const packed = new Uint8Array(ciphertext.length + tag.length);
+  packed.set(ciphertext, 0);
+  packed.set(tag, ciphertext.length);
+  const aesKey = await crypto.subtle.importKey('raw', cek, 'AES-GCM', false, ['decrypt']);
+  const plain = await crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv, additionalData: new TextEncoder().encode(headerB64), tagLength: 128 },
+    aesKey,
+    packed,
+  );
+  return new TextDecoder().decode(plain);
 }

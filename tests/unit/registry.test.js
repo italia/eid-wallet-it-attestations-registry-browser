@@ -1,13 +1,20 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { buildRegistryGraph, facetOptions, visibleClosure } from '../../src/js/graph/model.js';
-import { getQueryField, matchedNodeIds, parseQuery, quoteFieldValue, searchDocuments, setQueryField } from '../../src/js/search/index.js';
-import { decodeJwt, parseRegistryBody } from '../../src/js/cache/jwt.js';
+import { getQueryField, matchedNodeIds, parseQuery, quoteFieldValue, searchDocuments, setQueryField, understoodQuery } from '../../src/js/search/index.js';
+import { checkSri, decodeJwt, parseRegistryBody, sha256Sri, verifyJwt } from '../../src/js/cache/jwt.js';
 import { loadDump, timedFetch } from '../../src/js/cache/loader.js';
 import { resolveRegistryEnv } from '../../src/js/cache/environments.js';
 import { artifactsForNode, formatArtifactView } from '../../src/js/artifacts/artifacts.js';
 import { jsonPreview, tryParseJson } from '../../src/js/artifacts/json-tree.js';
-import { configurationIdsFor, credentialOfferHref, credentialOfferObject, encryptIssuerState, issuerStateUrn } from '../../src/js/offer/offer.js';
+import { configurationIdsFor, credentialOfferHref, credentialOfferObject, decryptIssuerState, encryptIssuerState, issuerStateUrn } from '../../src/js/offer/offer.js';
+import { demoEncPrivateJwkText, demoEncPublicJwkText } from '../../src/js/demo/material.js';
+import { buildDemoCredential, buildDemoCredentials, claimsFromCddl, exampleFromSchema } from '../../src/js/demo/example.js';
+import { encodeCbor, toCborDiag } from '../../src/js/demo/cbor.js';
+import { parseCddlMdoc } from '../../src/js/demo/mdoc.js';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { loadDumpFromDisk } from '../helpers/dump.js';
 
 describe('JWT catalog', () => {
@@ -27,15 +34,42 @@ describe('JWT catalog', () => {
     assert.ok(parsed.raw.startsWith(header));
     assert.equal(parsed.header.alg, 'ES256');
   });
+
+  it('verifies ES256 with a JWKS key', async () => {
+    const pair = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify']);
+    const jwk = await crypto.subtle.exportKey('jwk', pair.publicKey);
+    jwk.kid = 'test-kid';
+    const header = Buffer.from(JSON.stringify({ alg: 'ES256', kid: 'test-kid' })).toString('base64url');
+    const payload = Buffer.from(JSON.stringify({ credentials: [] })).toString('base64url');
+    const data = new TextEncoder().encode(`${header}.${payload}`);
+    const sig = Buffer.from(await crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, pair.privateKey, data)).toString(
+      'base64url',
+    );
+    const token = `${header}.${payload}.${sig}`;
+    const result = await verifyJwt(token, [jwk]);
+    assert.equal(result.ok, true);
+    const bad = await verifyJwt(`${header}.${payload}.AAAA`, [jwk]);
+    assert.equal(bad.ok, false);
+  });
+
+  it('checks SRI sha256 integrity', async () => {
+    const body = '{"ok":true}';
+    const sri = await sha256Sri(body);
+    const ok = await checkSri(body, sri);
+    assert.equal(ok.ok, true);
+    const bad = await checkSri(body, 'sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=');
+    assert.equal(bad.ok, false);
+    assert.equal(bad.error, 'integrity mismatch');
+  });
 });
 
 describe('artifacts', () => {
   const dump = loadDumpFromDisk();
   const graph = buildRegistryGraph(dump, { lang: 'it' });
 
-  it('shows signed catalog JWT and plaintext excerpt for a credential', () => {
+  it('shows signed catalog JWT, plaintext excerpt and data-model schema for a credential', () => {
     const arts = artifactsForNode(graph.byId.get('credential:mDL'), dump);
-    assert.equal(arts.length, 1);
+    assert.ok(arts.length >= 2);
     assert.equal(arts[0].jwt, true);
     assert.match(arts[0].raw, /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\./);
     assert.ok(arts[0].header?.alg);
@@ -45,6 +79,7 @@ describe('artifacts', () => {
     assert.equal(tryParseJson(arts[0].excerpt).ok, true);
     assert.match(jsonPreview(arts[0].excerpt.issuers || []), /^\[/);
     assert.equal(tryParseJson('not-json').ok, false);
+    assert.ok(arts.some((a) => String(a.title).includes('data-model')));
   });
 
   it('shows schema file for a schema node', () => {
@@ -141,6 +176,24 @@ describe('search', () => {
     const claimHits = searchDocuments(graph.documents, `claim:${claimName}`);
     assert.ok(claimHits.some((d) => d.id === 'credential:mDL'));
   });
+
+  it('supports OR, grouping, wildcards and boost', () => {
+    const orHits = searchDocuments(graph.documents, 'mDL OR pid');
+    assert.ok(orHits.some((d) => d.id === 'credential:mDL'));
+    assert.ok(orHits.some((d) => d.id === 'credential:pid'));
+    const grouped = searchDocuments(graph.documents, '(mDL OR pid) -av');
+    assert.ok(grouped.some((d) => d.id === 'credential:mDL'));
+    assert.ok(!grouped.some((d) => d.id === 'credential:av'));
+    const wild = searchDocuments(graph.documents, 'education*');
+    assert.ok(wild.some((d) => d.id === 'credential:education_degree'));
+    const qmark = searchDocuments(graph.documents, 'm?L');
+    assert.ok(qmark.some((d) => d.id === 'credential:mDL'));
+    const boosted = searchDocuments(graph.documents, 'mDL^5 OR pid').filter((d) => d.kind === 'credential');
+    assert.equal(boosted[0].id, 'credential:mDL');
+    const parsed = parseQuery('legal_type:pub-eaa +mDL');
+    assert.match(understoodQuery('+mDL -pid', 'it'), /Interpretata/);
+    assert.ok(parsed.tokens.some((t) => t.kind === 'field'));
+  });
 });
 
 describe('registry environments', () => {
@@ -193,13 +246,26 @@ describe('credential offer', () => {
   it('builds OpenID4VCI by-value href without issuer_state', () => {
     const href = credentialOfferHref({
       credentialIssuer: 'https://pre.issuer.wallet.ipzs.it',
-      configurationIds: configurationIdsFor('mDL', ['dc+sd-jwt', 'mso_mdoc']),
+      configurationIds: configurationIdsFor('mDL', ['dc+sd-jwt', 'mso_mdoc']).ids,
     });
     assert.match(href, /^openid-credential-offer:\/\/\?credential_offer=/);
     const json = JSON.parse(decodeURIComponent(href.split('credential_offer=')[1]));
     assert.equal(json.credential_issuer, 'https://pre.issuer.wallet.ipzs.it');
+    assert.deepEqual(json.credential_configuration_ids, ['dc_sd_jwt_mDL', 'mso_mdoc_mDL']);
     assert.ok(json.grants.authorization_code);
     assert.equal(json.grants.authorization_code.issuer_state, undefined);
+  });
+
+  it('prefers OpenID4VCI metadata configuration ids when present', () => {
+    const meta = {
+      credential_configurations_supported: {
+        dc_sd_jwt_mDL: { format: 'dc+sd-jwt', scope: 'mDL' },
+        mso_mdoc_mDL: { format: 'mso_mdoc', scope: 'mDL' },
+      },
+    };
+    const ids = configurationIdsFor('mDL', ['dc+sd-jwt', 'mso_mdoc'], meta);
+    assert.equal(ids.derived, false);
+    assert.deepEqual(ids.ids, ['dc_sd_jwt_mDL', 'mso_mdoc_mDL']);
   });
 
   it('builds the ST issuer_state URN with optional objectId', () => {
@@ -235,5 +301,140 @@ describe('credential offer', () => {
       issuerState: jwe,
     });
     assert.equal(body.grants.authorization_code.issuer_state, jwe);
+  });
+
+  it('round-trips issuer_state with the published demo RSA keys (JWK and PEM)', async () => {
+    const urn = issuerStateUrn({
+      authenticSourceId: 'https://www.mit.gov.it',
+      datasetId: 'mdl_001',
+      objectId: 'demo-1',
+    });
+    const fromJwk = await encryptIssuerState(urn, demoEncPublicJwkText());
+    assert.equal(await decryptIssuerState(fromJwk, demoEncPrivateJwkText()), urn);
+    const root = join(dirname(fileURLToPath(import.meta.url)), '../..');
+    const pemPub = readFileSync(join(root, 'demo/keys/issuer-state-enc.public.pem'), 'utf8');
+    const pemPriv = readFileSync(join(root, 'demo/keys/issuer-state-enc.private.pem'), 'utf8');
+    const fromPem = await encryptIssuerState(urn, pemPub);
+    assert.equal(await decryptIssuerState(fromPem, pemPriv), urn);
+  });
+});
+
+describe('demo credential', () => {
+  const dump = loadDumpFromDisk();
+  const graph = buildRegistryGraph(dump, { lang: 'it' });
+
+  it('fills required schema claims with synthetic demo values', () => {
+    const schema = dump.resources.find((r) => String(r.path || '').endsWith('mdl.json'))?.json;
+    const ctx = {
+      issuer: 'https://demo.issuer.wallet.example',
+      issuerName: 'Demo',
+      sub: '11111111-1111-4111-8111-111111111111',
+      now: 1_700_000_000,
+      exp: 1_731_532_800,
+      vct: 'urn:it-wallet:mDL:1',
+      holderJwk: { kty: 'EC', crv: 'P-256', x: 'x', y: 'y', alg: 'ES256' },
+    };
+    const claims = exampleFromSchema(schema, ctx);
+    assert.equal(claims.iss, ctx.issuer);
+    assert.equal(claims.given_name, 'Mario');
+    assert.equal(claims.family_name, 'Rossi');
+    assert.equal(claims.issuing_country, 'IT');
+    assert.ok(claims.driving_privileges?.[0]?.vehicle_category_code);
+    assert.equal(claims._sd, undefined);
+  });
+
+  it('extracts CDDL element identifiers', () => {
+    const cddl = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), '../../cache/pre.ta.wallet.ipzs.it/schemas/v1.3.3/av.cddl'),
+      'utf8',
+    );
+    const parsed = parseCddlMdoc(cddl);
+    assert.equal(parsed.docType, 'eu.europa.ec.av.1');
+    assert.deepEqual(
+      parsed.namespaces.map((ns) => ns.name),
+      ['eu.europa.ec.av.1', 'it.ipzs.wallet.ta.av.1'],
+    );
+    assert.ok(parsed.namespaces[0].items.some((el) => el.id === 'age_over_18'));
+    const claims = claimsFromCddl(cddl, {
+      issuer: 'https://demo.issuer.wallet.example',
+      issuerName: 'Demo',
+      sub: '11111111-1111-4111-8111-111111111111',
+      now: 1,
+      exp: 2,
+      vct: 'eu.europa.ec.av.1',
+      holderJwk: { kty: 'EC', crv: 'P-256', x: 'x', y: 'y' },
+    });
+    assert.equal(claims.age_over_18, true);
+    assert.equal(claims.docType, 'eu.europa.ec.av.1');
+  });
+
+  it('signs an SD-JWT VC with JSON disclosures and a key-binding JWT', async () => {
+    const built = await buildDemoCredential(graph.byId.get('credential:mDL'), dump);
+    assert.equal(built.format, 'dc+sd-jwt');
+    assert.ok(built.verified);
+    assert.equal(built.header.typ, 'dc+sd-jwt');
+    assert.equal(built.keyBinding.header.typ, 'kb+jwt');
+    assert.match(built.sdJwt, /~eyJ/);
+    assert.ok(Array.isArray(built.disclosures[0].json));
+    assert.equal(built.disclosures[0].json.length, 3);
+    assert.ok(built.disclosures.some((d) => d.json[1] === 'given_name' && d.json[2] === 'Mario'));
+    assert.equal(built.reconstructed.given_name, 'Mario');
+    assert.equal(built.keyBinding.payload.aud, 'https://demo.verifier.wallet.example');
+    assert.ok(built.keyBinding.payload.sd_hash);
+    assert.equal(built.artifact.excerpt.disclosures[0].length, 3);
+  });
+
+  it('produces DeviceResponse mdoc CBOR as BINASCII hex with issuerSigned claims from the CDDL', async () => {
+    const items = await buildDemoCredentials(graph.byId.get('credential:mDL'), dump);
+    assert.equal(items.length, 2);
+    assert.equal(items[0].format, 'dc+sd-jwt');
+    const mdoc = items[1];
+    assert.equal(mdoc.format, 'mso_mdoc');
+    assert.ok(mdoc.verified);
+    assert.equal(mdoc.cbor[0], 0xa3);
+    assert.match(mdoc.hex, /^a36776657273696f6e/);
+    assert.equal(mdoc.hex, Buffer.from(mdoc.cbor).toString('hex'));
+    assert.equal(mdoc.artifact.raw, mdoc.hex);
+    assert.doesNotMatch(mdoc.hex, /[^0-9a-f]/);
+    assert.doesNotMatch(mdoc.artifact.raw, /^eyJ/);
+    assert.equal(mdoc.decoded.documents[0].docType, 'org.iso.18013.5.1.mDL');
+    assert.ok(mdoc.decoded.documents[0].issuerSigned.nameSpaces['org.iso.18013.5.1']);
+    assert.equal(mdoc.claims.given_name, 'Mario');
+    assert.equal(mdoc.claims.family_name, 'Rossi');
+    assert.ok(mdoc.namespaces.includes('org.iso.18013.5.1'));
+    assert.equal(mdoc.artifact.contentType, 'application/cbor');
+    assert.match(mdoc.diagnostic, /24\(<</);
+    assert.match(mdoc.diagnostic, /"elementIdentifier": "family_name"/);
+    assert.match(mdoc.diagnostic, /"issuerSigned"/);
+    assert.match(mdoc.diagnostic, /h'/);
+    assert.equal(mdoc.artifact.diagnostic, mdoc.diagnostic);
+    const parsed = parseCddlMdoc(dump.resources.find((r) => String(r.path || '').endsWith('mdl.cddl')).raw);
+    assert.equal(parsed.docType, 'org.iso.18013.5.1.mDL');
+    assert.ok(parsed.namespaces[0].items.some((el) => el.id === 'family_name'));
+  });
+
+  it('includes every AV CDDL element, including age_over_18', async () => {
+    const items = await buildDemoCredentials(graph.byId.get('credential:av'), dump);
+    assert.equal(items.length, 1);
+    const mdoc = items[0];
+    assert.equal(mdoc.format, 'mso_mdoc');
+    assert.equal(mdoc.docType, 'eu.europa.ec.av.1');
+    assert.equal(mdoc.claims.age_over_18, true);
+    const ns = mdoc.decoded.documents[0].issuerSigned.nameSpaces;
+    assert.ok(ns['eu.europa.ec.av.1'].some((el) => el.elementIdentifier === 'age_over_18' && el.elementValue === true));
+    assert.ok(ns['it.ipzs.wallet.ta.av.1'].some((el) => el.elementIdentifier === 'sub'));
+    assert.ok(ns['it.ipzs.wallet.ta.av.1'].some((el) => el.elementIdentifier === 'issuing_country'));
+    assert.ok(ns['it.ipzs.wallet.ta.av.1'].some((el) => el.elementIdentifier === 'issuing_authority'));
+    assert.match(mdoc.diagnostic, /"elementIdentifier": "age_over_18"/);
+    assert.match(mdoc.diagnostic, /24\(<</);
+  });
+
+  it('encodes canonical CBOR majors used by mdoc', () => {
+    assert.deepEqual(encodeCbor(0), Uint8Array.of(0x00));
+    assert.deepEqual(encodeCbor(true), Uint8Array.of(0xf5));
+    assert.equal(encodeCbor('a')[0], 0x61);
+    assert.equal(toCborDiag(true), 'true');
+    assert.equal(toCborDiag(new Map([[1, -7]])), '{ 1: -7 }');
+    assert.match(toCborDiag({ $cborTag: 24, $embedded: true, value: { digestID: 0 } }), /24\(<</);
   });
 });

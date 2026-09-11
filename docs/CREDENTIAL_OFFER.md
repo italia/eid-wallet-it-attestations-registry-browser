@@ -8,15 +8,18 @@ Riferimenti ST IT-Wallet v1.4.6:
 
 ## 1. Cosa mostra il tool
 
-Su ogni nodo `credential` (e sul dettaglio issuer, se c’è un solo issuer):
+Su ogni nodo `credential`:
 
 1. **Link** `openid-credential-offer://?credential_offer=<urlencoded JSON>`
 2. **Link alias** `haip-vci://?credential_offer=…` (stesso oggetto; le ST dicono che il Wallet MUST accettare entrambi)
 3. **QR** con il payload dell’URI `openid-credential-offer://` (flusso cross-device)
+4. **Form esemplificativo** per `objectId` e chiave pubblica, che può aggiungere `grants.authorization_code.issuer_state` come JWE
 
 Non si usa `credential_offer_uri` (by reference): il tool non ospita un endpoint offer lato server.
 
 ## 2. Oggetto JSON (by value)
+
+Senza chiave nel form (se l’utente cancella il campo):
 
 ```json
 {
@@ -28,15 +31,23 @@ Non si usa `credential_offer_uri` (by reference): il tool non ospita un endpoint
 }
 ```
 
+Di default il form è precompilato con la chiave RSA pubblica di demo (`demo/keys/issuer-state-enc.public.pem`). In quel caso `issuer_state` è un JWE compact (RSA-OAEP-256 / A256GCM) dell’URN ST.
+
 | Campo ST | Comportamento explorer |
 |----------|------------------------|
-| `credential_issuer` | `issuers[].entity_id` del catalogo. Se più issuer: un’offer per issuer (tab o select). |
-| `credential_configuration_ids` | Da metadati OpenID4VCI dell’issuer se dumpati (A-10); altrimenti heuristica documentata sotto. |
+| `credential_issuer` | `issuers[].id` / `issuers[].entity_id` del catalogo. |
+| `credential_configuration_ids` | Chiavi reali da `/.well-known/openid-credential-issuer` se dumpati (A-10). Altrimenti heuristica sotto, etichettata come **derivati**. |
 | `grants.authorization_code` | Oggetto presente (MUST nelle ST). |
-| `issuer_state` | **Omesso**. Le ST lo richiedono cifrato con chiave PDND `GetAttributeClaims` nella forma `urn:it-wallet:credential-offer:{as}:{dataset}[:{object}]`. Questo tool non è Consumer PDND e non deve fingere uno state valido. |
+| `issuer_state` | **Omesso** se il campo chiave è vuoto. Altrimenti l’URN ST viene cifrato (RSA-OAEP-256 / A256GCM, JWE compact) e inserito qui. La chiave precompilata è quella **fittizia** pubblicata in [`demo/`](../demo/README.md), non la chiave PDND `GetAttributeClaims`. |
 | `authorization_server` | Incluso solo se i metadati issuer hanno più `authorization_servers`. |
 
-## 3. Heuristica `credential_configuration_ids` (finché manca il metadata dump)
+URN in chiaro (mostrato in UI, e di nuovo in chiaro se la JWE si decifra con la chiave privata di demo):
+
+`urn:it-wallet:credential-offer:{as}:{dataset}[:{object}]`
+
+`as` e `dataset` arrivano dai metadati issuer se presenti, altrimenti dal catalogo / registro FA. `object` è l’`objectId` del form (opzionale).
+
+## 3. Heuristica `credential_configuration_ids`
 
 Se non è disponibile `credential_configurations_supported`:
 
@@ -45,13 +56,13 @@ Se non è disponibile `credential_configurations_supported`:
 | `dc+sd-jwt` | `dc_sd_jwt_<credential_type>` |
 | `mso_mdoc` | `mso_mdoc_<credential_type>` |
 
-L’UI MUST etichettare questi id come **derivati**, non come valore firmato dal TA. Quando A-10 è soddisfatto, gli id derivati si sostituiscono con le chiavi reali.
+L’UI MUST etichettare questi id come **derivati**. Quando il dump include i metadati issuer, gli id derivati si sostituiscono con le chiavi reali.
 
 ## 4. Universal Link
 
-Le ST: se il Wallet pubblica `credential_offer_endpoint` HTTPS, SHOULD usarlo. L’explorer non sa quale Wallet l’utente ha installato (non c’è Selection Page di produzione nel tool). Quindi:
+Le ST: se il Wallet pubblica `credential_offer_endpoint` HTTPS, SHOULD usarlo. L’explorer non sa quale Wallet l’utente ha installato. Quindi:
 
-- href default = custom scheme (funziona senza discovery wallet)
+- href default = custom scheme
 - SHOULD: copia anche un href `https://…` se l’utente incolla un `credential_offer_endpoint` in un campo opzionale (MAY v1.1)
 
 ## 5. QR
@@ -61,17 +72,30 @@ Le ST: se il Wallet pubblica `credential_offer_endpoint` HTTPS, SHOULD usarlo. L
 - Colori: modulo su bianco, contrasto WCAG
 - Download SVG/PNG MAY
 
-Riuso possibile del web component `official_resources/shared-ui/js/qrcode/qr-code.js` se si vendorano gli asset.
-
 ## 6. Disclaimer obbligatorio (A-14)
 
 Testo i18n accanto a QR/link:
 
-> Credential offer generata dal catalogo. Non abilita l'emissione di una istanza specifica perché l'utente non è autenticato e manca `issuer_state`. Abilita la richiesta di una tipologia di credenziale a seguito dell'autenticazione dell'utente (se elegibile).
+> Credential offer generata dal catalogo. Senza issuer_state cifrato abilita solo la richiesta di una tipologia di credenziale dopo l'autenticazione (se elegibile). Il form sotto è esemplificativo: non usa la chiave PDND GetAttributeClaims.
 
 ## 7. Cosa non fare
 
-- Non cifrare URN fittizi.
+- Non spacciare un JWE di esempio per uno `issuer_state` PDND valido.
 - Non puntare `credential_offer_uri` a GitHub Pages fingendo un issuer.
-- Non inserire dati personali nel JSON.
+- Non inserire dati personali nel JSON (l’`objectId` resta nell’origine browser).
 - Non usare `openid://` (fuori ST).
+
+## 8. Chiavi di demo e decifratura
+
+Il repository pubblica materiale crittografico **fittizio** in [`demo/`](../demo/README.md):
+
+- RSA-OAEP per cifrare/decifrare `issuer_state`
+- ES256 per firmare le credenziali di esempio sul nodo `credential`
+
+Per decifrare il JWE mostrato nella offer, da un clone:
+
+```bash
+node scripts/decrypt-issuer-state.mjs --jwe '<compact JWE>'
+```
+
+Lo script usa `demo/keys/issuer-state-enc.private.jwk.json`. L’UI mostra lo stesso comando e, se la chiave nel form è ancora quella di demo, anche l’URN in chiaro dopo un round-trip.

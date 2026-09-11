@@ -8,7 +8,7 @@ Sotto il campo testo, quattro `<select>` HTML (`legal_type`, emittente, fonte au
 
 Sopra la query, un `<select>` **Ambiente** (F-12, A-01) sceglie collaudo (`pre`) o produzione (`prod`) e mostra il Trust Anchor (`https://pre.ta.wallet.ipzs.it` / `https://ta.wallet.ipzs.it`). Lo switch ricarica il dump (`?env=pre|prod`), non è un token Lucene. Alias accettati nel permalink: `preprod`/`collaudo` → `pre`; `produzione`/`production` → `prod`.
 
-Risultati: lista accessibile + filtro grafo (stesso insieme).
+Risultati: lista accessibile + filtro grafo (stesso insieme). Sotto il campo, `query.understood` riassume in italiano/inglese la query interpretata (OR, raggruppamenti, `+`/`-`).
 
 ## 2. Sintassi (Lucene-lite)
 

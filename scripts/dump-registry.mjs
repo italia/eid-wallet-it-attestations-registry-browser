@@ -13,11 +13,12 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { resolveRegistryEnv } from '../src/js/cache/environments.js';
+import { version as appVersion } from '../package.json' with { type: 'json' };
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const CACHE_ROOT = join(ROOT, 'cache');
 const USER_AGENT =
-  'eid-wallet-it-attestations-registry-browser/0.2 (+https://github.com/italia/eid-wallet-it-attestations-registry-browser)';
+  `eid-wallet-it-attestations-registry-browser/${appVersion} (+https://github.com/italia/eid-wallet-it-attestations-registry-browser)`;
 
 const REGISTRY_ENDPOINT_KEYS = [
   'claims_registry',
@@ -47,6 +48,7 @@ if (!baseUrl) {
 const resources = [];
 const queued = new Set();
 const queue = [];
+const integrityByUrl = new Map();
 
 function parseArgs(argv) {
   const out = {};
@@ -160,8 +162,8 @@ function enqueue(url, kind) {
 async function dumpOne({ url, kind }) {
   const path = cachePathFor(url);
   const accept =
-    kind === 'catalog'
-      ? 'application/jwt, application/jose, application/json;q=0.5, */*;q=0.1'
+    kind === 'catalog' || kind === 'federation-entity'
+      ? 'application/jwt, application/jose, application/entity-statement+jwt, application/json;q=0.5, */*;q=0.1'
       : 'application/json, application/jwt;q=0.8, */*;q=0.1';
 
   const entry = {
@@ -207,6 +209,17 @@ async function dumpOne({ url, kind }) {
       await writeFile(abs, buf);
     }
 
+    const sri = integrityByUrl.get(url);
+    if (sri) {
+      const actual = `sha256-${createHash('sha256').update(buf).digest('base64')}`;
+      entry.integrity = actual === sri ? 'ok' : 'mismatch';
+      entry.integrity_expected = sri;
+      entry.integrity_actual = actual;
+      if (entry.integrity === 'mismatch') {
+        console.warn(`! ${url} → integrity mismatch (${sri})`);
+      }
+    }
+
     const parsed = parseBody(buf, contentType);
     followParsed(kind, url, parsed.json);
     resources.push(entry);
@@ -239,7 +252,11 @@ function followParsed(kind, url, json) {
 
   if (Array.isArray(json.schemas)) {
     for (const schema of json.schemas) {
-      if (schema.schema_uri) enqueue(schema.schema_uri, 'schema-file');
+      if (schema.schema_uri) {
+        const clean = String(schema.schema_uri).split('#')[0];
+        if (schema['schema_uri#integrity']) integrityByUrl.set(clean, schema['schema_uri#integrity']);
+        enqueue(schema.schema_uri, 'schema-file');
+      }
     }
   }
 
@@ -255,15 +272,16 @@ function followParsed(kind, url, json) {
   if (withIssuerMetadata && Array.isArray(json.credentials)) {
     for (const cred of json.credentials) {
       for (const issuer of cred.issuers || []) {
-        if (issuer.entity_id) {
-          const id = issuer.entity_id.replace(/\/$/, '');
+        const entity = issuer.entity_id || issuer.id;
+        if (entity) {
+          const id = String(entity).replace(/\/$/, '');
           enqueue(`${id}/.well-known/openid-credential-issuer`, 'issuer-metadata');
         }
       }
     }
   }
 
-  if (kind === 'schema-file' || kind === 'l10n' || kind === 'issuer-metadata') return;
+  if (kind === 'schema-file' || kind === 'l10n' || kind === 'issuer-metadata' || kind === 'federation-entity') return;
 
   const host = new URL(baseUrl).hostname;
   for (const found of collectHttpsUrls(json)) {
@@ -284,6 +302,7 @@ function followParsed(kind, url, json) {
 async function main() {
   console.log(`Dump env=${env} base=${baseUrl}`);
   enqueue(`${baseUrl}/.well-known/it-wallet-registry`, 'discovery');
+  enqueue(`${baseUrl}/.well-known/openid-federation`, 'federation-entity');
 
   while (queue.length) {
     const item = queue.shift();
@@ -296,7 +315,7 @@ async function main() {
     generated_at: new Date().toISOString(),
     env,
     base_url: baseUrl,
-    tool: 'eid-wallet-it-attestations-registry-browser@0.2.0',
+    tool: `eid-wallet-it-attestations-registry-browser@${appVersion}`,
     flags: { withFederation, withIssuerMetadata },
     resources,
   };

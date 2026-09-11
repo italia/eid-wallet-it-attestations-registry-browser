@@ -34,7 +34,12 @@
     <div class="it-header-slim-wrapper bg-primary">
       <div class="container-fluid px-3">
         <div class="it-header-slim-wrapper-content d-flex justify-content-between align-items-center">
-          <span class="navbar-brand text-white text-truncate pe-2"><strong id="header-region-name">Registro IT-Wallet</strong></span>
+          <span class="navbar-brand header-brand text-white text-truncate pe-2">
+            <img id="header-it-wallet-logo" class="header-it-wallet-logo"
+              src="./img/IT-Wallet-Symbol-Negative-White.svg" width="20" height="24" alt=""
+              aria-hidden="true">
+            <strong id="header-region-name">Registro IT-Wallet</strong>
+          </span>
           <div class="it-header-slim-right-zone">
             <button type="button" id="message-board-toggle" class="nav-link"
               aria-controls="message-board" aria-expanded="false" data-bs-toggle="offcanvas"
@@ -96,7 +101,7 @@
     <div class="header-title-section">
       <div class="container-fluid px-3 py-3">
         <h1 class="h3 mb-0" id="page-heading">IT-Wallet Registry Search Engine</h1>
-        <p class="mb-0 small" id="page-tagline">Italian Wallet Ecosystem Catalog about attestation data schemas, attestations and authentic sources</p>
+        <p class="mb-0 small" id="page-tagline">Italian attestations and authentic sources wallet ecosystem catalog</p>
       </div>
     </div>
   </header>
@@ -131,6 +136,7 @@
       <p id="registry-search-hint" class="form-text mt-2 mb-0">
         Usa +, -, virgolette e campo:valore. I menu compilano legal_type:, issuer:, as: e claim:.
       </p>
+      <p id="query-understood" class="form-text mt-1 mb-0" aria-live="polite"></p>
       <p id="registry-search-error" class="text-danger" role="alert" hidden></p>
       <fieldset class="registry-search-facets mt-3">
         <legend class="registry-field-heading h5" id="search-facets-legend">Filtri sulla ricerca</legend>
@@ -243,19 +249,37 @@
         </div>
       </div>
       <ul id="message-board-list" class="list-unstyled" role="log" aria-live="polite" aria-relevant="additions"></ul>
+      <aside id="board-cors-help" class="board-cors-help mt-3" hidden>
+        <h3 class="h6" id="board-cors-title">Refresh live bloccato dal browser (CORS)</h3>
+        <p class="small" id="board-cors-body">
+          Il dump locale resta visibile. Per riprovare dal Trust Anchor con un’estensione CORS:
+        </p>
+        <ol class="small ps-3">
+          <li id="board-cors-step1">Installa un’estensione del tipo “Allow CORS: Access-Control-Allow-Origin” (Chrome/Edge/Firefox).</li>
+          <li id="board-cors-step2">Attivala solo per questa sessione e consenti gli host pre.ta.wallet.ipzs.it e ta.wallet.ipzs.it.</li>
+          <li id="board-cors-step3">Ricarica l’explorer, apri di nuovo la bacheca e premi Riprova sulla GET fallita.</li>
+          <li id="board-cors-step4">Disattiva l’estensione quando hai finito: sblocca CORS su tutti i siti.</li>
+        </ol>
+        <p class="small mb-0" id="board-cors-warn">Non è un requisito di produzione: il dump CI resta la fonte di verità. Alcune risposte del TA inviano Access-Control-Allow-Origin: *,* (valore non valido per i browser).</p>
+      </aside>
     </div>
   </div>
 
   <footer id="page-footer" class="bg-primary text-white py-3" role="contentinfo" tabindex="-1">
     <div class="container-fluid px-3">
       <nav id="footer-legal-nav" aria-label="Link legali">
-        <a id="footer-legal" href="./NOTICE" class="text-white me-4">Note legali</a>
-        <a id="footer-docs" href="./docs/REQUIREMENTS.md" class="text-white me-4">Requisiti</a>
-        <a id="footer-accessibility" href="./docs/ACCESSIBILITY.md" class="text-white me-4">Accessibilità</a>
+        <a id="footer-legal" href="https://github.com/italia/eid-wallet-it-attestations-registry-browser/blob/main/NOTICE"
+          class="text-white me-4" rel="noopener">Note legali</a>
+        <a id="footer-docs" href="https://github.com/italia/eid-wallet-it-attestations-registry-browser/blob/main/docs/REQUIREMENTS.md"
+          class="text-white me-4" rel="noopener">Requisiti</a>
+        <a id="footer-accessibility" href="https://github.com/italia/eid-wallet-it-attestations-registry-browser/blob/main/docs/ACCESSIBILITY.md"
+          class="text-white me-4" rel="noopener">Accessibilità</a>
         <a id="footer-github" href="https://github.com/italia/eid-wallet-it-attestations-registry-browser"
           class="text-white" rel="noopener">Repository GitHub</a>
       </nav>
       <p class="small mb-0 mt-2">
+        <span id="footer-version">v0.4.0</span>
+        <span aria-hidden="true"> · </span>
         <span id="footer-specs-label">Allineato a</span>
         <a id="footer-specs" class="text-white"
           href="https://italia.github.io/eid-wallet-it-docs/releases/1.4.6/it/"

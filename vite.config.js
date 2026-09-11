@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 const root = dirname(fileURLToPath(import.meta.url));
 const cacheDir = resolve(root, 'cache');
 const publicCache = resolve(root, 'public', 'cache');
+const demoDir = resolve(root, 'demo');
 
 function syncCache() {
   mkdirSync(publicCache, { recursive: true });
@@ -17,19 +18,25 @@ function mime(file) {
     case '.json':
       return 'application/json; charset=utf-8';
     case '.cddl':
+    case '.pem':
+    case '.md':
       return 'text/plain; charset=utf-8';
     default:
       return 'application/octet-stream';
   }
 }
 
-function serveCacheFile(urlPath, res) {
-  const rel = decodeURIComponent(urlPath.replace(/^\/cache\/?/, ''));
-  const file = normalize(join(cacheDir, rel));
-  if (!file.startsWith(cacheDir) || !existsSync(file) || statSync(file).isDirectory()) return false;
+function serveRootFile(baseDir, prefix, urlPath, res) {
+  const rel = decodeURIComponent(urlPath.replace(new RegExp(`^${prefix}/?`), ''));
+  const file = normalize(join(baseDir, rel));
+  if (!file.startsWith(baseDir) || !existsSync(file) || statSync(file).isDirectory()) return false;
   res.setHeader('Content-Type', mime(file));
   createReadStream(file).pipe(res);
   return true;
+}
+
+function serveCacheFile(urlPath, res) {
+  return serveRootFile(cacheDir, '/cache', urlPath, res);
 }
 
 function serveCache() {
@@ -42,8 +49,7 @@ function serveCache() {
       syncCache();
       server.middlewares.use((req, res, next) => {
         const url = (req.url || '').split('?')[0];
-        if (!url.startsWith('/cache/')) return next();
-        if (serveCacheFile(url, res)) return;
+        if (url.startsWith('/cache/') && serveCacheFile(url, res)) return;
         next();
       });
     },
@@ -51,6 +57,11 @@ function serveCache() {
       const dest = resolve(root, 'dist', 'cache');
       mkdirSync(dest, { recursive: true });
       cpSync(cacheDir, dest, { recursive: true });
+      if (existsSync(demoDir)) {
+        const demoDest = resolve(root, 'dist', 'demo');
+        mkdirSync(demoDest, { recursive: true });
+        cpSync(demoDir, demoDest, { recursive: true });
+      }
       writeFileSync(resolve(root, 'dist', '.nojekyll'), '');
     },
   };

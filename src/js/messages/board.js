@@ -1,11 +1,13 @@
 export class MessageBoard {
-  constructor({ list, badge, toggle }) {
+  constructor({ list, badge, toggle, corsHelp }) {
     this.list = list;
     this.badge = badge;
     this.toggle = toggle;
+    this.corsHelp = corsHelp;
     this.labels = {};
     this.items = [];
     this.pending = null;
+    this.corsVisible = false;
   }
 
   clear() {
@@ -21,6 +23,11 @@ export class MessageBoard {
 
   setLabels(labels) {
     this.labels = labels || {};
+    this.render();
+  }
+
+  setCorsVisible(visible) {
+    this.corsVisible = Boolean(visible);
     this.render();
   }
 
@@ -50,7 +57,7 @@ export class MessageBoard {
       durationMs: call.durationMs,
       applicationType: call.applicationType || call.contentType || '',
       reason: call.error || null,
-      retry: call.ok ? null : retry,
+      retry: call.ok ? null : retry ? () => retry(call) : null,
     }));
     this.render();
   }
@@ -75,6 +82,7 @@ export class MessageBoard {
     for (const item of this.items) {
       this.list.appendChild(this.renderItem(item));
     }
+    if (this.corsHelp) this.corsHelp.hidden = !this.corsVisible;
   }
 
   renderPending() {

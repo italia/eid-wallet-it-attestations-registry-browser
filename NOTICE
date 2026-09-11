@@ -9,6 +9,10 @@ European Commission.
 Registry contents dumped into `cache/` remain metadata published by the National
 Trust Anchor. This tool does not store personal data of natural persons.
 
+The files under `demo/keys/` are intentionally published fake cryptographic
+material for example credentials and for encrypting a sample `issuer_state`.
+They must not be used in production or with PDND.
+
 Third-party notices
 -------------------
 
@@ -16,5 +20,7 @@ Third-party notices
   (`disco.html`, `it-wallet.html`) follow the licenses of
   https://github.com/italia/bootstrap-italia and of
   https://github.com/italia/eid-wallet-it-docs
+- The IT-Wallet Symbol in `public/img/` and `vendor/img/` is copied from
+  `official_resources/IT-Wallet-Symbol/` of the same documentation repository.
 - Cytoscape.js, Lunr, i18next, Vite, qrcode and other npm packages remain under
   their respective licenses (see `package-lock.json` when generated).

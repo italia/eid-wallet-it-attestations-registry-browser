@@ -1,13 +1,25 @@
-import { applyDocumentLang, currentLang, loadLocale, t } from './js/i18n/i18n.js';
+import { applyDocumentLang, currentLang, dictionary, loadLocale, t } from './js/i18n/i18n.js';
 import { MessageBoard } from './js/messages/board.js';
-import { loadDump, loadDumpManifest } from './js/cache/loader.js';
+import { loadDump, loadDumpManifest, timedFetch } from './js/cache/loader.js';
 import { resolveRegistryEnv } from './js/cache/environments.js';
+import {
+  annotateDumpTrust,
+  applyLiveBody,
+  fetchLiveResource,
+  isCorsFailure,
+  overlayFromIdb,
+  refreshDumpLive,
+} from './js/cache/browser.js';
 import { buildRegistryGraph, facetOptions, visibleClosure } from './js/graph/model.js';
 import { createRegistryGraphView } from './js/graph/view.js';
-import { getQueryField, matchedNodeIds, parseQuery, searchDocuments, setQueryField } from './js/search/index.js';
+import { getQueryField, matchedNodeIds, parseQuery, searchDocuments, setQueryField, understoodQuery } from './js/search/index.js';
 import { artifactsForNode, renderArtifacts } from './js/artifacts/artifacts.js';
-import { configurationIdsFor, credentialOfferHref, credentialOfferObject, encryptIssuerState, issuerStateUrn } from './js/offer/offer.js';
+import { configurationIdsFor, credentialOfferHref, credentialOfferObject, decryptIssuerState, encryptIssuerState, issuerStateUrn } from './js/offer/offer.js';
+import { buildDemoCredentials } from './js/demo/example.js';
+import { demoEncPrivateJwkText } from './js/demo/material.js';
+import demoEncPublicPem from '../demo/keys/issuer-state-enc.public.pem?raw';
 import QRCode from 'qrcode';
+import { version as appVersion } from '../package.json';
 
 const state = {
   dump: null,
@@ -16,13 +28,16 @@ const state = {
   query: '',
   selectedId: null,
   env: 'pre',
-  offerDraft: { objectId: '', publicKey: '' },
+  offerDraft: { objectId: '', publicKey: String(demoEncPublicPem || '').trim() },
+  pendingNode: null,
+  liveRefreshing: false,
 };
 
 const board = new MessageBoard({
   list: document.getElementById('message-board-list'),
   badge: document.getElementById('message-board-badge'),
   toggle: document.getElementById('message-board-toggle'),
+  corsHelp: document.getElementById('board-cors-help'),
 });
 
 const cacheLoading = {
@@ -254,6 +269,8 @@ function renderStatic(dict) {
   set('registry-search-label', dict.search.label);
   set('search-btn', dict.search.button);
   set('registry-search-hint', dict.search.hint);
+  const understood = document.getElementById('query-understood');
+  if (understood && !state.query) understood.textContent = '';
   set('search-clear-btn', dict.search.clear);
   set('search-facets-legend', dict.search.facetsLegend);
   set('facet-legal-type-label', dict.search.legalType);
@@ -275,10 +292,19 @@ function renderStatic(dict) {
   set('graph-heading', dict.graph.heading);
   set('message-board-title', dict.board.title);
   set('message-board-toggle-label', dict.board.open);
+  set('board-cors-title', dict.board.corsTitle);
+  set('board-cors-body', dict.board.corsBody);
+  set('board-cors-step1', dict.board.corsStep1);
+  set('board-cors-step2', dict.board.corsStep2);
+  set('board-cors-step3', dict.board.corsStep3);
+  set('board-cors-step4', dict.board.corsStep4);
+  set('board-cors-warn', dict.board.corsWarn);
   set('footer-legal', dict.footer.legal);
   set('footer-docs', dict.footer.docs);
   set('footer-accessibility', dict.footer.accessibility);
   set('footer-github', dict.footer.github);
+  const versionEl = document.getElementById('footer-version');
+  if (versionEl) versionEl.textContent = `v${appVersion}`;
   set('footer-specs-label', dict.footer.specsLabel);
   set('footer-specs', dict.footer.specs);
   const specsLink = document.getElementById('footer-specs');
@@ -296,6 +322,8 @@ function renderStatic(dict) {
   set('skip-footer', dict.skip.footer);
   set('offer-heading', dict.offer.heading);
   set('offer-disclaimer', dict.offer.disclaimer);
+  set('example-warning-title', dict.example.warningTitle);
+  fillExampleDisclaimer(document.getElementById('example-disclaimer'));
 }
 
 function fillSelect(select, items) {
@@ -348,6 +376,8 @@ function writeUrl() {
   if (state.query) url.searchParams.set('q', state.query);
   else url.searchParams.delete('q');
   url.searchParams.set('env', currentEnv().id);
+  if (state.selectedId) url.searchParams.set('node', state.selectedId);
+  else url.searchParams.delete('node');
   history.replaceState(null, '', url);
 }
 
@@ -365,6 +395,8 @@ function applyQuery(query) {
   syncFacetsFromQuery(query);
 
   const parsed = parseQuery(query);
+  const understood = document.getElementById('query-understood');
+  if (understood) understood.textContent = understoodQuery(query, currentLang());
   if (els.searchError) {
     els.searchError.hidden = true;
     els.search.removeAttribute('aria-invalid');
@@ -373,13 +405,17 @@ function applyQuery(query) {
 
   const matches = searchDocuments(state.graph.documents, query);
   const focusKinds = new Set(['credential', 'issuer', 'authentic_source', 'schema', 'claim', 'domain']);
-  const resultDocs = parsed.empty
+  let resultDocs = parsed.empty
     ? state.graph.documents.filter((d) => d.kind === 'credential')
     : matches.filter((d) => focusKinds.has(d.kind));
   const matchIds = parsed.empty
     ? new Set(state.graph.nodes.map((n) => n.id))
     : visibleClosure(state.graph, matchedNodeIds(state.graph, query));
 
+  if (state.selectedId && state.graph.byId.has(state.selectedId) && !resultDocs.some((d) => d.id === state.selectedId)) {
+    const extra = state.graph.documents.find((d) => d.id === state.selectedId);
+    if (extra) resultDocs = [extra, ...resultDocs];
+  }
   renderResults(resultDocs);
   state.view?.applyVisible(matchIds);
   if (els.graphCaption) {
@@ -479,11 +515,15 @@ function offerContext(node) {
   const source = state.graph.nodes.find(
     (n) => n.kind === 'authentic_source' && state.graph.edges.some((e) => e.source === node.id && e.target === n.id),
   );
+  const metadata = state.dump?.issuerMetadata?.[issuer?.entity_id] || null;
+  const config = configurationIdsFor(node.credential_type, formats, metadata);
+  const metaSource = metadata?.credential_configurations_supported?.[config.ids[0]]?.authentic_sources;
   return {
     credentialIssuer: issuer?.entity_id || 'https://pre.issuer.wallet.ipzs.it',
-    configurationIds: configurationIdsFor(node.credential_type, formats),
-    authenticSourceId: source?.entity_id || source?.as || '',
-    datasetId: source?.dataset_id || '',
+    configurationIds: config.ids,
+    configurationDerived: config.derived,
+    authenticSourceId: metaSource?.entity_id || source?.entity_id || source?.as || '',
+    datasetId: metaSource?.dataset_id || source?.dataset_id || '',
   };
 }
 
@@ -498,8 +538,31 @@ function field(tag, attrs = {}, text) {
   return el;
 }
 
+function fillExampleDisclaimer(el) {
+  if (!el) return;
+  const example = dictionary().example || {};
+  const parts = String(example.disclaimer || '').split('{{keys}}');
+  el.replaceChildren();
+  if (parts[0]) el.appendChild(document.createTextNode(parts[0]));
+  el.appendChild(
+    field(
+      'a',
+      {
+        id: 'example-keys-link',
+        className: 'alert-link',
+        href: example.keysHref,
+        target: '_blank',
+        rel: 'noopener',
+      },
+      example.keysLink,
+    ),
+  );
+  if (parts[1]) el.appendChild(document.createTextNode(parts[1]));
+}
+
 async function selectNode(id, { fromGraph = false, fromAccordion = false } = {}) {
   state.selectedId = id;
+  writeUrl();
   const node = state.graph.byId.get(id);
   if (!node) return;
   state.view?.select(id);
@@ -558,6 +621,9 @@ async function renderDetail(node) {
   host.append(title, body);
 
   if (node.kind !== 'credential') return;
+  const exampleHost = field('div', { id: 'credential-example', className: 'credential-example mt-3' });
+  body.appendChild(exampleHost);
+  await renderCredentialExample(exampleHost, node);
   host.appendChild(buildOfferShell());
   bindOfferForm(node);
   await refreshOffer(node);
@@ -601,15 +667,29 @@ function buildOfferShell() {
     field('label', { className: 'form-label', for: 'offer-enc-key', id: 'offer-enc-key-label' }, t('offer.publicKey')),
     keyArea,
     field('p', { className: 'form-text', id: 'offer-enc-key-hint' }, t('offer.publicKeyHint')),
+    field('p', { className: 'form-text', id: 'offer-decrypt-hint' }, t('offer.decryptHint')),
   );
+  const decryptDetails = field('details', { id: 'offer-decrypt-help', className: 'offer-decrypt-help mb-3' });
+  decryptDetails.append(
+    field('summary', { id: 'offer-decrypt-summary' }, t('offer.decryptSummary')),
+    field('p', { className: 'form-text', id: 'offer-decrypt-body' }, t('offer.decryptHelp')),
+    field('pre', { id: 'offer-decrypt-command', className: 'artifact-pre offer-decrypt-command' }),
+  );
+  keyWrap.append(decryptDetails);
   fieldset.append(objWrap, keyWrap);
   form.append(fieldset);
   form.addEventListener('submit', (ev) => ev.preventDefault());
 
   const urnLabel = field('p', { className: 'small mb-1', id: 'offer-urn-label' }, t('offer.urn'));
   const urn = field('code', { id: 'offer-urn', className: 'd-block text-break mb-3' });
+  const decLabel = field('p', { className: 'small mb-1', id: 'offer-decrypted-label' }, t('offer.decrypted'));
+  const decrypted = field('code', { id: 'offer-decrypted', className: 'd-block text-break mb-3' });
+  decrypted.hidden = true;
+  decLabel.hidden = true;
   const jsonLabel = field('p', { className: 'small mb-1', id: 'offer-json-label' }, t('offer.json'));
   const jsonPre = field('pre', { id: 'offer-json', className: 'artifact-pre offer-json' });
+  const derived = field('p', { id: 'offer-derived', className: 'form-text' });
+  derived.hidden = true;
   const err = field('p', { id: 'offer-enc-error', className: 'text-danger small', role: 'alert' });
   err.hidden = true;
 
@@ -621,8 +701,45 @@ function buildOfferShell() {
   const qr = field('img', { id: 'offer-qr', className: 'offer-qr', width: '192', height: '192', alt: '' });
   qr.setAttribute('aria-labelledby', 'offer-qr-label');
 
-  box.append(form, urnLabel, urn, jsonLabel, jsonPre, err, urlLabel, link, haip, qrLabel, qr);
+  box.append(form, urnLabel, urn, decLabel, decrypted, jsonLabel, jsonPre, derived, err, urlLabel, link, haip, qrLabel, qr);
   return box;
+}
+
+async function renderCredentialExample(host, node) {
+  host.replaceChildren();
+  host.setAttribute('aria-labelledby', 'example-heading');
+  const warning = field('div', {
+    id: 'example-warning',
+    className: 'alert alert-warning',
+    role: 'alert',
+  });
+  const disclaimer = field('p', { id: 'example-disclaimer', className: 'mb-0' });
+  fillExampleDisclaimer(disclaimer);
+  warning.append(
+    field('p', { id: 'example-warning-title', className: 'alert-heading h6 mb-1' }, t('example.warningTitle')),
+    disclaimer,
+  );
+  host.append(field('h3', { className: 'h6', id: 'example-heading' }, t('example.heading')), warning);
+  try {
+    const items = await buildDemoCredentials(node, state.dump);
+    if (!items.length) {
+      host.appendChild(field('p', { className: 'form-text', id: 'example-empty' }, t('example.empty')));
+      return;
+    }
+    const artifacts = items.map((item) => {
+      const artifact = item.artifact;
+      artifact.excerptLabel = item.format === 'mso_mdoc' ? t('example.mdocExcerpt') : t('example.reconstructed');
+      return artifact;
+    });
+    const arts = field('div', { id: 'credential-example-artifacts' });
+    host.appendChild(arts);
+    renderArtifacts(arts, artifacts, t, {
+      heading: false,
+      idPrefix: 'example-artifact',
+    });
+  } catch {
+    host.appendChild(field('p', { className: 'text-danger small', id: 'example-error', role: 'alert' }, t('example.error')));
+  }
 }
 
 function bindOfferForm(node) {
@@ -670,6 +787,29 @@ async function refreshOffer(node) {
   }
   if (gen !== offerGen) return;
 
+  const cmdEl = document.getElementById('offer-decrypt-command');
+  const decEl = document.getElementById('offer-decrypted');
+  const decLabel = document.getElementById('offer-decrypted-label');
+  let decrypted = '';
+  if (issuerState) {
+    if (cmdEl) {
+      cmdEl.textContent = `node scripts/decrypt-issuer-state.mjs --jwe '${issuerState}'`;
+    }
+    try {
+      decrypted = await decryptIssuerState(issuerState, demoEncPrivateJwkText());
+    } catch {
+      decrypted = '';
+    }
+  } else if (cmdEl) {
+    cmdEl.textContent = 'node scripts/decrypt-issuer-state.mjs --jwe \'<issuer_state JWE>\'';
+  }
+  if (decEl) {
+    decEl.textContent = decrypted;
+    decEl.hidden = !decrypted;
+  }
+  if (decLabel) decLabel.hidden = !decrypted;
+  if (gen !== offerGen) return;
+
   const body = credentialOfferObject({
     credentialIssuer: ctx.credentialIssuer,
     configurationIds: ctx.configurationIds,
@@ -677,6 +817,11 @@ async function refreshOffer(node) {
   });
   const jsonEl = document.getElementById('offer-json');
   if (jsonEl) jsonEl.textContent = JSON.stringify(body, null, 2);
+  const derived = document.getElementById('offer-derived');
+  if (derived) {
+    derived.hidden = !ctx.configurationDerived;
+    derived.textContent = t('offer.derivedIds');
+  }
 
   const href = credentialOfferHref({ ...ctx, body });
   const link = document.getElementById('offer-link');
@@ -694,22 +839,152 @@ async function refreshOffer(node) {
 }
 
 function rebuildGraph() {
-  const keepId = state.selectedId;
+  const keepId = state.selectedId || state.pendingNode;
   state.view?.destroy();
   state.graph = buildRegistryGraph(state.dump, { lang: currentLang() });
   els.graph.replaceChildren();
   els.graph.setAttribute('data-ready', 'false');
   exposeTestApi(new Set(state.graph.nodes.map((n) => n.id)), state.graph.documents.filter((d) => d.kind === 'credential'));
-  state.view = createRegistryGraphView(els.graph, state.graph, {
-    onSelect: (data) => selectNode(data.id, { fromGraph: true }),
-  });
+  try {
+    state.view = createRegistryGraphView(els.graph, state.graph, {
+      onSelect: (data) => selectNode(data.id, { fromGraph: true }),
+    });
+  } catch (err) {
+    window.__ITW_ERROR__ = err.message || String(err);
+    board.error({ url: 'graph', reason: window.__ITW_ERROR__, retry: () => rebuildGraph() });
+  }
   els.graph.setAttribute('data-ready', 'true');
   els.graph.setAttribute('aria-busy', 'false');
   populateFacets();
   applyQuery(state.query);
   if (keepId && state.graph.byId.has(keepId)) {
     void selectNode(keepId);
+    state.pendingNode = null;
   }
+}
+
+function publishBoard() {
+  const calls = state.dump?.httpCalls || [];
+  board.setHttpCalls(calls, { retry: retryCall });
+  board.setCorsVisible(calls.some((c) => isCorsFailure(c)));
+}
+
+function findManifestEntry(call) {
+  const endpoint = call?.endpoint || call?.url || '';
+  return (state.dump?.manifest?.resources || []).find(
+    (r) => r.url === endpoint || cacheLooksLike(call, r),
+  );
+}
+
+function cacheLooksLike(call, entry) {
+  const req = call?.requestUrl || call?.endpoint || '';
+  return entry.path && req.includes(entry.path);
+}
+
+async function retryCall(call) {
+  const entry = findManifestEntry(call);
+  if (!entry) {
+    await bootDump();
+    return;
+  }
+  if (call?.source === 'live' || (call?.endpoint && call.endpoint.startsWith('http') && !String(call.requestUrl || '').includes('/cache/'))) {
+    await retryLive(entry);
+    return;
+  }
+  await retryDumpEntry(entry);
+}
+
+async function retryDumpEntry(entry) {
+  const result = await timedFetch(entry.path ? `${import.meta.env.BASE_URL}cache/${entry.path.split('/').map(encodeURIComponent).join('/')}` : entry.url);
+  result.http.endpoint = entry.url || result.http.endpoint;
+  result.http.requestUrl = result.http.requestUrl;
+  const idx = state.dump.httpCalls.findIndex((c) => c.endpoint === entry.url || c.requestUrl === result.http.requestUrl);
+  if (idx >= 0) state.dump.httpCalls[idx] = result.http;
+  else state.dump.httpCalls.push(result.http);
+  if (result.http.ok && result.text != null) {
+    await applyLiveBody(state.dump, entry, result.text, result.http.contentType);
+    rebuildGraph();
+  }
+  publishBoard();
+}
+
+async function retryLive(entry) {
+  const result = await fetchLiveResource(entry);
+  upsertHttpCall(result.http);
+  if (result.http.ok && result.text != null) {
+    await applyLiveBody(state.dump, entry, result.text, result.http.contentType);
+    rebuildGraph();
+  }
+  publishBoard();
+}
+
+function upsertHttpCall(http) {
+  if (!state.dump) return;
+  const idx = state.dump.httpCalls.findIndex((c) => c.endpoint === http.endpoint && c.source === http.source);
+  if (idx >= 0) state.dump.httpCalls[idx] = http;
+  else state.dump.httpCalls.push(http);
+}
+
+function appendTrustRows(dump) {
+  const sig = dump.catalogSignature;
+  if (sig && !sig.skipped) {
+    dump.httpCalls.push({
+      method: 'VERIFY',
+      endpoint: 'credential-catalog JWT',
+      status: sig.ok ? 200 : 0,
+      ok: Boolean(sig.ok),
+      durationMs: null,
+      applicationType: 'application/jose',
+      error: sig.ok ? null : sig.error,
+      source: 'trust',
+    });
+  }
+  const badIntegrity = (dump.integrity || []).filter((row) => !row.skipped && !row.ok);
+  if (badIntegrity.length) {
+    dump.httpCalls.push({
+      method: 'SRI',
+      endpoint: t('board.integrityMismatch', { n: String(badIntegrity.length) }),
+      status: 0,
+      ok: false,
+      durationMs: null,
+      applicationType: 'sha256',
+      error: badIntegrity.map((row) => row.url.replace(/^https:\/\//, '')).join(', '),
+      source: 'trust',
+    });
+  }
+  const schemaNote = (dump.schemas || []).some((s) => /\/schemas\/v1\.3\.3\//.test(s.schema_uri || ''));
+  if (schemaNote) {
+    dump.httpCalls.push({
+      method: 'NOTE',
+      endpoint: t('board.schemaPathNote'),
+      status: 200,
+      ok: true,
+      durationMs: null,
+      applicationType: 'text/plain',
+      error: null,
+      source: 'trust',
+    });
+  }
+}
+
+async function startLiveRefresh(gen) {
+  if (!state.dump) return;
+  state.liveRefreshing = true;
+  board.setPending(t('board.liveRefresh'));
+  const { changed, httpCalls } = await refreshDumpLive(state.dump, {
+    shouldAbort: () => gen !== dumpGeneration,
+    onCall: (http) => {
+      if (gen !== dumpGeneration) return;
+      upsertHttpCall(http);
+      publishBoard();
+    },
+  });
+  if (gen !== dumpGeneration) return;
+  for (const http of httpCalls) upsertHttpCall(http);
+  if (changed) rebuildGraph();
+  state.liveRefreshing = false;
+  board.setPending(null);
+  publishBoard();
 }
 
 function exposeTestApi(visibleIds, resultDocs) {
@@ -729,6 +1004,8 @@ function exposeTestApi(visibleIds, resultDocs) {
     ),
     selectedId: state.selectedId,
     httpCalls: state.dump?.httpCalls || [],
+    catalogSignature: state.dump?.catalogSignature || null,
+    understood: understoodQuery(state.query, currentLang()),
   };
   window.__ITW_CY__ = state.view?.cy || null;
 }
@@ -744,7 +1021,7 @@ async function bootDump() {
   const onProgress = (progress) => {
     if (gen !== dumpGeneration) return;
     if (progress.httpCalls?.length) {
-      board.setHttpCalls(progress.httpCalls, { retry: () => bootDump() });
+      board.setHttpCalls(progress.httpCalls, { retry: retryCall });
     }
     setCacheLoading({
       active: true,
@@ -759,7 +1036,7 @@ async function bootDump() {
     } catch (err) {
       if (gen !== dumpGeneration) return;
       board.clear();
-      if (err.httpCalls?.length) board.setHttpCalls(err.httpCalls, { retry: () => bootDump() });
+      if (err.httpCalls?.length) board.setHttpCalls(err.httpCalls, { retry: retryCall });
       else {
         board.error({
           url: `${import.meta.env.BASE_URL}cache/${spec.manifestFile}`,
@@ -774,7 +1051,7 @@ async function bootDump() {
     if (gen !== dumpGeneration) return;
     const { manifest, httpCalls } = loaded;
     if (!manifest.resources?.length) {
-      board.setHttpCalls(httpCalls, { retry: () => bootDump() });
+      board.setHttpCalls(httpCalls, { retry: retryCall });
       board.error({
         url: `${import.meta.env.BASE_URL}cache/${spec.manifestFile}`,
         reason: t('results.emptyDump'),
@@ -785,9 +1062,31 @@ async function bootDump() {
     }
     const dump = await loadDump(manifest, { httpCalls, onProgress });
     if (gen !== dumpGeneration) return;
+    try {
+      await Promise.race([
+        overlayFromIdb(dump),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('idb overlay timeout')), 2500)),
+      ]);
+    } catch {
+      /* dump remains the source of truth */
+    }
+    try {
+      await annotateDumpTrust(dump);
+      appendTrustRows(dump);
+    } catch {
+      /* verification is best-effort */
+    }
     state.dump = dump;
-    board.setHttpCalls(dump.httpCalls, { retry: () => bootDump() });
+    publishBoard();
     rebuildGraph();
+    const liveParam = new URLSearchParams(location.search).get('live');
+    const wantLive = liveParam === '1' || (liveParam !== '0' && !navigator.webdriver);
+    if (wantLive) {
+      const idle = window.requestIdleCallback || ((fn) => window.setTimeout(fn, 1));
+      idle(() => {
+        void startLiveRefresh(gen);
+      });
+    }
   } finally {
     if (gen === dumpGeneration) setCacheLoading({ active: false });
   }
@@ -800,6 +1099,8 @@ const initialQ = params.get('q') || '';
 setEnv(params.get('env') || 'pre');
 if (initialQ && els.search) els.search.value = initialQ;
 state.query = initialQ;
+state.pendingNode = params.get('node') || null;
+if (state.pendingNode) state.selectedId = state.pendingNode;
 writeUrl();
 
 applyLocale(initialLang)

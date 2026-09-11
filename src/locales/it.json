@@ -3,7 +3,7 @@
     "title": "IT-Wallet Registry Search Engine",
     "description": "Navigazione grafica del catalogo, degli schemi, dei claims, delle fonti autentiche e della tassonomia del Registro IT-Wallet.",
     "brand": "Registro IT-Wallet",
-    "tagline": "Italian Wallet Ecosystem Catalog about attestation data schemas, attestations and authentic sources"
+    "tagline": "Italian attestations and authentic sources wallet ecosystem catalog"
   },
   "skip": {
     "main": "Vai al contenuto principale",
@@ -17,7 +17,7 @@
     "label": "Cerca nel registro",
     "button": "Cerca",
     "clear": "Cancella",
-    "hint": "Usa +, -, virgolette e campo:valore. I menu compilano legal_type:, issuer:, as: e claim:.",
+    "hint": "Usa +, -, virgolette, OR, parentesi, * ? e campo:valore. I menu compilano legal_type:, issuer:, as: e claim:.",
     "placeholder": "+mDL legal_type:pub-eaa -pid",
     "facetsLegend": "Filtri sulla ricerca",
     "facetAll": "Tutti",
@@ -62,18 +62,40 @@
     "duration": "{{ms}} ms",
     "loading": "Aggiornamento cache del registro…",
     "loadingProgress": "Aggiornamento cache {{current}} di {{total}}",
-    "loadingDone": "Cache aggiornata"
+    "loadingDone": "Cache aggiornata",
+    "liveRefresh": "Refresh live dal Trust Anchor…",
+    "schemaPathNote": "Path schemi dichiarati dal registro: /schemas/v1.3.3/… (non l’esempio ST /.well-known/schemas/mdoc/mDL)",
+    "integrityMismatch": "{{n}} schemi con schema_uri#integrity diverso dal body scaricato",
+    "corsTitle": "Refresh live bloccato dal browser (CORS)",
+    "corsBody": "Il dump locale resta visibile. Per riprovare dal Trust Anchor con un’estensione CORS:",
+    "corsStep1": "Installa un’estensione del tipo “Allow CORS: Access-Control-Allow-Origin” (Chrome/Edge/Firefox).",
+    "corsStep2": "Attivala solo per questa sessione e consenti gli host pre.ta.wallet.ipzs.it e ta.wallet.ipzs.it.",
+    "corsStep3": "Ricarica l’explorer, apri di nuovo la bacheca e premi Riprova sulla GET fallita.",
+    "corsStep4": "Disattiva l’estensione quando hai finito: sblocca CORS su tutti i siti.",
+    "corsWarn": "Non è un requisito di produzione: il dump CI resta la fonte di verità. Alcune risposte del TA inviano Access-Control-Allow-Origin: *,* (valore non valido per i browser)."
   },
   "artifacts": {
     "heading": "Artefatti",
     "signed": "Originale firmato",
     "original": "Originale",
+    "diagnostic": "Notazione diagnostica CBOR",
     "header": "Header",
     "payload": "Payload",
     "excerpt": "Estratto in chiaro",
     "empty": "Nessun artefatto dumpato per questa entità.",
     "expandAll": "Espandi tutto",
     "collapseAll": "Comprimi tutto"
+  },
+  "example": {
+    "heading": "Credenziale di esempio",
+    "warningTitle": "Attenzione",
+    "disclaimer": "Questa credenziale di esempio è solo per esemplificazione e non deve intendersi usabile. È emessa con l’issuer fittizio https://demo.issuer.wallet.example e le chiavi ES256 pubblicate in {{keys}}. Non è un attestato reale: i claim sono sintetici e non va usata in un Wallet, in produzione o per verifiche.",
+    "keysLink": "demo/keys/",
+    "keysHref": "https://github.com/italia/eid-wallet-it-attestations-registry-browser/tree/main/demo/keys",
+    "reconstructed": "Disclosure, key binding e claim",
+    "mdocExcerpt": "Claim mdoc decodificati",
+    "empty": "Nessuno schema nel dump da cui costruire una credenziale di esempio.",
+    "error": "Impossibile firmare la credenziale di esempio."
   },
   "offer": {
     "heading": "Credential Offer",
@@ -85,8 +107,13 @@
     "objectId": "objectId",
     "objectIdHint": "Identificativo dell'istanza presso la Fonte Autentica. Se vuoto, l'URN omette il segmento objectId.",
     "publicKey": "Chiave pubblica di cifratura (PEM o JWK)",
-    "publicKeyHint": "RSA-OAEP-256 / A256GCM. Se presente, l'URN viene cifrato e inserito in grants.authorization_code.issuer_state.",
+    "publicKeyHint": "RSA-OAEP-256 / A256GCM. Precompilata con la chiave pubblica di demo pubblicata nel repository. Se presente, l'URN viene cifrato e inserito in grants.authorization_code.issuer_state.",
+    "decryptHint": "Chiave privata corrispondente: demo/keys/issuer-state-enc.private.jwk.json (o .pem). Solo materiale di demo — non è la chiave PDND GetAttributeClaims.",
+    "decryptSummary": "Come decifrare issuer_state",
+    "decryptHelp": "Da un clone di questo repository, esegui il comando sotto. Usa la chiave RSA privata fittizia pubblicata. OpenSSL non è adatto a questo JWE: usa lo script Node.",
+    "decrypted": "issuer_state decifrato con la chiave privata di demo",
     "encryptError": "Impossibile cifrare l'URN con la chiave indicata.",
+    "derivedIds": "credential_configuration_ids derivati dagli schemi (metadati OpenID4VCI dell’issuer non in dump).",
     "update": "Aggiorna offer",
     "url": "URL same device flow",
     "qr": "QR-Code cross device flow"

@@ -51,13 +51,14 @@ Non si usa React/Vue/Svelte/Angular. Le pagine ufficiali IT-Wallet non lo fanno;
 | `i18n/` | JSON `it`/`en` importati, dropdown lingua stile `disco.html` |
 | `cache/environments.js` | Trust Anchor `pre` / `prod` e alias permalink |
 | `cache/loader.js` | Fetch dump da `manifest-{env}.json` + file gerarchici; `timedFetch` (status, ms, Content-Type) |
-| `cache/browser.js` | Overlay IndexedDB, refresh live, confronto hash |
-| `cache/jwt.js` | Split JOSE, decode payload, (fase 2) verify |
+| `cache/browser.js` | Overlay IndexedDB, refresh live, confronto hash, SRI schemi |
+| `cache/jwt.js` | Split JOSE, decode payload, verifica ES256 con JWKS |
 | `search/index.js` | Parser Lucene-lite e filtro documenti; facet che riscrivono `campo:valore` |
 | `graph/model.js` | Registry → nodes/edges; opzioni facet dal dump |
 | `graph/view.js` | Cytoscape + dagre `rankDir: 'TB'` |
 | `messages/` | Bacheca: una riga per GET, badge, retry |
-| `offer/` | Costruzione URI OpenID4VCI + QR |
+| `offer/` | Costruzione URI OpenID4VCI + QR + JWE esemplificativo |
+| `demo/` | Chiavi fittizie; esempi SD-JWT VC e mdoc (`DeviceResponse`, hex BINASCII, notazione diagnostica) |
 
 Nessun framework a componenti: DOM + Bootstrap Italia (`Offcanvas`, `Dropdown`, `Tooltip`).
 
@@ -112,7 +113,7 @@ Vedi `package.json`. Obiettivo bundle: un vendor chunk (cytoscape+dagre è il pi
 ## 9. Sicurezza
 
 - Read-only, origini: Pages + TA.
-- Nessun segreto nel repo.
-- Credential Offer senza `issuer_state` PDND (non abbiamo la chiave).
+- Nessun segreto di produzione nel repo. Le chiavi sotto `demo/keys/` sono **fittizie** (offer `issuer_state` + firma esempi SD-JWT e mdoc) e vanno trattate come tali.
+- Credential Offer: `issuer_state` di esempio cifrato con la chiave RSA di demo, non con PDND.
 - CSP in `index.html` (fase implementazione): `default-src 'self'`; `connect-src 'self' https://pre.ta.wallet.ipzs.it https://ta.wallet.ipzs.it`.
 - Integrità schemi: hash `schema_uri#integrity`.

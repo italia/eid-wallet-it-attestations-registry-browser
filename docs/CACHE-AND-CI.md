@@ -51,7 +51,7 @@ Schema interno (soggetto a versionamento `manifest_version`):
   "generated_at": "2026-09-09T08:00:00Z",
   "env": "pre",
   "base_url": "https://pre.ta.wallet.ipzs.it",
-  "tool": "eid-wallet-it-attestations-registry-browser@0.2.0",
+  "tool": "eid-wallet-it-attestations-registry-browser@<package.json version>",
   "resources": [
     {
       "url": "https://pre.ta.wallet.ipzs.it/.well-known/it-wallet-registry",
@@ -81,7 +81,7 @@ Risorse in errore restano elencate (`status` o `error`) così la bacheca può of
 5. Tenta `localization.base_uri` (può essere WAF-blocked).
 6. Opzionale: issuer metadata, federazione.
 7. Non usa `HEAD`.
-8. `User-Agent: eid-wallet-it-attestations-registry-browser/0.2 (+https://github.com/italia/eid-wallet-it-attestations-registry-browser)`.
+8. `User-Agent: eid-wallet-it-attestations-registry-browser/<versione in package.json> (+https://github.com/italia/eid-wallet-it-attestations-registry-browser)`.
 9. Retry 3× su 429/5xx, backoff.
 10. Scrive `cache/manifest-{env}.json` e, se `env=pre`, anche `cache/manifest.json`.
 11. Registra `duration_ms` per ogni GET (tempi di risposta del dump).
@@ -105,7 +105,7 @@ Chiave IndexedDB = URL assoluto della risorsa TA, non il path Pages.
 ### A — Nightly cache (`.github/workflows/nightly-cache.yml`)
 
 - Trigger: `schedule` (02:15 UTC) e `workflow_dispatch`.
-- Job: checkout → Node 22 → `node scripts/dump-registry.mjs --env pre` e SHOULD `node scripts/dump-registry.mjs --env prod` in job (o step) separato.
+- Job: checkout → Node 22 → `node scripts/dump-registry.mjs --env pre --with-issuer-metadata` e `node scripts/dump-registry.mjs --env prod --with-issuer-metadata` in step separati.
 - Se `git diff -- cache` non è vuoto: commit `chore(cache): nightly dump YYYY-MM-DD` come `github-actions[bot]`.
 - **Non** lancia Vite. Responsabilità: solo cache.
 
@@ -124,14 +124,28 @@ Separazione voluta: un dump rotto non richiede di toccare l’app; un fix UI non
 
 ## 7. CORS e WAF (vincoli reali)
 
-Osservati il 2026-09-09 su collaudo:
+Osservati a settembre 2026 su collaudo:
 
-- Nessun `Access-Control-Allow-Origin` nelle risposte TA → il refresh **dal browser su Pages probabilmente fallisce** finché IPZS non abilita CORS (almeno GET well-known). È un requisito verso il TA, non aggirabile in JS puro senza proxy (il proxy è **fuori ambito** v1).
-- `HEAD` → HTML WAF.
-- Catalogo senza `Accept: application/json`.
+- Molti well-known del TA ora inviano `Access-Control-Allow-Origin: *`, quindi il refresh **live dal browser può riuscire**.
+- Alcune risposte (es. discovery) inviano `Access-Control-Allow-Origin: *,*`, che i browser **rifiutano** (valore non valido). In quel caso la GET live fallisce, il dump resta visibile, la bacheca mostra Riprova.
+- `HEAD` → HTML WAF. Solo `GET`.
+- Catalogo: JWT JOSE, non JSON.
 - Alcuni path `/l10n/` → `Request Rejected`.
 
-Il nightly (GitHub-→TA, server side) non è soggetto a CORS. Per questo il dump di repo è MUST.
+Il nightly (GitHub→TA, server side) non è soggetto a CORS. Il dump di repo resta la fonte di verità (F-03). Il refresh browser (F-05) è best-effort verso Cache API / IndexedDB.
+
+### Estensione CORS (solo collaudo locale)
+
+Se una GET live resta a status 0 / “Failed to fetch”, si può sbloccare **temporaneamente** la lettura dal Trust Anchor:
+
+1. Installa un’estensione del tipo **Allow CORS: Access-Control-Allow-Origin** (Chrome, Edge o Firefox).
+2. Attivala **solo per la sessione** di prova. Consenti gli host `pre.ta.wallet.ipzs.it` e `ta.wallet.ipzs.it` (e, se serve, `pre.issuer.wallet.ipzs.it`).
+3. Ricarica l’explorer, apri la bacheca, premi **Riprova** sulla riga fallita.
+4. **Disattiva l’estensione** subito dopo: riscrive CORS su qualunque sito.
+
+Non è un requisito di produzione e non sostituisce CORS corretto sul TA. L’app MUST continuare a funzionare sul dump senza estensione. La stessa guida è in bacheca quando compare un errore CORS.
+
+Il proxy server-side resta **fuori ambito** v1.
 
 ## 8. Cosa non mettere in git
 

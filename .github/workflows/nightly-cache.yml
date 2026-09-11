@@ -19,6 +19,8 @@ jobs:
           node-version: '22'
       - name: Dump pre-production Trust Anchor
         run: node scripts/dump-registry.mjs --env pre --with-issuer-metadata
+      - name: Dump production Trust Anchor
+        run: node scripts/dump-registry.mjs --env prod --with-issuer-metadata
       - name: Commit cache if changed
         run: |
           git config user.name 'github-actions[bot]'

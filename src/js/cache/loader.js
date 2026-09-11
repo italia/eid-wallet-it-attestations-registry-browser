@@ -41,10 +41,10 @@ function pickApplicationType(...types) {
     .trim();
 }
 
-export async function timedFetch(url, fetchFn = fetch) {
+export async function timedFetch(url, fetchFn = fetch, init = {}) {
   const started = nowMs();
   try {
-    const res = await fetchFn(url);
+    const res = Object.keys(init).length ? await fetchFn(url, init) : await fetchFn(url);
     const contentType = res.headers.get('content-type') || '';
     const text = await res.text();
     return {
@@ -115,6 +115,8 @@ export async function loadDump(manifest, { fetchFn = fetch, cacheBase = cacheRoo
     claims: {},
     authenticSources: [],
     taxonomy: null,
+    issuerMetadata: {},
+    federationEntity: null,
     l10n: { catalog: {}, claims: {}, authenticSources: {}, taxonomy: {} },
     resources: [],
     httpCalls: [...httpCalls],
@@ -168,7 +170,7 @@ export async function loadDump(manifest, { fetchFn = fetch, cacheBase = cacheRoo
         header: parsed.header || null,
         raw: parsed.raw ?? result.text,
       });
-      assignDump(dump, entry, parsed.json);
+      assignDump(dump, { ...entry, json: parsed.json }, parsed.json);
     } finally {
       onProgress?.({ phase: 'resources', current: dump.resources.length, total, httpCalls: dump.httpCalls });
     }
@@ -176,17 +178,24 @@ export async function loadDump(manifest, { fetchFn = fetch, cacheBase = cacheRoo
   return dump;
 }
 
-function assignDump(dump, entry, json) {
+export function assignDump(dump, entry, json) {
   if (!json) return;
-  const path = entry.path || '';
+  const path = entry.path || entry.url || '';
   if (path.endsWith('/it-wallet-registry') || entry.kind === 'discovery') dump.discovery = json;
   if (path.includes('/credential-catalog') && !path.includes('/l10n/')) dump.catalog = json;
-  if (path.endsWith('/schemas') || path.endsWith('.well-known/schemas')) dump.schemas = json.schemas || [];
+  if (path.endsWith('/schemas') || path.includes('.well-known/schemas')) dump.schemas = json.schemas || [];
   if (path.includes('claims-registry') && !path.includes('/l10n/')) dump.claims = json.claims || {};
   if (path.includes('authentic-sources') && !path.includes('/l10n/')) {
     dump.authenticSources = json.authentic_sources || [];
   }
   if (path.includes('credential-taxonomy') && !path.includes('/l10n/')) dump.taxonomy = json;
+  if (entry.kind === 'issuer-metadata' || path.includes('openid-credential-issuer')) {
+    dump.issuerMetadata = dump.issuerMetadata || {};
+    const iss =
+      json.credential_issuer || String(entry.url || path).replace(/\/\.well-known\/openid-credential-issuer\/?$/, '');
+    if (iss) dump.issuerMetadata[iss] = json;
+  }
+  if (entry.kind === 'federation-entity' || path.includes('openid-federation')) dump.federationEntity = json;
   const loc = path.match(/\/l10n\/([^/]+)\/(it|en)\.json$/);
   if (loc) {
     const [, kind, lang] = loc;

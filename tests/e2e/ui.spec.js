@@ -12,6 +12,8 @@ test.describe('responsive navigation', () => {
     await expect(page.locator('#page-heading')).toBeVisible();
     await expect(page.locator('#registry-search')).toBeVisible();
     await expect(page.locator('#message-board-toggle')).toBeVisible();
+    await expect(page.locator('#header-it-wallet-logo')).toBeVisible();
+    await expect(page.locator('#header-region-name')).toBeVisible();
 
     const slim = page.locator('.it-header-slim-wrapper');
     const slimBox = await slim.boundingBox();

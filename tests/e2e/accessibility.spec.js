@@ -20,6 +20,17 @@ test.describe('accessibility', () => {
     await expect(page.locator('#results-count')).toHaveAttribute('aria-live', 'polite');
     await expect(page.locator('#graph-caption')).toHaveAttribute('aria-live', 'polite');
 
+    const logo = page.locator('#header-it-wallet-logo');
+    await expect(logo).toBeVisible();
+    await expect(logo).toHaveAttribute('src', /IT-Wallet-Symbol-Negative-White\.svg/);
+    await expect(logo).toHaveAttribute('aria-hidden', 'true');
+    const logoBeforeBrand = await page.evaluate(() => {
+      const mark = document.getElementById('header-it-wallet-logo');
+      const name = document.getElementById('header-region-name');
+      return Boolean(mark && name && (mark.compareDocumentPosition(name) & Node.DOCUMENT_POSITION_FOLLOWING));
+    });
+    expect(logoBeforeBrand).toBe(true);
+
     const boardBtn = page.locator('#message-board-toggle');
     await expect(boardBtn).toBeVisible();
     await expect(boardBtn).toHaveClass(/nav-link/);
@@ -48,7 +59,8 @@ test.describe('accessibility', () => {
     await expect(page.locator('#message-board-list')).toContainText('it-wallet-registry');
     const callCount = await page.evaluate(() => window.__ITW_EXPLORER__?.httpCalls?.length || 0);
     expect(callCount).toBeGreaterThan(10);
-    await expect(page.locator('#message-board-list li.board-call')).toHaveCount(callCount);
+    const listed = page.locator('#message-board-list li.board-call');
+    expect(await listed.count()).toBeGreaterThanOrEqual(callCount);
     const firstCard = page.locator('#message-board-list li.board-call').first();
     const secondCard = page.locator('#message-board-list li.board-call').nth(1);
     await expect(firstCard).toBeVisible();

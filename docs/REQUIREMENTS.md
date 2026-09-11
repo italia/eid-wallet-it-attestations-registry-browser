@@ -1,10 +1,12 @@
 # Requisiti — IT-Wallet Registry Search Engine
 
-Versione requisiti: **0.2.0**  
+Versione requisiti: **0.4.0**  
 Origine: richiesta di progetto + valutazione del [manuale del registro](EVALUATION_HANDBOOK.md) + Specifiche Tecniche IT-Wallet v1.4.6 + aggiornamenti UI (facet di ricerca, header `disco.html`, switch Trust Anchor, traccia HTTP in bacheca).
 
 Priorità: **MUST** / **SHOULD** / **MAY** (RFC 2119).
 
+Changelog 0.4.0: sul nodo `credential`, data model (JSON Schema / CDDL) e credenziale di esempio (`dc+sd-jwt` e `mso_mdoc` DeviceResponse ISO 18013-5 in hex BINASCII + notazione diagnostica, claim dal CDDL) con avviso di sola esemplificazione e link a `demo/keys/`; form offer precompilato con la RSA di demo; simbolo IT-Wallet (Negative White) nello slim header.  
+Changelog 0.3.0: F-05 refresh live + IndexedDB, F-07 retry per-risorsa, A-03 `?node=`, F-02 OR/()/wildcard/boost, A-05/A-06 verifica JWT e SRI, A-10 `issuers[].id`, nightly prod, guida CORS in bacheca.  
 Changelog 0.2.0: F-01 facet HTML, F-06 traccia per-chiamata, F-08 etichette `ITA`/`EN`, F-12 ambiente/TA, NF-07 identità visiva header `disco.html`, A-01/A-03/A-17/A-20 allineati all’implementazione.
 
 ---
@@ -152,6 +154,15 @@ L’UI MUST **indicare il Trust Anchor** dell’ambiente attivo (URL visibile e 
 
 Produzione MAY avere catalogo incompleto o assente: l’app MUST non crashare; gli errori restano in bacheca (F-06, F-07).
 
+### F-13 Credenziale di esempio
+
+Sul nodo `credential` MUST mostrare una credenziale di esempio per **ciascun formato** dichiarato nello schema (`dc+sd-jwt`, `mso_mdoc`), firmata con le chiavi fittizie in [`demo/keys/`](../demo/README.md):
+
+- `dc+sd-jwt`: SD-JWT VC compact, disclosure JSON `[salt, name, value]`, esempio KB-JWT
+- `mso_mdoc`: **DeviceResponse** ISO 18013-5 (`documents[].issuerSigned` + COSE_Sign1), hex BINASCII e notazione diagnostica (`24(<< >>)`, `h'…'`); i claim MUST coincidere con il CDDL (es. `age_over_18` su AV)
+
+MUST comparire un avviso visibile (`role="alert"`) che l’esempio è solo per esemplificazione e **non deve intendersi usabile** (né Wallet, né produzione, né verifica). MUST NON essere un’emissione reale.
+
 ---
 
 ## 3. Requisiti non funzionali (richiesti)
@@ -217,7 +228,7 @@ Motivati da manuale, ST e vincoli GitHub Pages.
 | A-11 | MAY | Dump federazione (`/list`, entity configuration) dietro flag. |
 | A-12 | SHOULD | Diff dump vs live in bacheca (hash o `last_updated`). |
 | A-13 | SHOULD | Permalink e export JSON del sotto-grafo filtrato. |
-| A-14 | MUST | Disclaimer visibile: tool non ufficiale; offer non è un’emissione di produzione. |
+| A-14 | MUST | Disclaimer visibile: tool non ufficiale; offer non è un’emissione di produzione; credenziale di esempio solo esemplificativa (`#example-warning`). |
 | A-15 | SHOULD | Rispetto `prefers-reduced-motion` sul layout del grafo. |
 | A-16 | MAY | Export PNG/SVG del grafo visibile. |
 | A-17 | MUST | Indici dump versionati: `manifest.json` (default `pre`), `manifest-pre.json`, `manifest-prod.json`. |
@@ -228,7 +239,7 @@ Motivati da manuale, ST e vincoli GitHub Pages.
 | A-22 | SHOULD | Documentare in bacheca lo scostamento path schema (`/schemas/v1.3.3/…` vs esempio ST). |
 | A-23 | MUST | Facet HTML `legal_type` / issuer / FA / claim che scrivono `campo:valore` nella query (F-01). |
 | A-24 | MUST | Bacheca: traccia completa delle GET (endpoint, status, ms, application type) (F-06). |
-| A-25 | MUST | Header slim: dropdown lingua e campanella allineati a `disco.html` (NF-07). |
+| A-25 | MUST | Header slim: simbolo IT-Wallet Negative White, dropdown lingua e campanella allineati a `disco.html` (NF-07). |
 | A-26 | MUST | Dettaglio nodo (lista **e grafo**): artefatti dump (JWS/JSON/CDDL). JWT: originale firmato **oppure** header e payload in chiaro; per credenziali/issuer/FA anche estratto dell’entità. JSON: presentazione indentata con espandi/comprimi di oggetti e array innestati. |
 
 ---
@@ -252,3 +263,4 @@ Motivati da manuale, ST e vincoli GitHub Pages.
 5. IT/EN commutano header, bacheca, ricerca e caption del grafo. Il trigger lingua mostra `ITA`/`EN` e il menu `link-list` di `disco.html`.
 6. Il nightly aggiorna `cache/` senza toccare a mano i file. `npm run dump:prod` scrive `manifest-prod.json` sotto `cache/ta.wallet.ipzs.it/`.
 7. Il menu Ambiente mostra Collaudo/Produzione e l’URL del Trust Anchor; `?env=prod` carica il dump di produzione.
+8. Sul nodo `mDL` si vedono SD-JWT e mdoc (hex BINASCII + notazione diagnostica con `issuerSigned`); su `av` c’è `age_over_18`; il riquadro Attenzione linka `demo/keys/` sul repository GitHub.

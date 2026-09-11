@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseRegistryBody } from '../../src/js/cache/jwt.js';
@@ -33,10 +33,22 @@ function resource(rel, kind, type = 'application/json') {
   };
 }
 
+function schemaFileResources(schemaRows) {
+  const out = [];
+  for (const row of schemaRows || []) {
+    const uri = String(row.schema_uri || '');
+    const rel = uri.replace(/^https:\/\/pre\.ta\.wallet\.ipzs\.it\//, '');
+    if (!rel || rel === uri) continue;
+    if (!existsSync(join(CACHE, rel))) continue;
+    out.push(resource(rel, 'schema', rel.endsWith('.cddl') ? 'text/plain' : 'application/json'));
+  }
+  return out;
+}
+
 export function loadDumpFromDisk() {
   const catalog = resource('.well-known/credential-catalog', 'catalog', 'application/jose');
   const schemas = resource('.well-known/schemas', 'registry');
-  const mdl = resource('schemas/v1.3.3/mdl.json', 'schema');
+  const schemaFiles = schemaFileResources(schemas.json.schemas);
   return {
     discovery: jsonFile('.well-known/it-wallet-registry'),
     catalog: catalog.json,
@@ -51,7 +63,7 @@ export function loadDumpFromDisk() {
       catalog,
       resource('.well-known/credential-taxonomy', 'registry'),
       schemas,
-      mdl,
+      ...schemaFiles,
     ],
     l10n: {
       catalog: {

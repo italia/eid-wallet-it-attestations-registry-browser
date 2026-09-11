@@ -14,14 +14,14 @@ L’applicazione è pubblicata su GitHub Pages:
 
 1. Scegli l’ambiente **Collaudo (preprod)** o **Produzione** (il Trust Anchor usato è indicato sotto lo switch).
 2. Cerca nel registro: testo libero, operatori `+` / `-` / virgolette, oppure i menu `legal_type`, emittente, fonte autentica e claim.
-3. Apri un attestato dalla **lista** o dal **grafo** per vedere metadati, artifact firmati e, se disponibile, il **Credential Offer** (QR / URI). La offer descrive una *tipologia* di credenziale: non emette un’istanza e non autentica l’utente.
+3. Apri un attestato dalla **lista** o dal **grafo** per vedere metadati, artifact (catalogo e data model JSON/CDDL), una **credenziale di esempio** firmata con chiavi fittizie, e il **Credential Offer** (QR / URI). La offer descrive una *tipologia* di credenziale: non emette un’istanza reale e non autentica l’utente.
 4. La **bacheca** elenca le GET verso dump e well-known (endpoint, status, durata).
 
 Sviluppo in locale: [Avvio locale](#avvio-locale). Sintassi della ricerca: [docs/SEARCH.md](docs/SEARCH.md).
 
 ## Stato
 
-Applicazione **v0.2.0**: dump REST, grafo Cytoscape, ricerca Lucene-lite con facet HTML, switch collaudo/produzione (Trust Anchor visibile), bacheca per-GET, header allineato a `disco.html`. Requisiti in [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) (versione **0.2.0**).
+Applicazione **v0.4.0**: dump REST, grafo Cytoscape, ricerca Lucene-lite con facet HTML, switch collaudo/produzione, refresh live best-effort, bacheca per-GET, verifica JWT/SRI, data model e credenziale di esempio sui tipi, chiavi fittizie per offer/`issuer_state`. Requisiti in [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) (versione **0.4.0**).
 
 ## Framework (decisione)
 
@@ -33,7 +33,7 @@ Applicazione **v0.2.0**: dump REST, grafo Cytoscape, ricerca Lucene-lite con fac
 | Grafo | **Cytoscape.js** + **cytoscape-dagre** | Layout verticale gerarchico, filtro nodi/archi senza riscrivere il motore grafico. |
 | Ricerca | Parser **Lucene-lite** in memoria + facet HTML | `+`, `-`, `"frase"`, `campo:valore` (anche quotato), menu `legal_type` / issuer / FA / claim. |
 | QR | **qrcode** (fallback: web component `qr-code` delle official_resources) | Credential Offer come URI `openid-credential-offer://`. |
-| JWT | decoder ESM interno (verifica firma in fase 2) | Il catalogo live è un JWT JOSE, non JSON. |
+| JWT | decoder ESM interno + verifica ES256 con JWKS del TA (`/.well-known/openid-federation`) | Il catalogo live è un JWT JOSE, non JSON. |
 
 React, Vue e Svelte sono stati scartati: Bootstrap Italia nelle risorse ufficiali IT-Wallet è consumato come CSS/JS vanilla; un virtual DOM aggiungerebbe attrito senza guadagno sul grafo.
 
@@ -50,6 +50,7 @@ Dettaglio in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 | [docs/SEARCH.md](docs/SEARCH.md) | Sintassi del motore di ricerca |
 | [docs/GRAPH.md](docs/GRAPH.md) | Modello a nodi e filtro gerarchico |
 | [docs/CREDENTIAL_OFFER.md](docs/CREDENTIAL_OFFER.md) | QR / href conformi alle ST |
+| [demo/README.md](demo/README.md) | Chiavi fittizie (firma esempi, cifratura `issuer_state`) |
 | [docs/ACCESSIBILITY.md](docs/ACCESSIBILITY.md) | Mapping sui template `disco.html` / `it-wallet.html` |
 
 ## Test

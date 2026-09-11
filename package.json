@@ -1,6 +1,6 @@
 {
   "name": "eid-wallet-it-attestations-registry-browser",
-  "version": "0.2.0",
+  "version": "0.4.0",
   "private": false,
   "type": "module",
   "description": "IT-Wallet Registry Search Engine: catalog, schemas, claims, authentic sources and taxonomy.",
@@ -13,8 +13,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "dump": "node scripts/dump-registry.mjs",
-    "dump:pre": "node scripts/dump-registry.mjs --env pre",
-    "dump:prod": "node scripts/dump-registry.mjs --env prod",
+    "dump:pre": "node scripts/dump-registry.mjs --env pre --with-issuer-metadata",
+    "dump:prod": "node scripts/dump-registry.mjs --env prod --with-issuer-metadata",
     "sync-cache": "node scripts/sync-cache-public.mjs",
     "prebuild": "node scripts/sync-cache-public.mjs",
     "test": "npm run test:unit && npm run test:e2e",
