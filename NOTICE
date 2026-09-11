@@ -22,5 +22,5 @@ Third-party notices
   https://github.com/italia/eid-wallet-it-docs
 - The IT-Wallet Symbol in `public/img/` and `vendor/img/` is copied from
   `official_resources/IT-Wallet-Symbol/` of the same documentation repository.
-- Cytoscape.js, Lunr, i18next, Vite, qrcode and other npm packages remain under
+- Cytoscape.js, Vite, qrcode and other npm packages remain under
   their respective licenses (see `package-lock.json` when generated).

@@ -27,10 +27,6 @@
     "cytoscape": "^3.33.1",
     "cytoscape-dagre": "^2.5.0",
     "dagre": "^0.8.5",
-    "i18next": "^25.5.2",
-    "i18next-http-backend": "^3.0.2",
-    "lunr": "^2.3.9",
-    "lunr-languages": "^1.14.0",
     "qrcode": "^1.5.4"
   },
   "devDependencies": {

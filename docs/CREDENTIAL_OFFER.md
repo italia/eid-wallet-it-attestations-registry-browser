@@ -87,10 +87,10 @@ Testo i18n accanto a QR/link:
 
 ## 8. Chiavi di demo e decifratura
 
-Il repository pubblica materiale crittografico **fittizio** in [`demo/`](../demo/README.md):
+Il repository pubblica materiale crittografico **fittizio** in [`demo/`](../demo/README.md) (stesso albero su GitHub: [`demo/keys/`](https://github.com/italia/eid-wallet-it-attestations-registry-browser/tree/main/demo/keys)):
 
-- RSA-OAEP per cifrare/decifrare `issuer_state`
-- ES256 per firmare le credenziali di esempio sul nodo `credential`
+- RSA-OAEP-256 / A256GCM per cifrare/decifrare `issuer_state`
+- ES256 (P-256) per gli esempi SD-JWT VC; COSE_Sign1 ES256 per l’mdoc `DeviceResponse` (hex BINASCII + notazione diagnostica)
 
 Per decifrare il JWE mostrato nella offer, da un clone:
 

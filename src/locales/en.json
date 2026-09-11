@@ -93,7 +93,7 @@
     "keysLink": "demo/keys/",
     "keysHref": "https://github.com/italia/eid-wallet-it-attestations-registry-browser/tree/main/demo/keys",
     "reconstructed": "Disclosures, key binding and claims",
-    "mdocExcerpt": "Decoded mdoc claims",
+    "mdocExcerpt": "Decoded mdoc structure",
     "empty": "No schema in the dump to build a demo credential from.",
     "error": "Could not sign the demo credential."
   },

@@ -21,7 +21,7 @@ Sviluppo in locale: [Avvio locale](#avvio-locale). Sintassi della ricerca: [docs
 
 ## Stato
 
-Applicazione **v0.4.0**: dump REST, grafo Cytoscape, ricerca Lucene-lite con facet HTML, switch collaudo/produzione, refresh live best-effort, bacheca per-GET, verifica JWT/SRI, data model e credenziale di esempio sui tipi, chiavi fittizie per offer/`issuer_state`. Requisiti in [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) (versione **0.4.0**).
+Applicazione **v0.4.0**: dump REST, grafo Cytoscape, ricerca Lucene-lite con facet HTML, switch collaudo/produzione, refresh live best-effort, bacheca per-GET, verifica JWT/SRI, simbolo IT-Wallet in header, data model e credenziale di esempio (SD-JWT e mdoc DeviceResponse in hex + notazione diagnostica, avviso di non usabilità), chiavi fittizie per offer/`issuer_state`. Requisiti in [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) (versione **0.4.0**).
 
 ## Framework (decisione)
 

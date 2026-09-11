@@ -93,7 +93,7 @@
     "keysLink": "demo/keys/",
     "keysHref": "https://github.com/italia/eid-wallet-it-attestations-registry-browser/tree/main/demo/keys",
     "reconstructed": "Disclosure, key binding e claim",
-    "mdocExcerpt": "Claim mdoc decodificati",
+    "mdocExcerpt": "Struttura mdoc decodificata",
     "empty": "Nessuno schema nel dump da cui costruire una credenziale di esempio.",
     "error": "Impossibile firmare la credenziale di esempio."
   },

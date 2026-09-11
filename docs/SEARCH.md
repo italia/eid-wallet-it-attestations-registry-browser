@@ -2,7 +2,7 @@
 
 ## 1. Esperienza
 
-Un unico campo, placeholder bilingue («Cerca tipi, legal type, attributi, emittenti, fonti…» / «Search types, legal type, attributes, issuers, sources…»), pattern visivo del search di `it-wallet.html` (icona lente, clear, submit).
+Un unico campo, placeholder di esempio (`+mDL legal_type:pub-eaa -pid`, uguale in it/en), pattern visivo del search di `it-wallet.html` (icona lente, clear, submit).
 
 Sotto il campo testo, quattro `<select>` HTML (`legal_type`, emittente, fonte autentica, attributo/claim) popolati dal dump. Cambiare un menu **scrive** nella query (`legal_type:pub-eaa`, `issuer:"…"`, `as:"…"`, `claim:family_name`) invece di un secondo motore. `legal_type` elenca sempre `pub-eaa`, `qeaa`, `eaa`; gli altri menu usano valori reali del registro. Requisiti: F-01, A-23.
 

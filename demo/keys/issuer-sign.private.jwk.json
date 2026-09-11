@@ -1,0 +1,14 @@
+{
+  "key_ops": [
+    "sign"
+  ],
+  "ext": true,
+  "kty": "EC",
+  "x": "aV950wEYN6bdy2EOEt-1pNnnYMnPsDNkCRavf_2mvbk",
+  "y": "Tzt4ctl4vOl2ve3dQUjX74EPgCNH_Sfe0rbFDv8w26M",
+  "crv": "P-256",
+  "d": "vciGcQVsIS5arUZ-UA6uAQObiaiocGYCnhRC1Y3yIys",
+  "kid": "itw-demo-sig-1",
+  "use": "sig",
+  "alg": "ES256"
+}

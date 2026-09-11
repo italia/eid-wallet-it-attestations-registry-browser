@@ -16,6 +16,7 @@ Riferimenti da copiare (non re-inventare):
 | Dropdown lingua ITA/EN (`menuitemradio`) | Markup e CSS di `disco.html`: `nav-link.dropdown-toggle`, icona `it-expand`, `link-list-wrapper`, offset Popper 24 px, etichetta `ITA`/`EN` (NF-07) |
 | Zona destra slim | **Campanella bacheca** (`button.nav-link`) **poi** dropdown lingua, stessa riga |
 | `header-title-section` + logo | Titolo pagina; il simbolo small è già nello slim header (non ripetere il wordmark) |
+| Avviso credenziale di esempio | `alert alert-warning` `#example-warning` (`role="alert"`); link `demo/keys/` verso GitHub |
 | `main#main-content` | Titolo h1 + search + split lista/grafo |
 | Footer legale Note / Privacy / Accessibilità | Link a pagine del progetto o a dichiarazione |
 | `noscript` | Messaggio i18n |
@@ -44,6 +45,7 @@ Un canvas Cytoscape non è sufficiente per AA:
 - Pattern search di `it-wallet.html` (clear, `aria-invalid` su parse error)
 - Facet e ambiente: intestazioni visibili (`h2`/`h3` + `label`) per Ambiente, ricerca, `legal_type`, emittente, FA, claim; Trust Anchor come link testuale
 - QR: `alt` = URI; il link testuale è sempre presente (il QR non è l’unico modo)
+- Credenziale di esempio mdoc: tab Originale (hex), Notazione diagnostica CBOR (`<pre>`), struttura decodificata
 - Modali dettaglio: focus trap Bootstrap Italia
 
 ## 5. Asset da vendorare

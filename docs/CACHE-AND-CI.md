@@ -51,7 +51,7 @@ Schema interno (soggetto a versionamento `manifest_version`):
   "generated_at": "2026-09-09T08:00:00Z",
   "env": "pre",
   "base_url": "https://pre.ta.wallet.ipzs.it",
-  "tool": "eid-wallet-it-attestations-registry-browser@<package.json version>",
+  "tool": "eid-wallet-it-attestations-registry-browser@0.4.0",
   "resources": [
     {
       "url": "https://pre.ta.wallet.ipzs.it/.well-known/it-wallet-registry",
@@ -67,6 +67,8 @@ Schema interno (soggetto a versionamento `manifest_version`):
   ]
 }
 ```
+
+Il campo `tool` è la versione del crawler **al momento del dump**, non necessariamente quella corrente in `package.json`. Non si riscrivono a mano i dump già in `cache/`.
 
 Oltre a `manifest.json` (dump di default = `pre`), lo script scrive `manifest-pre.json` e `manifest-prod.json`. L’UI carica quello dell’ambiente scelto (`?env=pre|prod`).
 

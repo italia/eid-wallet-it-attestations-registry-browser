@@ -58,7 +58,7 @@ Non si usa React/Vue/Svelte/Angular. Le pagine ufficiali IT-Wallet non lo fanno;
 | `graph/view.js` | Cytoscape + dagre `rankDir: 'TB'` |
 | `messages/` | Bacheca: una riga per GET, badge, retry |
 | `offer/` | Costruzione URI OpenID4VCI + QR + JWE esemplificativo |
-| `demo/` | Chiavi fittizie; esempi SD-JWT VC e mdoc (`DeviceResponse`, hex BINASCII, notazione diagnostica) |
+| `demo/` | Esempi SD-JWT VC e mdoc ISO 18013-5 (`DeviceResponse` in hex BINASCII + notazione diagnostica). Le chiavi fittizie stanno in `demo/keys/` (root del repo). |
 
 Nessun framework a componenti: DOM + Bootstrap Italia (`Offcanvas`, `Dropdown`, `Tooltip`).
 
@@ -108,12 +108,12 @@ Il dump nightly default è `pre`. L’UI MUST poter caricare `prod` dal dump `ma
 
 ## 8. Dipendenze runtime
 
-Vedi `package.json`. Obiettivo bundle: un vendor chunk (cytoscape+dagre è il più pesante) e un app chunk. Bootstrap Italia CSS da npm, sprite icone da `vendor/` copiato dalle official_resources.
+Vedi `package.json`. Obiettivo bundle: un vendor chunk (cytoscape+dagre è il più pesante) e un app chunk. Bootstrap Italia CSS/JS arrivano dal CDN jsDelivr, con versione pinata dalla dipendenza `bootstrap-italia` in `package.json`. Sprite e simbolo IT-Wallet da `vendor/` / `public/img/`.
 
 ## 9. Sicurezza
 
 - Read-only, origini: Pages + TA.
 - Nessun segreto di produzione nel repo. Le chiavi sotto `demo/keys/` sono **fittizie** (offer `issuer_state` + firma esempi SD-JWT e mdoc) e vanno trattate come tali.
 - Credential Offer: `issuer_state` di esempio cifrato con la chiave RSA di demo, non con PDND.
-- CSP in `index.html` (fase implementazione): `default-src 'self'`; `connect-src 'self' https://pre.ta.wallet.ipzs.it https://ta.wallet.ipzs.it`.
+- Content-Security-Policy: requisito A-20 SHOULD, **non** ancora in `index.html`. Una policy `default-src 'self'` richiede il guscio self-contained (oggi Bootstrap Italia è su jsDelivr).
 - Integrità schemi: hash `schema_uri#integrity`.
