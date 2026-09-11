@@ -1,6 +1,6 @@
 {
   "version" : "1.0",
-  "last_updated" : "2026-07-21T08:29:25Z",
+  "last_updated" : "2026-09-10T10:35:48Z",
   "schemas" : [ {
     "id" : "education_attendance+dc+sd-jwt+urn:it-wallet:education_attendance:it:1",
     "version" : "1.0",
@@ -8,7 +8,7 @@
     "format" : "dc+sd-jwt",
     "vct" : "urn:it-wallet:education_attendance:1",
     "schema_uri" : "https://pre.ta.wallet.ipzs.it/schemas/v1.3.3/education_attendance.json",
-    "schema_uri#integrity" : "sha256-/g+1A4RaMk/to9eBuZxkvYtDbtGQvDHmSCOIjBZ6taA=",
+    "schema_uri#integrity" : "sha256-VzrgYfJAJi62u1RbchIvYcq9cFZzG6Qp3YVqwmM3Xr8=",
     "description" : "Schema tecnico per la frequenza scolastica dello studente in formato SD-JWT."
   }, {
     "id" : "education_attendance+mso_mdoc+it.ipzs.wallet.ta.education_attendance.1",
@@ -26,7 +26,7 @@
     "format" : "dc+sd-jwt",
     "vct" : "urn:it-wallet:education_degree:1",
     "schema_uri" : "https://pre.ta.wallet.ipzs.it/schemas/v1.3.3/education_degree.json",
-    "schema_uri#integrity" : "sha256-TFi1DjGXizdLsNDDeyYRb6rqPeWf2fzkfBtpULSXaRE=",
+    "schema_uri#integrity" : "sha256-I3v+Vj1Tt6YeyFVv3K0DmAN/KhKu1EdvgYQZhHeuKu0=",
     "description" : "Schema tecnico per i titoli accademici in formato SD-JWT."
   }, {
     "id" : "education_degree+dc+mso_mdoc+it.ipzs.wallet.ta.education_degree.1",
@@ -44,7 +44,7 @@
     "format" : "dc+sd-jwt",
     "vct" : "urn:it-wallet:education_diploma:1",
     "schema_uri" : "https://pre.ta.wallet.ipzs.it/schemas/v1.3.3/education_diploma.json",
-    "schema_uri#integrity" : "sha256-j7x+LFwLeLtsqP3dDl4VnMakHzPeivziAyglEsETAyQ=",
+    "schema_uri#integrity" : "sha256-B6kOPvodAqk941mEnacHf1iRTY/7P0MuribEhs92jrY=",
     "description" : "Schema tecnico per i titoli di studio scolastici in formato SD-JWT."
   }, {
     "id" : "education_diploma+mso_mdoc+it.ipzs.wallet.ta.education_diploma.1",
@@ -62,7 +62,7 @@
     "format" : "dc+sd-jwt",
     "vct" : "urn:it-wallet:education_enrollment:1",
     "schema_uri" : "https://pre.ta.wallet.ipzs.it/schemas/v1.3.3/education_enrollment.json",
-    "schema_uri#integrity" : "sha256-hJx5US2sAgvGGfbFHc+bjgV+Vse2FvuBRdZNvnCu1FQ=",
+    "schema_uri#integrity" : "sha256-jC5fKd2YYaCixmcrSskRGQCVeJUXZl4YQmNmr/cozNs=",
     "description" : "Schema tecnico per le iscrizioni accademiche in formato SD-JWT."
   }, {
     "id" : "education_enrollment+mso_mdoc+it.ipzs.wallet.ta.education_enrollment.1",
@@ -80,7 +80,7 @@
     "format" : "dc+sd-jwt",
     "vct" : "urn:it-wallet:EuropeanDisabilityCard:1",
     "schema_uri" : "https://pre.ta.wallet.ipzs.it/schemas/v1.3.3/europeandisabilitycard.json",
-    "schema_uri#integrity" : "sha256-l0Ta5CQxoGXuoVq8iBgTJQ9JXJBGBteMbAbnmD5yyJo=",
+    "schema_uri#integrity" : "sha256-Finb+7M25aa8bHZY6M0KEsg+YYP3G06916c0FOx1Z0A=",
     "description" : "Schema tecnico per la Carta Europea della Disabilità in formato SD-JWT."
   }, {
     "id" : "EuropeanDisabilityCard+mso_mdoc+it.ipzs.wallet.ta.EuropeanDisabilityCard.1",
@@ -98,7 +98,7 @@
     "format" : "dc+sd-jwt",
     "vct" : "urn:it-wallet:EuropeanHealthInsuranceCard:1",
     "schema_uri" : "https://pre.ta.wallet.ipzs.it/schemas/v1.3.3/europeanhealthinsurancecard.json",
-    "schema_uri#integrity" : "sha256-CHXlxWkK9BgdxP/ZXvxP9TlGs2Ozyzyb0ODUYC3Ye5w=",
+    "schema_uri#integrity" : "sha256-WrIAyW/7fDOn6nSjUKiIwT0pEndQe7BBPHXaXiIzkjE=",
     "description" : "Schema tecnico per la Tessera Sanitaria - Tessera europea di assicurazione malattia in formato SD-JWT."
   }, {
     "id" : "EuropeanHealthInsuranceCard+mso_mdoc+it.ipzs.wallet.ta.EuropeanHealthInsuranceCard.1",
@@ -116,7 +116,7 @@
     "format" : "dc+sd-jwt",
     "vct" : "urn:it-wallet:mDL:1",
     "schema_uri" : "https://pre.ta.wallet.ipzs.it/schemas/v1.3.3/mdl.json",
-    "schema_uri#integrity" : "sha256-Qj9E82bXUkCC/IZZQx/FwcIPz04v7s7CGSBDx+pXHRw=",
+    "schema_uri#integrity" : "sha256-0fFseIgkLRqjGMZxN9NZFiEP6OZ/ikIkJ/FNJaJjGuY=",
     "description" : "Schema tecnico per la Patente di guida in formato SD-JWT."
   }, {
     "id" : "mDL+mso_mdoc+org.iso.18013.5.1.mDL",
@@ -143,7 +143,7 @@
     "format" : "dc+sd-jwt",
     "vct" : "urn:it-wallet:residency:1",
     "schema_uri" : "https://pre.ta.wallet.ipzs.it/schemas/v1.3.3/residency.json",
-    "schema_uri#integrity" : "sha256-aqu6Z6GS3QuLk8RLA1wuPaFUR/anldITbJNYh/1d01E=",
+    "schema_uri#integrity" : "sha256-G07dMajADmWuMsksafYSHR90N2rKPRE5GZM1IQXjDBM=",
     "description" : "Schema tecnico per l'attestato di Residenza in formato SD-JWT."
   }, {
     "id" : "residency+mso_mdoc+it.ipzs.wallet.ta.residency.1",
