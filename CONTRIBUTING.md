@@ -5,6 +5,7 @@
 3. Do not rewrite dump bodies in `cache/`; change only the crawler or the in-memory model.
 4. Keep `it` and `en` locale files in sync.
 5. New UI MUST remain keyboard-operable and have a non-canvas equivalent when it affects the graph.
+6. Pull requests run unit + Playwright e2e (`npm test`). Pages deploy on `main` is gated on the same suite.
 
 ## Scripts
 

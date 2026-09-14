@@ -104,14 +104,23 @@ On startup:
 
 IndexedDB key = absolute TA resource URL, not the Pages path.
 
-## 6. Two CD pipelines
+## 6. CI and two CD pipelines
+
+Shared test steps live in `.github/actions/run-tests` (`npm ci`, Playwright Chromium, `npm test`). Traces upload on failure (`test-results/`).
+
+### CI (`.github/workflows/ci.yml`)
+
+- Trigger: `pull_request`, and `push` to `main` except cache-only or docs-only commits (`paths-ignore`: `cache/**`, `docs/**`, `**.md`).
+- Job: checkout → run-tests (unit + Playwright e2e on Chromium, desktop / tablet / mobile).
+- Nightly cache-only pushes skip this workflow; Pages still runs the suite before deploy.
 
 ### A — Nightly cache (`.github/workflows/nightly-cache.yml`)
 
 - Trigger: `schedule` (02:15 UTC) and `workflow_dispatch`.
-- Job: checkout → Node 22 → `node scripts/dump-registry.mjs --env pre --with-issuer-metadata` and `node scripts/dump-registry.mjs --env prod --with-issuer-metadata` in separate steps.
+- Job: checkout → Node 22 → `npm ci` → `node scripts/dump-registry.mjs --env pre --with-issuer-metadata` and `node scripts/dump-registry.mjs --env prod --with-issuer-metadata` in separate steps → `npm run test:unit` against the new dump.
+- If unit tests fail, the dump is **not** committed.
 - If `git diff -- cache` is not empty: commit `chore(cache): nightly dump YYYY-MM-DD` as `github-actions[bot]`.
-- Does **not** run Vite. Responsibility: cache only.
+- Does **not** run Vite or Playwright. Responsibility: cache only, with a unit-test gate.
 
 ### B — Pages from cache (`.github/workflows/pages.yml`)
 
@@ -120,11 +129,11 @@ IndexedDB key = absolute TA resource URL, not the Pages path.
   - `push` on `src/**`, `index.html`, `package.json`, `vite.config.js`, `public/**`
   - `workflow_dispatch`
   - completed `workflow_run` of nightly (if nightly could not push on the same ref, a later push still covers it)
-- Job: `npm ci` → `npm run build` (`VITE_BASE=/eid-wallet-it-attestations-registry-browser/`) → `actions/upload-pages-artifact` + `actions/deploy-pages`.
+- Jobs: **test** (run-tests) → **build** (`npm ci` → `npm run build` with `VITE_BASE=/eid-wallet-it-attestations-registry-browser/`) → **deploy**. Build and deploy run only if tests pass.
 - GitHub Pages MUST use **GitHub Actions** (not “Deploy from a branch” on the root: that would serve source `index.html` and `import 'qrcode'` fails in the browser).
 - During the build, `cache/` is copied to `public/cache/` (`scripts/sync-cache-public.mjs` or `cp` in the workflow) so Vite emits it in `dist/cache/`.
 
-Intended split: a broken dump does not require touching the app; a UI fix does not require re-downloading the TA.
+Intended split: a broken dump does not require touching the app; a UI fix does not require re-downloading the TA; a failing test does not publish Pages.
 
 ## CORS and WAF
 
