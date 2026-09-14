@@ -32,10 +32,12 @@ export async function expandArtifact(page, prefix, index) {
   const panelId = Number.isInteger(index) ? `${prefix}-${index}-panel` : `${prefix}-panel`;
   const toggle = page.locator(`#${toggleId}`);
   await expect(toggle).toBeVisible();
-  if ((await toggle.getAttribute('aria-expanded')) !== 'true') {
+  await expect(page.locator('#results-list > .accordion-item > .accordion-collapse.show')).toBeVisible();
+  await expect.poll(async () => {
+    if ((await toggle.getAttribute('aria-expanded')) === 'true') return 'true';
     await toggle.click({ force: true });
-  }
-  await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    return toggle.getAttribute('aria-expanded');
+  }).toBe('true');
   await expect(page.locator(`#${panelId}`)).toHaveClass(/show/);
 }
 

@@ -538,7 +538,36 @@ export function createDetailAccordion({ id, labelledBy, label } = {}) {
   if (id) accordion.id = id;
   if (labelledBy) accordion.setAttribute('aria-labelledby', labelledBy);
   else if (label) accordion.setAttribute('aria-label', label);
+  bindNestedAccordionNavigation(accordion);
   return accordion;
+}
+
+function isMobileViewport() {
+  return window.matchMedia('(max-width: 991.98px)').matches;
+}
+
+function isDirectAccordionPanel(accordion, panel) {
+  return panel instanceof HTMLElement && panel.parentElement?.parentElement === accordion;
+}
+
+function bindNestedAccordionNavigation(accordion) {
+  if (accordion.dataset.navBound) return;
+  accordion.dataset.navBound = '1';
+  accordion.addEventListener('show.bs.collapse', (ev) => {
+    const panel = ev.target;
+    if (!isDirectAccordionPanel(accordion, panel) || !isMobileViewport()) return;
+    accordion.querySelectorAll(':scope > .accordion-item > .accordion-collapse.show').forEach((other) => {
+      if (other === panel) return;
+      window.bootstrap?.Collapse.getOrCreateInstance(other, { toggle: false }).hide();
+    });
+  });
+  accordion.addEventListener('shown.bs.collapse', (ev) => {
+    const panel = ev.target;
+    if (!isDirectAccordionPanel(accordion, panel) || !isMobileViewport()) return;
+    const btn = panel.parentElement?.querySelector(':scope > .accordion-header > .accordion-button');
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    btn?.scrollIntoView({ block: 'start', behavior: reduceMotion ? 'auto' : 'smooth' });
+  });
 }
 
 export function appendDetailAccordionItem(accordion, { id, title, headingId, toggleId, panelId, className = '' } = {}) {

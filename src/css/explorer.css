@@ -306,7 +306,7 @@
   border: 1px solid #d9e6f2;
   margin-bottom: 0.5rem;
   border-radius: 4px;
-  overflow: hidden;
+  overflow: visible;
 }
 
 #results-list .accordion-button:focus-visible {
@@ -566,11 +566,13 @@
   border: 1px solid #d9e6f2;
   margin-bottom: 0.35rem;
   border-radius: 4px;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .artifacts-accordion .accordion-button {
   font-size: 0.95rem;
+  white-space: normal;
+  text-align: start;
 }
 
 .artifacts-accordion .accordion-button:focus-visible {
@@ -784,6 +786,54 @@
 }
 
 @media (max-width: 991.98px) {
+  .explorer-mobile-tabs {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    margin-top: 0.75rem;
+    margin-bottom: 0;
+    padding: 0.5rem 0 0.75rem;
+    background: #f2f7fc;
+    border-bottom: 1px solid #c5d5e4;
+  }
+
+  .explorer-mobile-tabs .btn {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .explorer-panes {
+    margin-top: 0.75rem;
+  }
+
+  .explorer-pane:not(.is-active) {
+    display: none;
+  }
+
+  #results-list > .accordion-item > .accordion-header {
+    position: sticky;
+    top: 3.25rem;
+    z-index: 20;
+    background: #fff;
+  }
+
+  #results-list > .accordion-item > .accordion-header > .accordion-button,
+  .artifacts-accordion .accordion-button {
+    scroll-margin-top: 7rem;
+    white-space: normal;
+  }
+
+  .artifact-tabs.btn-group {
+    display: flex;
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  .artifact-tabs.btn-group > .btn {
+    flex: 1 1 auto;
+    white-space: normal;
+  }
+
   .registry-graph.has-selection {
     height: min(48vh, 32rem);
     min-height: 16rem;
@@ -822,7 +872,23 @@
 
 @media (min-width: 992px) {
   .explorer-pane {
-    display: block;
+    display: block !important;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .artifact-tabs.btn-group {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .artifact-tabs.btn-group > .btn {
+    border-radius: 4px !important;
+    margin: 0 0 0.25rem;
+  }
+
+  .artifact-view-bar {
+    flex-wrap: wrap;
   }
 }
 

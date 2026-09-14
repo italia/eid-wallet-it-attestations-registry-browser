@@ -22,7 +22,7 @@ References to copy (do not reinvent):
 | Result kind icon | Bootstrap Italia sprite to the left of each `#results-list` button (`aria-hidden` SVG + visually hidden kind label) |
 | Credential issuer metadata | `#credential-issuer`; `openid-credential-issuer` and `openid-federation` in nested artifact accordions (original JWT/JSON, decoded JSON tree, excerpt of matching `credential_configuration_id`); `#issuer-mismatch-*` (`alert alert-warning`, `role="alert"`) when the two documents diverge |
 | Dump artifacts | Nested Bootstrap accordion `#detail-accordion` inside the result panel; dump files plus, on credentials, Credential issuer / demo / offer items; each item starts collapsed (`aria-expanded="false"`) |
-| `main#main-content` | h1 + search + list/graph split |
+| `main#main-content` | h1 + search + list/graph; below `lg`, Lista/Grafo are exclusive panes (inactive pane is `inert`) |
 | Legal footer Notes / Accessibility | Links to project pages (legal notes, requirements, accessibility, GitHub) |
 | `noscript` | i18n message |
 | i18n from JSON | `src/locales/it.json`, `en.json` (module `src/js/i18n/`) |

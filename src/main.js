@@ -139,12 +139,27 @@ function setPane(name) {
   const list = name === 'list';
   els.tabList?.setAttribute('aria-selected', String(list));
   els.tabGraph?.setAttribute('aria-selected', String(!list));
+  syncExplorerPanes();
   const target = list ? els.paneList : els.paneGraph;
-  target?.scrollIntoView({ block: 'start', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  if (isMobile()) {
+    target?.scrollIntoView({
+      block: 'start',
+      behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+    });
+  }
   if (!list) {
     state.view?.resize();
     state.view?.fit();
   }
+}
+
+function syncExplorerPanes() {
+  const list = els.tabList?.getAttribute('aria-selected') !== 'false';
+  const mobile = isMobile();
+  els.paneList?.classList.toggle('is-active', list);
+  els.paneGraph?.classList.toggle('is-active', !list);
+  els.paneList?.toggleAttribute('inert', mobile && !list);
+  els.paneGraph?.toggleAttribute('inert', mobile && list);
 }
 
 function isMobile() {
@@ -252,8 +267,11 @@ function bindChrome() {
   });
 
   window.addEventListener('resize', () => {
+    syncExplorerPanes();
+    state.view?.resize();
     state.view?.fit();
   });
+  syncExplorerPanes();
 }
 
 async function applyLocale(lang) {
@@ -500,6 +518,11 @@ function renderResults(docs, { restoreSelection = true } = {}) {
       if (collapse.querySelector('#node-detail')) return;
       void selectNode(doc.id, { fromGraph: false, fromAccordion: true });
     });
+    collapse.addEventListener('shown.bs.collapse', (ev) => {
+      if (ev.target !== collapse || !isMobile()) return;
+      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      btn.scrollIntoView({ block: 'start', behavior: reduceMotion ? 'auto' : 'smooth' });
+    });
 
     heading.appendChild(btn);
     item.append(heading, collapse);
@@ -616,6 +639,7 @@ function fillExampleDisclaimer(el) {
 let selectGen = 0;
 
 async function selectNode(id, { fromGraph = false, fromAccordion = false } = {}) {
+  if (fromGraph && isMobile()) setPane('list');
   const gen = ++selectGen;
   state.selectedId = id;
   writeUrl();
@@ -636,14 +660,17 @@ async function selectNode(id, { fromGraph = false, fromAccordion = false } = {})
   if (window.__ITW_EXPLORER__) window.__ITW_EXPLORER__.selectedId = id;
   if (fromGraph) {
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    document.getElementById('section-results')?.scrollIntoView({
-      block: 'nearest',
+    const resultBtn = els.resultsList?.querySelector(`button.accordion-button[data-node-id="${CSS.escape(id)}"]`);
+    (isMobile() ? resultBtn : document.getElementById('section-results'))?.scrollIntoView({
+      block: isMobile() ? 'start' : 'nearest',
       behavior: reduceMotion ? 'auto' : 'smooth',
     });
-    document.getElementById('credential-offer')?.scrollIntoView({
-      block: 'nearest',
-      behavior: reduceMotion ? 'auto' : 'smooth',
-    });
+    if (!isMobile()) {
+      document.getElementById('credential-offer')?.scrollIntoView({
+        block: 'nearest',
+        behavior: reduceMotion ? 'auto' : 'smooth',
+      });
+    }
   }
 }
 
