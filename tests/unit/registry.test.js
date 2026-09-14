@@ -28,6 +28,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadDumpFromDisk } from '../helpers/dump.js';
 import { CONTENT_SECURITY_POLICY } from '../../src/js/security/csp.js';
+import { copyToClipboard } from '../../src/js/artifacts/copy.js';
 
 describe('CSP (A-20)', () => {
   it('does not load Bootstrap Italia from a CDN', () => {
@@ -43,6 +44,30 @@ describe('CSP (A-20)', () => {
     assert.doesNotMatch(CONTENT_SECURITY_POLICY, /jsdelivr|cdnjs|unpkg|'unsafe-eval'/);
     assert.match(CONTENT_SECURITY_POLICY, /style-src-attr 'unsafe-inline'/);
     assert.match(CONTENT_SECURITY_POLICY, /connect-src 'self' https:\/\/\*\.ipzs\.it/);
+  });
+});
+
+describe('artifact copy', () => {
+  it('writes the given text to the clipboard API', async () => {
+    const writes = [];
+    const previous = globalThis.navigator;
+    Object.defineProperty(globalThis, 'navigator', {
+      configurable: true,
+      value: {
+        clipboard: {
+          writeText: async (text) => {
+            writes.push(text);
+          },
+        },
+      },
+    });
+    try {
+      await copyToClipboard('eyJhbGciOiJFUzI1NiJ9');
+      assert.deepEqual(writes, ['eyJhbGciOiJFUzI1NiJ9']);
+    } finally {
+      if (previous === undefined) delete globalThis.navigator;
+      else Object.defineProperty(globalThis, 'navigator', { configurable: true, value: previous });
+    }
   });
 });
 

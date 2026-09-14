@@ -1,5 +1,6 @@
 /** Resolve dump resources to show when an entity is selected. */
 
+import { wrapCopyable } from './copy.js';
 import { renderJsonTree, tryParseJson } from './json-tree.js';
 import { configurationIdsFor, configurationIdsFromMetadata } from '../offer/offer.js';
 import { canonicalizeIssuerEntityId, issuerIdOf, issuerWellKnownUrl } from '../issuers/entity-id.js';
@@ -517,14 +518,18 @@ function fillArtifactPanel(panel, artifact, paneId, t) {
   const value = artifactViewValue(artifact, paneId);
   const preferRaw = paneId === 'signed' && artifact.showDecoded && !artifact.jwt;
   const parsed = preferRaw ? { ok: false } : tryParseJson(value);
+  const getText = () => formatArtifactView(artifact, paneId);
   if (parsed.ok && parsed.value !== null && typeof parsed.value === 'object') {
-    renderJsonTree(panel, parsed.value, { t, openDepth: 1 });
+    const inner = document.createElement('div');
+    renderJsonTree(inner, parsed.value, { t, openDepth: 1 });
+    const toolbar = inner.querySelector('.json-tree-toolbar');
+    panel.appendChild(wrapCopyable(inner, getText, t, { start: toolbar }));
     return;
   }
   const pre = document.createElement('pre');
   pre.className = 'artifact-pre';
-  pre.textContent = formatArtifactView(artifact, paneId);
-  panel.appendChild(pre);
+  pre.textContent = getText();
+  panel.appendChild(wrapCopyable(pre, getText, t));
 }
 
 export function createDetailAccordion({ id, labelledBy, label } = {}) {

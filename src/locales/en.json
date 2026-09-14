@@ -97,7 +97,10 @@
     "excerpt": "Plaintext excerpt",
     "empty": "No dumped artifact for this entity.",
     "expandAll": "Expand all",
-    "collapseAll": "Collapse all"
+    "collapseAll": "Collapse all",
+    "copy": "Copy content",
+    "copied": "Copied",
+    "copyFailed": "Could not copy"
   },
   "example": {
     "heading": "Demo credential",

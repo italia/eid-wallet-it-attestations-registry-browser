@@ -26,6 +26,7 @@ import {
   renderArtifacts,
   resolveDumpedIssuerId,
 } from './js/artifacts/artifacts.js';
+import { wrapCopyable } from './js/artifacts/copy.js';
 import { configurationIdsFor, credentialOfferHref, credentialOfferObject, decryptIssuerState, encryptIssuerState, issuerStateUrn } from './js/offer/offer.js';
 import { buildDemoCredentials } from './js/demo/example.js';
 import { demoCardModels } from './js/demo/card.js';
@@ -796,10 +797,11 @@ function buildOfferShell(options = {}) {
     field('p', { className: 'form-text', id: 'offer-decrypt-hint' }, t('offer.decryptHint')),
   );
   const decryptDetails = field('details', { id: 'offer-decrypt-help', className: 'offer-decrypt-help mb-3' });
+  const decryptPre = field('pre', { id: 'offer-decrypt-command', className: 'artifact-pre offer-decrypt-command' });
   decryptDetails.append(
     field('summary', { id: 'offer-decrypt-summary' }, t('offer.decryptSummary')),
     field('p', { className: 'form-text', id: 'offer-decrypt-body' }, t('offer.decryptHelp')),
-    field('pre', { id: 'offer-decrypt-command', className: 'artifact-pre offer-decrypt-command' }),
+    wrapCopyable(decryptPre, () => decryptPre.textContent, t),
   );
   keyWrap.append(decryptDetails);
   fieldset.append(objWrap, keyWrap);
@@ -807,27 +809,34 @@ function buildOfferShell(options = {}) {
   form.addEventListener('submit', (ev) => ev.preventDefault());
 
   const urnLabel = field('p', { className: 'small mb-1', id: 'offer-urn-label' }, t('offer.urn'));
-  const urn = field('code', { id: 'offer-urn', className: 'd-block text-break mb-3' });
+  const urn = field('code', { id: 'offer-urn', className: 'd-block text-break mb-0' });
+  const urnView = wrapCopyable(urn, () => urn.textContent, t);
+  urnView.classList.add('mb-3');
   const decLabel = field('p', { className: 'small mb-1', id: 'offer-decrypted-label' }, t('offer.decrypted'));
-  const decrypted = field('code', { id: 'offer-decrypted', className: 'd-block text-break mb-3' });
-  decrypted.hidden = true;
+  const decrypted = field('code', { id: 'offer-decrypted', className: 'd-block text-break mb-0' });
+  const decryptedView = wrapCopyable(decrypted, () => decrypted.textContent, t);
+  decryptedView.classList.add('mb-3');
+  decryptedView.hidden = true;
   decLabel.hidden = true;
   const jsonLabel = field('p', { className: 'small mb-1', id: 'offer-json-label' }, t('offer.json'));
   const jsonPre = field('pre', { id: 'offer-json', className: 'artifact-pre offer-json' });
+  const jsonView = wrapCopyable(jsonPre, () => jsonPre.textContent, t);
   const derived = field('p', { id: 'offer-derived', className: 'form-text' });
   derived.hidden = true;
   const err = field('p', { id: 'offer-enc-error', className: 'text-danger small', role: 'alert' });
   err.hidden = true;
 
   const urlLabel = field('h4', { className: 'h6 mt-3 mb-1', id: 'offer-url-label' }, t('offer.url'));
-  const link = field('a', { id: 'offer-link', className: 'd-block text-break mb-2', href: '#' });
+  const link = field('a', { id: 'offer-link', className: 'd-block text-break mb-0', href: '#' });
   link.setAttribute('aria-labelledby', 'offer-url-label');
+  const linkView = wrapCopyable(link, () => link.getAttribute('href') || '', t);
+  linkView.classList.add('mb-2');
   const haip = field('a', { id: 'offer-link-haip', className: 'visually-hidden', href: '#' }, 'haip');
   const qrLabel = field('h4', { className: 'h6 mt-3 mb-2', id: 'offer-qr-label' }, t('offer.qr'));
   const qr = field('img', { id: 'offer-qr', className: 'offer-qr', width: '192', height: '192', alt: '' });
   qr.setAttribute('aria-labelledby', 'offer-qr-label');
 
-  box.append(form, urnLabel, urn, decLabel, decrypted, jsonLabel, jsonPre, derived, err, urlLabel, link, haip, qrLabel, qr);
+  box.append(form, urnLabel, urnView, decLabel, decryptedView, jsonLabel, jsonView, derived, err, urlLabel, linkView, haip, qrLabel, qr);
   return box;
 }
 
@@ -1131,7 +1140,9 @@ async function refreshOffer(node, root = offerRootFor(node.id)) {
   }
   if (decEl) {
     decEl.textContent = decrypted;
-    decEl.hidden = !decrypted;
+    const wrap = decEl.closest('.artifact-view');
+    if (wrap) wrap.hidden = !decrypted;
+    else decEl.hidden = !decrypted;
   }
   if (decLabel) decLabel.hidden = !decrypted;
   if (!stillThis()) return;

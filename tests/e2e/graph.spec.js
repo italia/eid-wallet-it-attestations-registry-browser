@@ -136,6 +136,18 @@ test.describe('graph and search UI', () => {
     await expect(page.locator('#artifact-0-payload-tab')).toBeVisible();
     await page.locator('#artifact-0-signed-tab').click();
     await expect(page.locator('#artifact-0-signed')).toContainText('eyJ');
+    await expect(page.locator('#artifact-0-signed .artifact-copy')).toBeVisible();
+    await page.evaluate(() => {
+      window.__ITW_CLIPBOARD__ = [];
+      navigator.clipboard.writeText = async (text) => {
+        window.__ITW_CLIPBOARD__.push(String(text));
+      };
+    });
+    await page.locator('#artifact-0-signed .artifact-copy').click();
+    const copiedSigned = await page.evaluate(() => window.__ITW_CLIPBOARD__.at(-1) || '');
+    expect(copiedSigned).toMatch(/^eyJ/);
+    await expect(page.locator('#artifact-0-header .artifact-copy')).toHaveCount(1);
+    await expect(page.locator('#artifact-0-payload .artifact-copy')).toHaveCount(1);
   });
 
   test('selecting a credential shows signed artifact and JOSE header/payload', async ({ page }) => {
@@ -158,6 +170,7 @@ test.describe('graph and search UI', () => {
     await expect(page.locator('#artifact-0-header')).toContainText('alg');
     await payload.click();
     await expect(page.locator('#artifact-0-payload')).toContainText('credentials');
+    await expect(page.locator('#artifact-0-payload .artifact-copy')).toBeVisible();
     const payloadNodes = page.locator('#artifact-0-payload details.json-node');
     await expect(payloadNodes.first()).toBeVisible();
     await page.locator('#artifact-0-payload').getByRole('button', { name: /Comprimi tutto|Collapse all/ }).click();
@@ -167,6 +180,7 @@ test.describe('graph and search UI', () => {
     await page.locator('#artifact-0-excerpt-tab').click();
     await expect(page.locator('#artifact-0-excerpt')).toContainText('mDL');
     await expect(page.locator('#artifact-0-excerpt details.json-node').first()).toBeVisible();
+    await expect(page.locator('#artifact-0-excerpt .artifact-copy')).toBeVisible();
     await expect(page.locator('#node-artifacts')).toContainText('data-model');
     await expect(page.locator('#credential-issuer')).toBeVisible();
     await expect(page.locator('#issuer-heading')).toBeVisible();
@@ -229,7 +243,7 @@ test.describe('graph and search UI', () => {
     await expandArtifact(page, 'example-artifact', 1);
     await expect(page.locator('#example-artifact-1-signed-tab')).toBeVisible();
     await expect(page.locator('#credential-example')).toContainText('mso_mdoc');
-    const mdocHex = (await page.locator('#example-artifact-1-signed').innerText()).trim();
+    const mdocHex = (await page.locator('#example-artifact-1-signed pre.artifact-pre').innerText()).trim();
     expect(mdocHex).toMatch(/^[0-9a-f]+$/);
     expect(mdocHex.startsWith('a36776657273696f6e')).toBe(true);
     await expect(page.locator('#example-artifact-1-diagnostic-tab')).toBeVisible();
@@ -237,6 +251,7 @@ test.describe('graph and search UI', () => {
     await expect(page.locator('#example-artifact-1-diagnostic')).toContainText('24(<<');
     await expect(page.locator('#example-artifact-1-diagnostic')).toContainText('family_name');
     await expect(page.locator('#example-artifact-1-diagnostic')).toContainText('issuerSigned');
+    await expect(page.locator('#example-artifact-1-diagnostic .artifact-copy')).toBeVisible();
     await page.locator('#example-artifact-1-excerpt-tab').click();
     await expect(page.locator('#example-artifact-1-excerpt')).toContainText('org.iso.18013.5.1.mDL');
     await expect(page.locator('#example-artifact-1-excerpt')).toContainText('issuerSigned');
@@ -260,6 +275,9 @@ test.describe('graph and search UI', () => {
     await expect(page.locator('.accordion-collapse.show #offer-json')).toContainText('"credential_issuer"');
     await expect(page.locator('.accordion-collapse.show #offer-json')).toContainText('authorization_code');
     await expect(page.locator('.accordion-collapse.show #offer-json')).toContainText('issuer_state');
+    await expect(
+      page.locator('.accordion-collapse.show .artifact-view').filter({ has: page.locator('#offer-json') }).locator('.artifact-copy'),
+    ).toBeVisible();
     await expect(page.locator('#offer-url-label')).toHaveText(/URL same device flow/);
     await expect(page.locator('#offer-qr-label')).toHaveText(/QR-Code cross device flow/);
     await expect(page.locator('#offer-object-id')).toBeVisible();

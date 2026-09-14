@@ -97,7 +97,10 @@
     "excerpt": "Estratto in chiaro",
     "empty": "Nessun artefatto dumpato per questa entità.",
     "expandAll": "Espandi tutto",
-    "collapseAll": "Comprimi tutto"
+    "collapseAll": "Comprimi tutto",
+    "copy": "Copia il contenuto",
+    "copied": "Copiato",
+    "copyFailed": "Impossibile copiare"
   },
   "example": {
     "heading": "Credenziale di esempio",
