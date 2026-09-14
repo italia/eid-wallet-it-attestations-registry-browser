@@ -109,12 +109,12 @@ The default nightly dump is `pre`. The UI MUST be able to load `prod` from `mani
 
 ## 8. Runtime dependencies
 
-See `package.json`. Bundle goal: one vendor chunk (cytoscape+dagre is the heaviest) and one app chunk. Bootstrap Italia CSS/JS come from the jsDelivr CDN, version-pinned by the `bootstrap-italia` dependency in `package.json`. Sprite and IT-Wallet symbol from `vendor/` / `public/img/`.
+See `package.json`. Bundle goal: one vendor chunk (cytoscape+dagre is the heaviest) and one app chunk. Bootstrap Italia CSS/JS are imported from the npm package (`src/js/vendor/bootstrap-italia.js`). Sprite and IT-Wallet symbol from `vendor/` / `public/img/`.
 
 ## 9. Security
 
 - Read-only, origins: Pages + TA.
 - No production secrets in the repo. Keys under `demo/keys/` are **fake** (offer `issuer_state` + demo SD-JWT and mdoc signatures) and must be treated as such.
 - Credential Offer: example `issuer_state` encrypted with the demo RSA key, not PDND.
-- Content-Security-Policy: A-20 SHOULD, **not** yet in `index.html`. A `default-src 'self'` policy needs a self-contained shell (Bootstrap Italia is on jsDelivr today).
+- Content-Security-Policy: A-20 SHOULD. `vite build` injects `<meta http-equiv="Content-Security-Policy">` (`src/js/security/csp.js`): scripts and styles from `'self'`, no jsDelivr. `style-src-attr 'unsafe-inline'` is required for Cytoscape and Popper. `connect-src` allows `'self'` and `https://*.ipzs.it` for live Trust Anchor / issuer refresh. Vite HMR is incompatible with this policy, so it is omitted in `npm run dev`.
 - Schema integrity: `schema_uri#integrity` hash.

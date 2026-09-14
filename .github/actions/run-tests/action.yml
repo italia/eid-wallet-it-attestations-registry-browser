@@ -1,0 +1,30 @@
+name: Run tests
+description: Install dependencies, Chromium, and run unit plus Playwright e2e tests.
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+        cache: npm
+    - run: npm ci
+      shell: bash
+    - name: Cache Playwright browsers
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/ms-playwright
+        key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+    - name: Install Playwright Chromium
+      run: npx playwright install --with-deps chromium
+      shell: bash
+    - run: npm test
+      shell: bash
+    - name: Upload Playwright traces
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: playwright-traces
+        path: test-results/
+        if-no-files-found: ignore
+        retention-days: 7

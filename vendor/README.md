@@ -8,4 +8,4 @@ The small header mark on the slim `bg-primary` bar is the official **IT-Wallet S
 
 It lives in `vendor/img/` and is served from `public/img/` (Vite `publicDir`). Do not invent a substitute: the ST brand identity requires this SVG (`application/svg+xml`).
 
-See docs/ACCESSIBILITY.md. Until the rest of shared-ui lands, `index.html` uses the Bootstrap Italia CDN for the shell.
+See docs/ACCESSIBILITY.md. Bootstrap Italia CSS and JS are imported from the npm package (`src/js/vendor/bootstrap-italia.js`) so the Pages build can ship a Content-Security-Policy without jsDelivr.

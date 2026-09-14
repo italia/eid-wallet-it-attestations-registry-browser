@@ -27,6 +27,24 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadDumpFromDisk } from '../helpers/dump.js';
+import { CONTENT_SECURITY_POLICY } from '../../src/js/security/csp.js';
+
+describe('CSP (A-20)', () => {
+  it('does not load Bootstrap Italia from a CDN', () => {
+    const html = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '../../index.html'), 'utf8');
+    assert.doesNotMatch(html, /jsdelivr|cdn\.|unpkg/i);
+    assert.match(html, /src="\.\/src\/main\.js"/);
+    assert.doesNotMatch(html, /explorer\.css/);
+  });
+
+  it('ships a production policy that forbids third-party scripts', () => {
+    assert.match(CONTENT_SECURITY_POLICY, /default-src 'self'/);
+    assert.match(CONTENT_SECURITY_POLICY, /script-src 'self'/);
+    assert.doesNotMatch(CONTENT_SECURITY_POLICY, /jsdelivr|cdnjs|unpkg|'unsafe-eval'/);
+    assert.match(CONTENT_SECURITY_POLICY, /style-src-attr 'unsafe-inline'/);
+    assert.match(CONTENT_SECURITY_POLICY, /connect-src 'self' https:\/\/\*\.ipzs\.it/);
+  });
+});
 
 describe('JWT catalog', () => {
   it('decodes the dumped credential catalog', () => {

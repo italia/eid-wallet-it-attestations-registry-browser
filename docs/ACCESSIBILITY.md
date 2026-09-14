@@ -58,13 +58,13 @@ A Cytoscape canvas is not enough for AA:
 
 Copy from `official_resources/shared-ui/` (with attribution in NOTICE):
 
-- `css/bootstrap-italia.min.css` **or** the npm package (same visual family)
+- `css/bootstrap-italia.min.css` **or** the npm package (same visual family) — the explorer imports `bootstrap-italia` from npm
 - `css/style.css` (slim header, skip-link, footer)
-- `js/bootstrap-italia.bundle.min.js`
+- `js/bootstrap-italia.bundle.min.js` — not used; JS plugins come from the npm ESM entry
 - `js/header-lang-dropdown.js`
 - `svg/sprites.svg`
 - logos `img/IT-Wallet-Logo-Primary-BlueItalia.svg` (wordmark on a light background)
 - small symbol `IT-Wallet-Symbol-Negative-White.svg` (slim header `bg-primary`; already in `public/img/` and `vendor/img/`)
 - Titillium / Lora / Roboto Mono fonts if the official CSS is vendored
 
-Until the rest of shared-ui is copied, `index.html` may point at the Bootstrap Italia jsDelivr CDN. The Pages build SHOULD become self-contained; today the shell still loads CSS/JS from that CDN.
+The Pages build is self-contained: Bootstrap Italia is bundled by Vite. Production HTML includes a Content-Security-Policy meta tag (A-20).

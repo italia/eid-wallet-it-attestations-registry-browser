@@ -2,6 +2,7 @@ import { defineConfig } from 'vite';
 import { cpSync, createReadStream, existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, extname, join, normalize, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { CONTENT_SECURITY_POLICY } from './src/js/security/csp.js';
 
 const root = dirname(fileURLToPath(import.meta.url));
 const cacheDir = resolve(root, 'cache');
@@ -39,6 +40,20 @@ function serveCacheFile(urlPath, res) {
   return serveRootFile(cacheDir, '/cache', urlPath, res);
 }
 
+function cspMeta() {
+  return {
+    name: 'csp-meta',
+    transformIndexHtml: {
+      order: 'pre',
+      handler(html, ctx) {
+        if (ctx.server) return html;
+        const tag = `  <meta http-equiv="Content-Security-Policy" content="${CONTENT_SECURITY_POLICY}">`;
+        return html.replace('<head>', `<head>\n${tag}`);
+      },
+    },
+  };
+}
+
 function serveCache() {
   return {
     name: 'serve-registry-cache',
@@ -73,7 +88,7 @@ const base = process.env.VITE_BASE || (process.env.GITHUB_ACTIONS ? pagesBase : 
 export default defineConfig({
   base,
   publicDir: 'public',
-  plugins: [serveCache()],
+  plugins: [cspMeta(), serveCache()],
   optimizeDeps: {
     include: ['qrcode'],
   },

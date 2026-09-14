@@ -5,13 +5,13 @@ Source: project request + review of the [registry handbook](EVALUATION_HANDBOOK.
 
 Priority: **MUST** / **SHOULD** / **MAY** (RFC 2119).
 
-Changelog 0.6.2: Credential Offer URL/QR are written on the selected result panel only (no `document.getElementById` onto a leftover hidden `#offer-link`); switching credentials no longer leaves `href="#"`.  
+Changelog 0.6.2: Credential Offer URL/QR are written on the selected result panel only (no `document.getElementById` onto a leftover hidden `#offer-link`); switching credentials no longer leaves `href="#"`. A-20: Bootstrap Italia is bundled from npm; production HTML gets a `Content-Security-Policy` meta (no jsDelivr).  
 Changelog 0.6.1: selection generation tokens for concurrent `selectNode`; Cytoscape uses the default wheel sensitivity and does not set invalid `cursor` style properties. 
 Changelog 0.6.0: page title **IT-Wallet Attestations Explorer and Demo**; node detail is one nested accordion (dump artifacts, **Credential issuer**, **Credential demo**, **Credential offer**, collapsed by default); issuer well-knowns from the dump also appear as artifacts on issuer nodes.  
 Changelog 0.5.0: on each `credential` result, a Credential issuer section with `{issuer_id}/.well-known/openid-credential-issuer` and `{issuer_id}/.well-known/openid-federation` (original JWT/JSON, decoded JSON, matching `credential_configuration_id` excerpt), and a warning when the OpenID4VCI contents diverge; a **Credential demo UI** smartcard that uses `credential_configuration` display metadata (name, colours, claim labels) when present; each search result has a Bootstrap Italia kind icon (`it-card` for credentials).  
 Changelog 0.4.0: on the `credential` node, data model (JSON Schema / CDDL) and demo credential (`dc+sd-jwt` and `mso_mdoc` ISO 18013-5 DeviceResponse as BINASCII hex + diagnostic notation, claims from the CDDL) with an illustration-only warning and link to `demo/keys/`; offer form pre-filled with the demo RSA key; IT-Wallet symbol (Negative White) in the slim header; page-level CORS warning (openid-federation-browser pattern) when live Trust Anchor HTTP requests fail.  
 Changelog 0.3.0: F-05 live refresh + IndexedDB, F-07 per-resource retry, A-03 `?node=`, F-02 OR/()/wildcard/boost, A-05/A-06 JWT and SRI verification, A-10 `issuers[].id`, nightly prod, CORS guidance.  
-Changelog 0.2.0: F-01 HTML facets, F-06 per-call traces, F-08 `ITA`/`EN` labels, F-12 environment/TA, NF-07 `disco.html` header identity, A-01/A-03/A-17 aligned with the implementation. A-20 (CSP) remains SHOULD and is not in `index.html`.
+Changelog 0.2.0: F-01 HTML facets, F-06 per-call traces, F-08 `ITA`/`EN` labels, F-12 environment/TA, NF-07 `disco.html` header identity, A-01/A-03/A-17 aligned with the implementation. A-20 (CSP) was still open.
 
 ---
 
@@ -259,7 +259,7 @@ Motivated by the handbook, Technical Specifications and GitHub Pages constraints
 | A-17 | MUST | Versioned dump indexes: `manifest.json` (default `pre`), `manifest-pre.json`, `manifest-prod.json`. |
 | A-18 | SHOULD | Rate limiting in the crawler (pause between fetches, exponential retry on 429/5xx). |
 | A-19 | MUST | `noscript` pages and a message if JS is disabled. |
-| A-20 | SHOULD | Content-Security-Policy compatible with GitHub Pages (own scripts; goal: fully bundled). Not yet in `index.html`. |
+| A-20 | SHOULD | Content-Security-Policy compatible with GitHub Pages (own scripts; fully bundled). Production `index.html` (Vite build) includes `<meta http-equiv="Content-Security-Policy">` from `src/js/security/csp.js`. Not applied in `vite` dev (HMR). |
 | A-21 | MAY | Pre vs prod comparison in the same session (two roots). |
 | A-22 | SHOULD | Document on the board the schema path divergence (`/schemas/v1.3.3/…` vs the ST example). |
 | A-23 | MUST | HTML facets `legal_type` / issuer / authentic source / claim that write `field:value` into the query (F-01). |

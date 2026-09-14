@@ -1,3 +1,5 @@
+import './js/vendor/bootstrap-italia.js';
+import './css/explorer.css';
 import { applyDocumentLang, currentLang, dictionary, loadLocale, t } from './js/i18n/i18n.js';
 import { MessageBoard } from './js/messages/board.js';
 import { loadDump, loadDumpManifest, timedFetch } from './js/cache/loader.js';
