@@ -1,22 +1,14 @@
 name: GitHub Pages
 
-# CD B — pubblica il sito quando cambiano cache o app.
+# CD B — pubblica il sito solo dopo CI (app) o nightly dump (cache) riusciti.
+# Un `if` custom su `needs` toglie il success() implicito di GitHub: senza
+# `needs.*.result == 'success'` build/deploy potrebbero girare anche se i test falliscono.
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'cache/**'
-      - 'src/**'
-      - 'public/**'
-      - 'index.html'
-      - 'package.json'
-      - 'package-lock.json'
-      - 'vite.config.js'
-      - '.github/workflows/pages.yml'
   workflow_dispatch:
   workflow_run:
-    workflows: ['Nightly registry dump']
+    workflows: ['CI', 'Nightly registry dump']
     types: [completed]
+    branches: [main]
 
 permissions:
   contents: read
@@ -29,7 +21,7 @@ concurrency:
 
 jobs:
   test:
-    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -40,7 +32,7 @@ jobs:
 
   build:
     needs: test
-    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ needs.test.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -60,7 +52,8 @@ jobs:
           path: dist
 
   deploy:
-    needs: build
+    needs: [test, build]
+    if: ${{ needs.test.result == 'success' && needs.build.result == 'success' }}
     runs-on: ubuntu-latest
     environment:
       name: github-pages

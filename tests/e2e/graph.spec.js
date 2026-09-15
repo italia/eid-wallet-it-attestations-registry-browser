@@ -56,6 +56,12 @@ test.describe('graph and search UI', () => {
     await expect(page.locator('#facet-legal-type option[value="qeaa"]')).toHaveCount(1);
     await expect(page.locator('#facet-legal-type option[value="eaa"]')).toHaveCount(1);
     expect(await page.locator('#facet-issuer option').count()).toBeGreaterThan(1);
+    const issuerLabels = await page.locator('#facet-issuer option').evaluateAll((opts) =>
+      opts.map((o) => o.textContent.trim()).filter(Boolean),
+    );
+    expect(new Set(issuerLabels).size).toBe(issuerLabels.length);
+    expect(issuerLabels.some((label) => label.includes('pre.issuer.wallet.ipzs.it'))).toBe(true);
+    expect(issuerLabels.some((label) => label.includes('pre.eid.wallet.ipzs.it'))).toBe(true);
     expect(await page.locator('#facet-as option').count()).toBeGreaterThan(1);
     expect(await page.locator('#facet-claim option').count()).toBeGreaterThan(1);
 

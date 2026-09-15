@@ -3,7 +3,7 @@
  * Hierarchy: IT-Wallet Registry → five registers → credentials / schemas / claims / FA / taxonomy.
  */
 
-import { issuerIdOf } from '../issuers/entity-id.js';
+import { issuerIdOf, issuerOptionLabel } from '../issuers/entity-id.js';
 
 const CONTAINERS = [
   { id: 'catalog', kind: 'catalog', label: 'Catalogo', labelEn: 'Catalog' },
@@ -53,6 +53,7 @@ export function buildRegistryGraph(dump, { lang = 'it' } = {}) {
   };
 
   const addEdge = (source, target, relation = 'child') => {
+    if (!byId.has(source) || !byId.has(target)) return;
     const id = `e:${source}>${target}:${relation}`;
     if (edges.some((e) => e.id === id)) return;
     edges.push({ id, source, target, relation });
@@ -302,7 +303,7 @@ export function facetOptions(graph) {
   const claims = [];
   for (const n of graph?.nodes || []) {
     if (n.kind === 'issuer' && n.entity_id) {
-      issuers.push({ value: n.entity_id, label: n.label || n.entity_id });
+      issuers.push({ value: n.entity_id, label: issuerOptionLabel(n.label, n.entity_id) });
     }
     if (n.kind === 'authentic_source' && (n.entity_id || n.as)) {
       const value = n.entity_id || n.as;

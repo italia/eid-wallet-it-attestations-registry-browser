@@ -15,7 +15,7 @@ import {
   issuerWellKnownGroupsForCredential,
   resolveDumpedIssuerId,
 } from '../../src/js/artifacts/artifacts.js';
-import { canonicalizeIssuerEntityId } from '../../src/js/issuers/entity-id.js';
+import { canonicalizeIssuerEntityId, issuerNodeName, issuerOptionLabel } from '../../src/js/issuers/entity-id.js';
 import { jsonPreview, tryParseJson } from '../../src/js/artifacts/json-tree.js';
 import { configurationIdsFor, credentialOfferHref, credentialOfferObject, decryptIssuerState, encryptIssuerState, issuerStateUrn } from '../../src/js/offer/offer.js';
 import { demoEncPrivateJwkText, demoEncPublicJwkText } from '../../src/js/demo/material.js';
@@ -23,12 +23,22 @@ import { demoCardModels, isCssColor, pickLocalizedDisplay } from '../../src/js/d
 import { buildDemoCredential, buildDemoCredentials, claimsFromCddl, exampleFromSchema } from '../../src/js/demo/example.js';
 import { encodeCbor, toCborDiag } from '../../src/js/demo/cbor.js';
 import { parseCddlMdoc } from '../../src/js/demo/mdoc.js';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadDumpFromDisk } from '../helpers/dump.js';
 import { CONTENT_SECURITY_POLICY } from '../../src/js/security/csp.js';
 import { copyToClipboard } from '../../src/js/artifacts/copy.js';
+
+function pidConfiguration(excerpt) {
+  const bag = excerpt && typeof excerpt === 'object' ? excerpt : {};
+  return (
+    bag.dc_sd_jwt_pid ||
+    bag.dc_sd_jwt_eid ||
+    Object.values(bag).find((cfg) => cfg && cfg.scope === 'pid') ||
+    null
+  );
+}
 
 describe('CSP (A-20)', () => {
   it('does not load Bootstrap Italia from a CDN', () => {
@@ -36,6 +46,18 @@ describe('CSP (A-20)', () => {
     assert.doesNotMatch(html, /jsdelivr|cdn\.|unpkg/i);
     assert.match(html, /src="\.\/src\/main\.js"/);
     assert.doesNotMatch(html, /explorer\.css/);
+  });
+
+  it('uses the vendored Developers Italia favicon', () => {
+    const html = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '../../index.html'), 'utf8');
+    const root = join(dirname(fileURLToPath(import.meta.url)), '../..');
+    assert.match(html, /rel="icon"[^>]*href="\.\/img\/favicon\.ico"/);
+    assert.match(html, /rel="icon"[^>]*href="\.\/img\/favicon-32x32\.png"/);
+    assert.match(html, /rel="apple-touch-icon"[^>]*href="\.\/img\/apple-touch-icon\.png"/);
+    assert.doesNotMatch(html, /rel="icon"[^>]*IT-Wallet-Symbol/);
+    assert.ok(existsSync(join(root, 'public/img/favicon.ico')));
+    assert.ok(existsSync(join(root, 'public/img/favicon-32x32.png')));
+    assert.ok(existsSync(join(root, 'public/img/apple-touch-icon.png')));
   });
 
   it('ships a production policy that forbids third-party scripts', () => {
@@ -182,14 +204,40 @@ describe('artifacts', () => {
     assert.match(arts[0].raw, /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\./);
     assert.ok(arts[0].header?.alg);
     assert.equal(arts[0].payload.credential_issuer, 'https://pre.eid.wallet.ipzs.it/1-3');
-    assert.ok(arts[0].excerpt.dc_sd_jwt_pid);
-    assert.equal(arts[0].excerpt.dc_sd_jwt_pid.scope, 'pid');
+    const ociPid = pidConfiguration(arts[0].excerpt);
+    assert.ok(ociPid);
+    assert.equal(ociPid.scope, 'pid');
     assert.match(formatArtifactView(arts[0], 'header'), /alg/);
     assert.match(formatArtifactView(arts[0], 'payload'), /credential_configurations_supported/);
     assert.equal(arts[1].title, 'openid-federation');
     assert.equal(arts[1].url, 'https://pre.eid.wallet.ipzs.it/1-3/.well-known/openid-federation');
     assert.equal(arts[1].payload.sub, 'https://pre.eid.wallet.ipzs.it/1-3');
-    assert.ok(arts[1].excerpt.dc_sd_jwt_pid);
+    assert.ok(pidConfiguration(arts[1].excerpt));
+  });
+
+  it('excerpts pid metadata when the configuration id is dc_sd_jwt_eid', () => {
+    const iid = 'https://pre.eid.wallet.ipzs.it/1-3';
+    const cfg = { format: 'dc+sd-jwt', scope: 'pid', vct: 'urn:it-wallet:eid:1' };
+    const isolated = {
+      catalog: { credentials: [{ credential_type: 'pid', issuers: [{ id: iid }] }] },
+      schemas: [{ credential_type: 'pid', format: 'dc+sd-jwt' }],
+      issuerMetadata: {
+        [iid]: { credential_issuer: iid, credential_configurations_supported: { dc_sd_jwt_eid: cfg } },
+      },
+      resources: [
+        {
+          url: `${iid}/.well-known/openid-credential-issuer`,
+          kind: 'issuer-metadata',
+          json: { credential_issuer: iid, credential_configurations_supported: { dc_sd_jwt_eid: cfg } },
+        },
+      ],
+    };
+    const graph = buildRegistryGraph(isolated);
+    const arts = issuerMetadataArtifactsForCredential(graph.byId.get('credential:pid'), isolated);
+    const excerpted = pidConfiguration(arts[0].excerpt);
+    assert.ok(excerpted);
+    assert.equal(excerpted.scope, 'pid');
+    assert.equal(arts[0].excerpt.dc_sd_jwt_eid.scope, 'pid');
   });
 
   it('collapses a duplicated issuer path before building well-known URLs', () => {
@@ -200,6 +248,15 @@ describe('artifacts', () => {
     assert.equal(
       canonicalizeIssuerEntityId('https://issuer.wallet.ipzs.it/'),
       'https://issuer.wallet.ipzs.it',
+    );
+  });
+
+  it('uses hostname and path as the issuer node name', () => {
+    assert.equal(issuerNodeName('https://pre.issuer.wallet.ipzs.it'), 'pre.issuer.wallet.ipzs.it');
+    assert.equal(issuerNodeName('https://pre.eid.wallet.ipzs.it/1-3'), 'pre.eid.wallet.ipzs.it/1-3');
+    assert.equal(
+      issuerOptionLabel('Istituto Poligrafico e Zecca dello Stato S.P.A.', 'https://pre.issuer.wallet.ipzs.it'),
+      'Istituto Poligrafico e Zecca dello Stato S.P.A. (pre.issuer.wallet.ipzs.it)',
     );
   });
 
@@ -309,6 +366,21 @@ describe('graph model', () => {
     assert.ok(graph.edges.some((e) => e.source === 'credential:mDL' && e.target.startsWith('issuer:') && e.relation === 'issued-by'));
     assert.ok(graph.edges.some((e) => e.source === 'credential:mDL' && e.target === 'as:https://www.mit.gov.it'));
     assert.ok(graph.nodes.some((n) => n.kind === 'schema' && n.credential_type === 'mDL'));
+    assert.ok(graph.edges.every((e) => graph.byId.has(e.source) && graph.byId.has(e.target)));
+  });
+
+  it('keeps schemas whose credential_type is missing from the catalog', () => {
+    const graph = buildRegistryGraph({
+      catalog: { credentials: [{ credential_type: 'mDL' }] },
+      schemas: [
+        { id: 'mDL+dc+sd-jwt', credential_type: 'mDL', format: 'dc+sd-jwt' },
+        { id: 'eid+dc+sd-jwt+urn:it-wallet:eid:it:1', credential_type: 'eid', format: 'dc+sd-jwt' },
+      ],
+    });
+    assert.ok(graph.byId.get('schema:eid+dc+sd-jwt+urn:it-wallet:eid:it:1'));
+    assert.equal(graph.byId.has('credential:eid'), false);
+    assert.ok(!graph.edges.some((e) => e.source === 'credential:eid' || e.target === 'credential:eid'));
+    assert.ok(graph.edges.every((e) => graph.byId.has(e.source) && graph.byId.has(e.target)));
   });
 
   it('exposes dump examples for legal_type, issuer, authentic source and claims', () => {
@@ -318,6 +390,16 @@ describe('graph model', () => {
     assert.ok(facets.sources.length > 0);
     assert.ok(facets.claims.length > 0);
     assert.ok(facets.sources.some((s) => /mit\.gov\.it/i.test(s.value)));
+  });
+
+  it('distinguishes same-organisation issuers in the facet with hostname', () => {
+    const facets = facetOptions(graph);
+    const ipzs = facets.issuers.filter((o) => /ipzs\.it/i.test(o.value));
+    assert.ok(ipzs.length >= 2);
+    const labels = ipzs.map((o) => o.label);
+    assert.equal(new Set(labels).size, labels.length);
+    assert.ok(ipzs.some((o) => o.label.includes('pre.issuer.wallet.ipzs.it')));
+    assert.ok(ipzs.some((o) => o.label.includes('pre.eid.wallet.ipzs.it/1-3')));
   });
 
   it('uses Italian catalog labels', () => {
@@ -489,6 +571,17 @@ describe('credential offer', () => {
     const ids = configurationIdsFor('mDL', ['dc+sd-jwt', 'mso_mdoc'], meta);
     assert.equal(ids.derived, false);
     assert.deepEqual(ids.ids, ['dc_sd_jwt_mDL', 'mso_mdoc_mDL']);
+  });
+
+  it('matches pid configurations by scope when the id uses an eid suffix', () => {
+    const meta = {
+      credential_configurations_supported: {
+        dc_sd_jwt_eid: { format: 'dc+sd-jwt', scope: 'pid', vct: 'urn:it-wallet:eid:1' },
+      },
+    };
+    const ids = configurationIdsFor('pid', ['dc+sd-jwt'], meta);
+    assert.equal(ids.derived, false);
+    assert.deepEqual(ids.ids, ['dc_sd_jwt_eid']);
   });
 
   it('builds the ST issuer_state URN with optional objectId', () => {
