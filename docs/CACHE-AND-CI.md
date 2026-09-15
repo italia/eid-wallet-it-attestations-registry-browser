@@ -112,7 +112,7 @@ Shared test steps live in `.github/actions/run-tests` (`npm ci`, Playwright Chro
 
 - Trigger: `pull_request`, and `push` to `main` except cache-only or docs-only commits (`paths-ignore`: `cache/**`, `docs/**`, `**.md`).
 - Job: checkout → run-tests (unit + Playwright e2e on Chromium, desktop / tablet / mobile).
-- Nightly cache-only pushes skip this workflow. Pages deploys from the nightly workflow only when that dump job succeeds (and then Pages re-runs the full suite).
+- Nightly cache-only pushes skip this workflow. Pages deploys from the nightly workflow only when that dump job succeeds; it does not re-run the suite.
 
 ### A — Nightly cache (`.github/workflows/nightly-cache.yml`)
 
@@ -129,7 +129,8 @@ Shared test steps live in `.github/actions/run-tests` (`npm ci`, Playwright Chro
   - successful `workflow_run` of **Nightly registry dump** on `main` (cache updates)
   - `workflow_dispatch`
 - Does **not** start from `push`. CI and nightly must finish with `success` first; a failed, cancelled or skipped run never publishes.
-- Jobs: **test** (run-tests) → **build** (`npm ci` → `npm run build` with `VITE_BASE=/eid-wallet-it-attestations-registry-browser/`) → **deploy**. Build and deploy use `if: needs.*.result == 'success'` so they cannot run when tests fail (a custom `if` on `needs` would otherwise drop GitHub’s implicit `success()`).
+- Does **not** re-run tests. The gate is the triggering workflow’s `conclusion == success` (CI full suite, or nightly unit tests on the dump).
+- Jobs: **build** (`npm ci` → `npm run build` with `VITE_BASE=/eid-wallet-it-attestations-registry-browser/`) → **deploy**. Deploy `needs: build`, so a skipped or failed build never publishes.
 - GitHub Pages MUST use **GitHub Actions** (not “Deploy from a branch” on the root: that would serve source `index.html` and `import 'qrcode'` fails in the browser).
 - During the build, `cache/` is copied to `public/cache/` (`scripts/sync-cache-public.mjs` or `cp` in the workflow) so Vite emits it in `dist/cache/`.
 

@@ -1,8 +1,8 @@
 name: GitHub Pages
 
-# CD B — pubblica il sito solo dopo CI (app) o nightly dump (cache) riusciti.
-# Un `if` custom su `needs` toglie il success() implicito di GitHub: senza
-# `needs.*.result == 'success'` build/deploy potrebbero girare anche se i test falliscono.
+# CD B — pubblica il sito solo dopo CI (app, suite completa) o nightly dump
+# (unit test sul dump) riusciti. Non riesegue i test: la dipendenza è il
+# `workflow_run` con conclusion success.
 on:
   workflow_dispatch:
   workflow_run:
@@ -20,19 +20,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test:
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
-      - uses: ./.github/actions/run-tests
-
   build:
-    needs: test
-    if: ${{ needs.test.result == 'success' }}
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -52,8 +41,7 @@ jobs:
           path: dist
 
   deploy:
-    needs: [test, build]
-    if: ${{ needs.test.result == 'success' && needs.build.result == 'success' }}
+    needs: build
     runs-on: ubuntu-latest
     environment:
       name: github-pages

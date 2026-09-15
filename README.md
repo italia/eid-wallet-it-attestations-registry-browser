@@ -99,7 +99,7 @@ Three GitHub Actions workflows, described in [docs/CACHE-AND-CI.md](docs/CACHE-A
 
 1. **CI** (`.github/workflows/ci.yml`) — unit + Playwright e2e on pull requests and on `main` (skips cache-only and docs-only pushes).
 2. **Nightly** (`.github/workflows/nightly-cache.yml`) — updates `cache/` and commits if the dump changed, after unit tests pass against that dump.
-3. **Pages from cache** (`.github/workflows/pages.yml`) — runs the same test suite, then publishes GitHub Pages when the cache **or** the app code changes. A failing test blocks the deploy.
+3. **Pages from cache** (`.github/workflows/pages.yml`) — publishes GitHub Pages when CI **or** the nightly dump succeeded. It does not re-run tests; a failed upstream run never deploys.
 
 ## License
 
