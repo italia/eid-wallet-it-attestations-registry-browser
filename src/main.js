@@ -12,7 +12,7 @@ import {
   overlayFromIdb,
   refreshDumpLive,
 } from './js/cache/browser.js';
-import { buildRegistryGraph, facetOptions, visibleClosure } from './js/graph/model.js';
+import { buildRegistryGraph, facetOptions, neighborsByRelation, visibleClosure } from './js/graph/model.js';
 import { createRegistryGraphView } from './js/graph/view.js';
 import { getQueryField, matchedNodeIds, parseQuery, searchDocuments, setQueryField, understoodQuery, configureSearchFields } from './js/search/index.js';
 import { kindIconId, kindLabelKey } from './js/results/kind-icon.js';
@@ -309,6 +309,8 @@ function renderStatic(dict) {
     if (el && value != null) el.textContent = value;
   };
   document.getElementById('tab-title').textContent = dict.meta.title;
+  const brandHome = document.querySelector('a.navbar-brand.header-brand');
+  if (brandHome) brandHome.setAttribute('href', import.meta.env.BASE_URL || '/');
   set('header-region-name', dict.meta.brand);
   set('page-heading', dict.meta.title);
   set('page-tagline', dict.meta.tagline);
@@ -462,9 +464,8 @@ function applyQuery(query, options = {}) {
     ? new Set(state.graph.nodes.map((n) => n.id))
     : visibleClosure(state.graph, matchedNodeIds(state.graph, query));
 
-  if (state.selectedId && state.graph.byId.has(state.selectedId) && !resultDocs.some((d) => d.id === state.selectedId)) {
-    const extra = state.graph.documents.find((d) => d.id === state.selectedId);
-    if (extra) resultDocs = [extra, ...resultDocs];
+  if (state.selectedId && !resultDocs.some((d) => d.id === state.selectedId)) {
+    clearSelection();
   }
   renderResults(resultDocs, { restoreSelection: options.restoreSelection !== false });
   state.view?.applyVisible(matchIds);
@@ -526,8 +527,15 @@ function renderResults(docs, { restoreSelection = true } = {}) {
         if (other === collapse) return;
         window.bootstrap?.Collapse.getOrCreateInstance(other, { toggle: false }).hide();
       });
-      if (collapse.querySelector('#node-detail')) return;
+      if (collapse.querySelector('#node-detail') && state.selectedId === doc.id) return;
       void selectNode(doc.id, { fromGraph: false, fromAccordion: true });
+    });
+    collapse.addEventListener('hidden.bs.collapse', (ev) => {
+      if (ev.target !== collapse || !collapse.isConnected) return;
+      const host = collapse.querySelector('.result-detail');
+      host?.removeAttribute('id');
+      host?.replaceChildren();
+      if (state.selectedId === doc.id) clearSelection();
     });
     collapse.addEventListener('shown.bs.collapse', (ev) => {
       if (ev.target !== collapse || !isMobile()) return;
@@ -648,6 +656,32 @@ function fillExampleDisclaimer(el) {
 
 let selectGen = 0;
 
+function clearSelection() {
+  if (!state.selectedId) return;
+  state.selectedId = null;
+  writeUrl();
+  state.view?.select(null);
+  els.graph?.classList.remove('has-selection');
+  els.resultsList?.querySelectorAll('button.accordion-button[data-node-id]').forEach((el) => {
+    el.classList.remove('active');
+    el.removeAttribute('aria-current');
+  });
+  if (window.__ITW_EXPLORER__) window.__ITW_EXPLORER__.selectedId = null;
+}
+
+function resultDocsFromDom() {
+  return [...(els.resultsList?.querySelectorAll(':scope > .accordion-item') || [])]
+    .map((item) => state.graph?.documents.find((d) => d.id === item.dataset.nodeId))
+    .filter(Boolean);
+}
+
+function ensureResultRow(id) {
+  if (!state.graph || resultPanel(id)) return;
+  const extra = state.graph.documents.find((d) => d.id === id);
+  if (!extra) return;
+  renderResults([extra, ...resultDocsFromDom().filter((d) => d.id !== extra.id)], { restoreSelection: false });
+}
+
 async function selectNode(id, { fromGraph = false, fromAccordion = false } = {}) {
   if (fromGraph && isMobile()) setPane('list');
   const gen = ++selectGen;
@@ -655,6 +689,7 @@ async function selectNode(id, { fromGraph = false, fromAccordion = false } = {})
   writeUrl();
   const node = state.graph.byId.get(id);
   if (!node) return;
+  ensureResultRow(id);
   state.view?.select(id);
   els.graph?.classList.add('has-selection');
   els.resultsList.querySelectorAll('button.accordion-button[data-node-id]').forEach((el) => {
@@ -698,6 +733,38 @@ function offerRootFor(nodeId) {
   return panel?.querySelector('.credential-offer-body') || panel?.querySelector('#credential-offer') || null;
 }
 
+function appendAuthenticSources(dl, node) {
+  const sources = neighborsByRelation(state.graph, node.id, 'sourced-from');
+  const dt = field(
+    'dt',
+    { className: 'col-sm-4', id: 'detail-as-label' },
+    sources.length === 1 ? t('kind.authentic_source') : t('kind.authentic_sources'),
+  );
+  const dd = field('dd', { className: 'col-sm-8', id: 'detail-as' });
+  dd.setAttribute('aria-labelledby', 'detail-as-label');
+  if (!sources.length) {
+    dd.appendChild(field('p', { className: 'form-text mb-0', id: 'detail-as-empty' }, t('detail.authenticSourceEmpty')));
+    dl.append(dt, dd);
+    return;
+  }
+  const list = field('ul', { className: 'list-unstyled mb-0', id: 'detail-as-list' });
+  sources.forEach((source, i) => {
+    const suffix = i === 0 ? '' : `-${i}`;
+    const li = field('li', { className: i ? 'mt-2' : '', id: `detail-as-item${suffix}` });
+    const name = source.label || source.entity_id || source.as || source.id;
+    li.appendChild(field('strong', { className: 'd-block', id: `detail-as-name${suffix}` }, name));
+    const entityId = source.entity_id || source.as || '';
+    if (entityId && entityId !== name) {
+      li.appendChild(
+        field('span', { className: 'd-block small text-break', id: `detail-as-entity${suffix}` }, entityId),
+      );
+    }
+    list.appendChild(li);
+  });
+  dd.appendChild(list);
+  dl.append(dt, dd);
+}
+
 async function renderDetail(node, gen = selectGen) {
   if (gen !== selectGen) return;
   const panel = resultPanel(node.id);
@@ -723,6 +790,7 @@ async function renderDetail(node, gen = selectGen) {
     const dd = field('dd', { className: 'col-sm-8' }, v);
     dl.append(dt, dd);
   }
+  if (node.kind === 'credential') appendAuthenticSources(dl, node);
   body.appendChild(dl);
 
   const heading = field('h3', { className: 'h6 mt-3', id: 'artifacts-heading' }, t('artifacts.heading'));

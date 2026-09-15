@@ -1,0 +1,15 @@
+{
+  "credential": "it-card",
+  "issuer": "it-pa",
+  "authentic_source": "it-inbox",
+  "authentic_sources": "it-inbox",
+  "schema": "it-file",
+  "schemas": "it-files",
+  "claim": "it-list",
+  "claims": "it-list",
+  "domain": "it-folder",
+  "class": "it-bookmark",
+  "catalog": "it-files",
+  "taxonomy": "it-funnel",
+  "registry": "it-flag"
+}

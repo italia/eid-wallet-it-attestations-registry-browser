@@ -86,6 +86,9 @@
     "corsReadMore": "Read more",
     "corsDocsHref": "https://github.com/italia/eid-wallet-it-attestations-registry-browser/blob/main/docs/CACHE-AND-CI.md#cors-and-waf"
   },
+  "detail": {
+    "authenticSourceEmpty": "No authentic source declared in the catalog."
+  },
   "artifacts": {
     "heading": "Artifacts",
     "signed": "Signed original",

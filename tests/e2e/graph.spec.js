@@ -161,6 +161,33 @@ test.describe('graph and search UI', () => {
     await expect(page.locator('#artifact-0-payload .artifact-copy')).toHaveCount(1);
   });
 
+  test('selecting a credential shows its authentic source', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await waitForGraph(page);
+    await page.locator('#tab-list').click({ force: true }).catch(() => {});
+    await page.locator('#results-list button[data-node-id="credential:mDL"]').click();
+    await expect(page.locator('#detail-as-label')).toHaveText('Fonte autentica');
+    await expect(page.locator('#detail-as-name')).toContainText(/MIT|Motorizzazione|Infrastrutture/i);
+    await expect(page.locator('#detail-as-entity')).toHaveText('https://www.mit.gov.it');
+  });
+
+  test('a new search drops a previously opened credential that no longer matches', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await waitForGraph(page);
+    await page.locator('#tab-list').click({ force: true }).catch(() => {});
+    await search(page, 'mDL');
+    await page.locator('#results-list button[data-node-id="credential:mDL"]').click();
+    await expect(page.locator('#detail-as-entity')).toHaveText('https://www.mit.gov.it');
+    await search(page, 'tessera sanitaria');
+    const stats = await page.evaluate(() => window.__ITW_EXPLORER__);
+    expect(stats.resultIds).not.toContain('credential:mDL');
+    expect(stats.selectedId).not.toBe('credential:mDL');
+    expect(stats.resultIds).toContain('credential:EuropeanHealthInsuranceCard');
+    await page.locator('#results-list button[data-node-id="credential:EuropeanHealthInsuranceCard"]').click();
+    await expect(page.locator('#detail-as-name')).toContainText(/MEF|Ragioneria/i);
+    await expect(page.locator('#detail-as-entity')).not.toHaveText(/mit\.gov\.it/i);
+  });
+
   test('selecting a credential shows signed artifact and JOSE header/payload', async ({ page }) => {
     test.setTimeout(90_000);
     await page.goto('/', { waitUntil: 'domcontentloaded' });

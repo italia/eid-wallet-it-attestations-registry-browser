@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { buildRegistryGraph, facetOptions, visibleClosure } from '../../src/js/graph/model.js';
+import { buildRegistryGraph, facetOptions, neighborsByRelation, visibleClosure } from '../../src/js/graph/model.js';
 import { getQueryField, matchedNodeIds, parseQuery, quoteFieldValue, searchDocuments, setQueryField, understoodQuery } from '../../src/js/search/index.js';
 import { kindIconId } from '../../src/js/results/kind-icon.js';
 import { checkSri, decodeJwt, parseRegistryBody, sha256Sri, verifyJwt } from '../../src/js/cache/jwt.js';
@@ -46,6 +46,7 @@ describe('CSP (A-20)', () => {
     assert.doesNotMatch(html, /jsdelivr|cdn\.|unpkg/i);
     assert.match(html, /src="\.\/src\/main\.js"/);
     assert.doesNotMatch(html, /explorer\.css/);
+    assert.match(html, /<a class="navbar-brand header-brand text-white text-truncate pe-2" href="\/">/);
   });
 
   it('uses the vendored Developers Italia favicon', () => {
@@ -365,6 +366,14 @@ describe('graph model', () => {
     assert.ok(graph.byId.get('credential:mDL'));
     assert.ok(graph.edges.some((e) => e.source === 'credential:mDL' && e.target.startsWith('issuer:') && e.relation === 'issued-by'));
     assert.ok(graph.edges.some((e) => e.source === 'credential:mDL' && e.target === 'as:https://www.mit.gov.it'));
+    const sources = neighborsByRelation(graph, 'credential:mDL', 'sourced-from');
+    assert.equal(sources.length, 1);
+    assert.equal(sources[0].id, 'as:https://www.mit.gov.it');
+    assert.match(sources[0].label, /MIT|Motorizzazione|Infrastrutture/i);
+    const ehic = neighborsByRelation(graph, 'credential:EuropeanHealthInsuranceCard', 'sourced-from');
+    assert.ok(ehic.length);
+    assert.ok(ehic.every((n) => n.id !== 'as:https://www.mit.gov.it'));
+    assert.ok(ehic.some((n) => /mef|rgs\.mef/i.test(`${n.label} ${n.entity_id || n.as || ''}`)));
     assert.ok(graph.nodes.some((n) => n.kind === 'schema' && n.credential_type === 'mDL'));
     assert.ok(graph.edges.every((e) => graph.byId.has(e.source) && graph.byId.has(e.target)));
   });

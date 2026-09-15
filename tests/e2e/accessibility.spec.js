@@ -24,6 +24,7 @@ test.describe('accessibility', () => {
     await expect(logo).toBeVisible();
     await expect(logo).toHaveAttribute('src', /IT-Wallet-Symbol-Negative-White\.svg/);
     await expect(logo).toHaveAttribute('aria-hidden', 'true');
+    await expect(page.locator('a.navbar-brand.header-brand')).toHaveAttribute('href', '/');
     const logoBeforeBrand = await page.evaluate(() => {
       const mark = document.getElementById('header-it-wallet-logo');
       const name = document.getElementById('header-region-name');

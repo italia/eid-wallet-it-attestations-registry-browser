@@ -71,6 +71,10 @@ function stylesheet(container) {
       selector: 'node:selected',
       style: { 'border-width': 3, 'border-color': '#003366' },
     },
+    {
+      selector: 'node.related-as',
+      style: { 'border-width': 3, 'border-color': '#207e6f' },
+    },
   ];
 }
 
@@ -132,9 +136,14 @@ export function createRegistryGraphView(container, graph, { onSelect } = {}) {
     },
     select(id) {
       cy.$(':selected').unselect();
+      cy.nodes().removeClass('related-as');
+      if (!id) return;
       const node = cy.getElementById(id);
       if (node.nonempty()) {
         node.select();
+        if (node.data('kind') === 'credential') {
+          node.outgoers('node[kind = "authentic_source"]').addClass('related-as');
+        }
         cy.animate({ center: { eles: node }, duration: reduceMotion ? 0 : 200 });
       }
     },

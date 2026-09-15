@@ -64,6 +64,14 @@
   align-items: center;
   gap: 0.5rem;
   min-width: 0;
+  color: #ffffff !important;
+  text-decoration: none;
+}
+
+.it-header-slim-wrapper.bg-primary .navbar-brand.header-brand:hover,
+.it-header-slim-wrapper.bg-primary .navbar-brand.header-brand:focus-visible {
+  color: #ffffff !important;
+  text-decoration: underline;
 }
 
 #header-it-wallet-logo {
@@ -373,6 +381,15 @@
   flex: 1 1 auto;
   min-width: 0;
   text-align: start;
+}
+
+#detail-as-label,
+#detail-as {
+  margin-top: 0.5rem;
+}
+
+#detail-as-name {
+  font-weight: 600;
 }
 
 .offer-state-fieldset {

@@ -15,6 +15,7 @@ test.describe('responsive navigation', () => {
     await expect(page.locator('#header-it-wallet-logo')).toBeVisible();
     await expect(page.locator('script[src*="jsdelivr"], link[href*="jsdelivr"]')).toHaveCount(0);
     await expect(page.locator('#header-region-name')).toBeVisible();
+    await expect(page.locator('a.navbar-brand.header-brand')).toHaveAttribute('href', '/');
 
     const slim = page.locator('.it-header-slim-wrapper');
     const slimBox = await slim.boundingBox();
@@ -47,6 +48,16 @@ test.describe('responsive navigation', () => {
       await expect(page.locator('#section-graph')).toBeVisible();
       await expect(page.locator('#registry-graph canvas[data-id="layer2-node"]')).toBeVisible();
     }
+  });
+
+  test('slim-header brand reloads the home page', async ({ page }) => {
+    await page.goto('/?q=pid', { waitUntil: 'domcontentloaded' });
+    await waitForGraph(page);
+    await expect(page).toHaveURL(/[?&]q=pid/);
+    await page.locator('#header-region-name').click();
+    await expect(page).not.toHaveURL(/[?&]q=/);
+    await waitForGraph(page);
+    await expect(page.locator('#header-region-name')).toBeVisible();
   });
 
   test('does not overflow the viewport horizontally', async ({ page }) => {

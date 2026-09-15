@@ -376,6 +376,20 @@ function uniqueByValue(items) {
   return out.sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base' }));
 }
 
+export function neighborsByRelation(graph, nodeId, relation) {
+  if (!graph?.edges || !graph.byId) return [];
+  const seen = new Set();
+  const out = [];
+  for (const e of graph.edges) {
+    if (e.source !== nodeId || e.relation !== relation) continue;
+    if (seen.has(e.target)) continue;
+    seen.add(e.target);
+    const n = graph.byId.get(e.target);
+    if (n) out.push(n);
+  }
+  return out;
+}
+
 export function facetOptions(graph) {
   const issuers = [];
   const sources = [];

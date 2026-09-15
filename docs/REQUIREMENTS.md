@@ -1,10 +1,11 @@
 # Requirements — IT-Wallet Attestations Explorer and Demo
 
-Requirements version: **0.7.0**  
+Requirements version: **0.7.1**  
 Source: project request + review of the [registry handbook](EVALUATION_HANDBOOK.md) + IT-Wallet Technical Specifications v1.4.6 + UI updates (search facets, `disco.html` header, Trust Anchor switch, HTTP traces on the message board).
 
 Priority: **MUST** / **SHOULD** / **MAY** (RFC 2119).
 
+Changelog 0.7.1: Slim-header brand is a home link (`href=/`). Credential detail shows the authentic source (FA) by name and `entity_id`. A new search no longer pins a previously opened credential that does not match, so leftover FA (e.g. MIT on tessera sanitaria) cannot appear.  
 Changelog 0.7.0: Issuer facet labels include hostname/path so two credential issuers of the same organisation are distinct. Official Developers Italia favicon. Graph omits dangling schema edges when the catalog has no matching `credential_type` (e.g. live `eid` schemas). Below `lg`, Lista/Grafo are exclusive panes (`inert` on the hidden pane) to avoid overflow while navigating results.  
 Changelog 0.6.2: Credential Offer URL/QR are written on the selected result panel only (no `document.getElementById` onto a leftover hidden `#offer-link`); switching credentials no longer leaves `href="#"`. A-20: Bootstrap Italia is bundled from npm; production HTML gets a `Content-Security-Policy` meta (no jsDelivr).  
 Changelog 0.6.1: selection generation tokens for concurrent `selectNode`; Cytoscape uses the default wheel sensitivity and does not set invalid `cursor` style properties. 
