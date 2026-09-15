@@ -55,8 +55,6 @@ function asIdOf(source) {
   return source?.id || source?.entity_id || '';
 }
 
-const JOSE_METADATA_NOISE = new Set(['iat', 'exp', 'nbf', 'jti']);
-
 function issuerMetadataUrl(issuerId) {
   return issuerWellKnownUrl(issuerId, 'openid-credential-issuer');
 }
@@ -147,9 +145,7 @@ export function openidCredentialIssuerMetadata(doc) {
   const nested = doc.metadata?.openid_credential_issuer;
   if (nested && typeof nested === 'object') return nested;
   if (doc.credential_issuer || doc.credential_configurations_supported) {
-    const out = { ...doc };
-    for (const key of JOSE_METADATA_NOISE) delete out[key];
-    return out;
+    return { ...doc };
   }
   return null;
 }
@@ -243,7 +239,13 @@ export function compareIssuerWellKnown(ociDoc, fedDoc, { ociUrl, fedUrl } = {}) 
     });
   }
 
-  if (oci && nested) diffJson(oci, nested, '', mismatches);
+  if (oci && nested) {
+    const ociKeys = {};
+    for (const key of Object.keys(nested)) {
+      if (key in oci) ociKeys[key] = oci[key];
+    }
+    diffJson(ociKeys, nested, '', mismatches);
+  }
   return mismatches;
 }
 

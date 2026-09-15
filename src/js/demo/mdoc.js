@@ -135,9 +135,10 @@ export function mdocElementValue(id, spec, ctx, depth = 0) {
   if (id === 'issuing_authority' || id === 'document_iss_authority') return ctx.issuerName || DEMO_ISSUER_NAME;
   if (id === 'sub') return ctx.sub;
   if (id === 'verification' || /VerificationValue/.test(hint)) {
+    const cddl = String(ctx?.cddl || '');
     return {
-      trust_framework: 'it_wallet',
-      assurance_level: 'https://ta.wallet.ipzs.it/loa/high',
+      trust_framework: cddl.match(/trust_framework:\s*tstr\s*\.enum\s*\(\s*"([^"]+)"/)?.[1],
+      assurance_level: cddl.match(/assurance_level:\s*tstr\s*\.enum\s*\(\s*"(https:[^"]+)"/)?.[1],
     };
   }
   if (id === 'driving_privileges' || /DrivingPrivilege/.test(hint)) {
@@ -229,7 +230,7 @@ export async function buildMdoc(cddl, ctx) {
   const signed = new Date(ctx.now * 1000).toISOString().replace(/\.\d+Z$/, 'Z');
   const validFrom = signed;
   const validUntil = new Date(ctx.exp * 1000).toISOString().replace(/\.\d+Z$/, 'Z');
-  const valueCtx = { ...ctx, typeBodies: parsed.typeBodies };
+  const valueCtx = { ...ctx, typeBodies: parsed.typeBodies, cddl };
 
   const nameSpaces = {};
   const nameSpaceItems = {};

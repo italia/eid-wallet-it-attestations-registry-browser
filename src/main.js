@@ -14,7 +14,7 @@ import {
 } from './js/cache/browser.js';
 import { buildRegistryGraph, facetOptions, visibleClosure } from './js/graph/model.js';
 import { createRegistryGraphView } from './js/graph/view.js';
-import { getQueryField, matchedNodeIds, parseQuery, searchDocuments, setQueryField, understoodQuery } from './js/search/index.js';
+import { getQueryField, matchedNodeIds, parseQuery, searchDocuments, setQueryField, understoodQuery, configureSearchFields } from './js/search/index.js';
 import { kindIconId, kindLabelKey } from './js/results/kind-icon.js';
 import {
   appendDetailAccordionItem,
@@ -108,12 +108,30 @@ function setCacheLoading({ active, current = 0, total = 0 } = {}) {
   board.setPending(cacheLoading.active ? label : null);
 }
 
-const FACET_FIELDS = [
-  ['facet-legal-type', 'legal_type'],
-  ['facet-issuer', 'issuer'],
-  ['facet-as', 'as'],
-  ['facet-claim', 'claim'],
-];
+function facetSelects() {
+  return [...document.querySelectorAll('#registry-search-form select[data-field]')];
+}
+
+function searchFieldsFromDom() {
+  const fields = facetSelects().map((el) => ({
+    field: el.dataset.field,
+    aliases: String(el.dataset.aliases || '').split(/[\s,]+/).filter(Boolean),
+  }));
+  const mapped = String(document.getElementById('registry-search-form')?.dataset.fieldMap || '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  for (const pair of mapped) {
+    const [alias, field] = pair.split(':');
+    if (!alias || !field) continue;
+    const existing = fields.find((row) => row.field === field);
+    if (existing) existing.aliases = [...new Set([...(existing.aliases || []), alias])];
+    else fields.push({ field, aliases: [alias] });
+  }
+  return fields;
+}
+
+configureSearchFields(searchFieldsFromDom());
 
 const els = {
   search: document.getElementById('registry-search'),
@@ -127,10 +145,6 @@ const els = {
   paneGraph: document.getElementById('section-graph'),
   tabList: document.getElementById('tab-list'),
   tabGraph: document.getElementById('tab-graph'),
-  facetLegalType: document.getElementById('facet-legal-type'),
-  facetIssuer: document.getElementById('facet-issuer'),
-  facetAs: document.getElementById('facet-as'),
-  facetClaim: document.getElementById('facet-claim'),
   env: document.getElementById('registry-env'),
   taLink: document.getElementById('registry-ta-link'),
 };
@@ -219,9 +233,9 @@ function bindChrome() {
     applyQuery('');
     els.search.focus();
   });
-  for (const [id, field] of FACET_FIELDS) {
-    document.getElementById(id)?.addEventListener('change', (ev) => {
-      const next = setQueryField(els.search?.value || '', field, ev.target.value);
+  for (const select of facetSelects()) {
+    select.addEventListener('change', (ev) => {
+      const next = setQueryField(els.search?.value || '', select.dataset.field, ev.target.value);
       if (els.search) els.search.value = next;
       applyQuery(next);
     });
@@ -379,18 +393,15 @@ function fillSelect(select, items) {
 
 function populateFacets() {
   const facets = facetOptions(state.graph);
-  fillSelect(els.facetLegalType, facets.legalTypes);
-  fillSelect(els.facetIssuer, facets.issuers);
-  fillSelect(els.facetAs, facets.sources);
-  fillSelect(els.facetClaim, facets.claims);
+  for (const select of facetSelects()) {
+    fillSelect(select, facets[select.dataset.field] || []);
+  }
   syncFacetsFromQuery(state.query);
 }
 
 function syncFacetsFromQuery(query) {
-  for (const [id, field] of FACET_FIELDS) {
-    const select = document.getElementById(id);
-    if (!select) continue;
-    const value = getQueryField(query, field);
+  for (const select of facetSelects()) {
+    const value = getQueryField(query, select.dataset.field);
     const match = [...select.options].find((o) => o.value && o.value === value);
     const next = match ? match.value : '';
     if (select.value !== next) select.value = next;
@@ -594,8 +605,7 @@ function offerContext(node) {
   const config = configurationIdsFor(node.credential_type, formats, metadata);
   const metaSource = metadata?.credential_configurations_supported?.[config.ids[0]]?.authentic_sources;
   return {
-    credentialIssuer:
-      metadata?.credential_issuer || resolvedIssuerId || issuer?.entity_id || 'https://pre.issuer.wallet.ipzs.it',
+    credentialIssuer: metadata?.credential_issuer || resolvedIssuerId || issuer?.entity_id || '',
     configurationIds: config.ids,
     configurationDerived: config.derived,
     authenticSourceId: metaSource?.entity_id || source?.entity_id || source?.as || '',

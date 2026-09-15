@@ -3,32 +3,7 @@
 import { configurationIdsFor } from '../offer/offer.js';
 import { issuerIdOf } from '../issuers/entity-id.js';
 import { openidCredentialIssuerMetadata, resolveDumpedIssuerId } from '../artifacts/artifacts.js';
-
-const TECHNICAL = new Set([
-  'iss',
-  'sub',
-  'iat',
-  'exp',
-  'nbf',
-  'vct',
-  'vct#integrity',
-  'cnf',
-  'status',
-  '_sd',
-  '_sd_alg',
-  'kid',
-  'kty',
-  'crv',
-  'x',
-  'y',
-  'idx',
-  'jwk',
-  'verification',
-  'trust_framework',
-  'assurance_level',
-]);
-
-const IDENTITY = new Set(['given_name', 'family_name', 'portrait', 'picture']);
+import { claimVocabulary } from '../graph/model.js';
 
 export function pickLocalizedDisplay(entries, lang = 'it') {
   if (!Array.isArray(entries) || !entries.length) return null;
@@ -78,11 +53,13 @@ function leafName(path) {
   return parts.length ? String(parts[parts.length - 1]) : '';
 }
 
-function isTechnicalPath(path) {
+function isEnvelopePath(path, vocabulary) {
   const parts = path || [];
   if (!parts.length) return true;
   if (parts[parts.length - 1] == null) return true;
-  return parts.some((part) => part != null && TECHNICAL.has(String(part)));
+  if (!vocabulary.size) return false;
+  const leaf = leafName(parts);
+  return !vocabulary.has(leaf);
 }
 
 function getByPath(value, path) {
@@ -225,13 +202,13 @@ export function issuerConfigurationForFormat(dump, credentialType, format) {
   return null;
 }
 
-function fallbackClaimsFromItem(item) {
+function fallbackClaimsFromItem(item, vocabulary) {
   const bag =
     item?.format === 'mso_mdoc'
       ? item.claims || {}
       : item?.reconstructed || item?.artifact?.excerpt?.claims || {};
   return Object.keys(bag)
-    .filter((key) => !TECHNICAL.has(key))
+    .filter((key) => !vocabulary.size || vocabulary.has(key))
     .map((key) => ({ path: [key], display: [] }));
 }
 
@@ -249,36 +226,46 @@ export function demoCardModel(item, { dump, node, lang = 'it' } = {}) {
       ? contrastText(backgroundColor)
       : '';
   const backgroundImage = safeHttpUrl(display?.background_image?.uri || display?.background_image);
+  const vocabulary = claimVocabulary(dump);
   const metaClaims = credentialClaims(config);
-  const sources = metaClaims.length ? metaClaims : fallbackClaimsFromItem(item);
+  const sources = metaClaims.length ? metaClaims : fallbackClaimsFromItem(item, vocabulary);
   const keys = sources.map((row) => pathKey(row.path));
   const rows = [];
-  const usedIdentity = {};
+  const header = { given: null, family: null, photo: null };
   for (const spec of sources) {
     const path = spec.path || [];
-    if (isTechnicalPath(path)) continue;
-    const key = pathKey(path);
-    if (keys.some((other) => other !== key && other.startsWith(`${key}.`))) continue;
+    const leaf = leafName(path);
     const value = claimValue(item, path);
     if (isEmptyValue(value)) continue;
-    const leaf = leafName(path);
+    if (looksLikeImage(value)) {
+      if (header.photo == null) header.photo = value;
+      continue;
+    }
+    if (isEnvelopePath(path, vocabulary)) continue;
+    const key = pathKey(path);
+    if (keys.some((other) => other !== key && other.startsWith(`${key}.`))) continue;
+    if (vocabulary.has('given_name') && leaf === 'given_name' && header.given == null) {
+      header.given = value;
+      continue;
+    }
+    if (vocabulary.has('family_name') && leaf === 'family_name' && header.family == null) {
+      header.family = value;
+      continue;
+    }
     const localized = pickLocalizedDisplay(spec.display, lang);
-    const label = localized?.name || leaf;
-    if (IDENTITY.has(leaf) && usedIdentity[leaf] == null) usedIdentity[leaf] = value;
-    if (IDENTITY.has(leaf)) continue;
     rows.push({
       path: pathKey(path),
       id: leaf,
-      label,
+      label: localized?.name || leaf,
       description: localized?.description || '',
-      value: looksLikeImage(value) ? '' : formatClaimValue(value),
+      value: formatClaimValue(value),
       boolean: typeof value === 'boolean',
       booleanValue: typeof value === 'boolean' ? value : null,
     });
   }
-  const givenName = usedIdentity.given_name;
-  const familyName = usedIdentity.family_name;
-  const photoValue = usedIdentity.portrait || usedIdentity.picture;
+  const givenName = header.given;
+  const familyName = header.family;
+  const photoValue = header.photo;
   const initials = `${String(givenName || '').charAt(0)}${String(familyName || '').charAt(0)}`.toUpperCase() || 'ID';
   return {
     configurationId: picked?.configurationId || '',

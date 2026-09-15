@@ -1,32 +1,24 @@
-const FIELD_ALIASES = {
-  type: 'type',
-  kind: 'kind',
-  credential_type: 'credential_type',
-  legal_type: 'legal_type',
-  legal: 'legal_type',
-  claim: 'claim',
-  attr: 'claim',
-  attribute: 'claim',
-  issuer: 'issuer',
-  emittente: 'issuer',
-  as: 'as',
-  source: 'as',
-  fa: 'as',
-  authentic_source: 'as',
-  format: 'format',
-  domain: 'domain',
-  class: 'class',
-  purpose: 'purpose',
-  schema: 'id',
-  env: 'env',
-};
+let FIELD_ALIASES = {};
+let ALIAS_GROUPS = {};
 
-const ALIAS_GROUPS = {
-  legal_type: ['legal_type', 'legal'],
-  issuer: ['issuer', 'emittente'],
-  as: ['as', 'source', 'fa', 'authentic_source'],
-  claim: ['claim', 'attr', 'attribute'],
-};
+export function configureSearchFields(fields) {
+  FIELD_ALIASES = {};
+  ALIAS_GROUPS = {};
+  for (const row of fields || []) {
+    const field = String(row.field || '').trim().toLowerCase();
+    if (!field) continue;
+    const aliases = (row.aliases || []).map((a) => String(a).trim().toLowerCase()).filter(Boolean);
+    const names = [field, ...aliases.filter((a) => a !== field)];
+    ALIAS_GROUPS[field] = names;
+    FIELD_ALIASES[field] = field;
+    for (const alias of aliases) FIELD_ALIASES[alias] = field;
+  }
+}
+
+export function canonicalSearchField(name) {
+  const key = String(name || '').toLowerCase();
+  return FIELD_ALIASES[key] || key;
+}
 
 export function quoteFieldValue(value) {
   const v = String(value);
@@ -136,7 +128,7 @@ function lex(query) {
         }
         return {
           kind: 'field',
-          field: FIELD_ALIASES[fieldMatch[1].toLowerCase()] || fieldMatch[1].toLowerCase(),
+          field: canonicalSearchField(fieldMatch[1]),
           value: unescapeValue(rawVal),
           boost,
           sign: '',
@@ -145,7 +137,7 @@ function lex(query) {
       const { value, boost } = splitBoost(rawVal);
       return {
         kind: 'field',
-        field: FIELD_ALIASES[fieldMatch[1].toLowerCase()] || fieldMatch[1].toLowerCase(),
+        field: canonicalSearchField(fieldMatch[1]),
         value,
         boost,
         sign: '',

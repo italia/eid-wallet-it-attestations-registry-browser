@@ -23,14 +23,6 @@ const CACHE_ROOT = join(ROOT, 'cache');
 const USER_AGENT =
   `eid-wallet-it-attestations-registry-browser/${appVersion} (+https://github.com/italia/eid-wallet-it-attestations-registry-browser)`;
 
-const REGISTRY_ENDPOINT_KEYS = [
-  'claims_registry',
-  'authentic_sources',
-  'credential_catalog',
-  'taxonomy',
-  'schema_registry',
-];
-
 const args = parseArgs(process.argv.slice(2));
 const envSpec = resolveRegistryEnv(args.env || process.env.ITW_REGISTRY_ENV || 'pre');
 const env = envSpec.id;
@@ -293,17 +285,11 @@ function followParsed(kind, url, json) {
   }
 
   if (kind === 'discovery' && json.endpoints) {
-    for (const key of REGISTRY_ENDPOINT_KEYS) {
-      if (json.endpoints[key]) {
-        enqueue(json.endpoints[key], key === 'credential_catalog' ? 'catalog' : 'registry');
-      }
-    }
-    if (withFederation) {
-      for (const [key, value] of Object.entries(json.endpoints)) {
-        if (key.startsWith('federation') && typeof value === 'string') {
-          enqueue(value, 'federation');
-        }
-      }
+    for (const [key, value] of Object.entries(json.endpoints)) {
+      if (typeof value !== 'string') continue;
+      if (key.startsWith('federation') && !withFederation) continue;
+      const catalog = key === 'credential_catalog' || /credential-catalog/.test(value);
+      enqueue(value, catalog ? 'catalog' : key.startsWith('federation') ? 'federation' : 'registry');
     }
   }
 

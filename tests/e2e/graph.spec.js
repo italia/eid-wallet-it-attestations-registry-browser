@@ -1,5 +1,6 @@
 import { test, expect } from './fixtures.js';
 import { clickGraphNode, expandArtifact, expandDetailSection, openGraphPane, search, waitForGraph } from './helpers.js';
+import { REGISTRY_ENVS } from '../../src/js/cache/environments.js';
 
 test.describe('graph and search UI', () => {
   test('renders a real node graph from the dump', async ({ page }, testInfo) => {
@@ -34,17 +35,20 @@ test.describe('graph and search UI', () => {
   test('search can switch preprod and prod Trust Anchors', async ({ page }) => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     await waitForGraph(page);
-    await expect(page.locator('#registry-env')).toHaveValue('pre');
-    await expect(page.locator('#registry-ta-link')).toHaveAttribute('href', 'https://pre.ta.wallet.ipzs.it');
-    await expect(page.locator('#registry-ta-link')).toHaveText('https://pre.ta.wallet.ipzs.it');
+    await expect(page.locator('#registry-env')).toHaveValue(REGISTRY_ENVS.pre.id);
+    await expect(page.locator('#registry-ta-link')).toHaveAttribute('href', REGISTRY_ENVS.pre.baseUrl);
+    await expect(page.locator('#registry-ta-link')).toHaveText(REGISTRY_ENVS.pre.baseUrl);
 
-    await page.locator('#registry-env').selectOption('prod');
-    await page.waitForFunction(() => window.__ITW_EXPLORER__?.env === 'prod' && window.__ITW_EXPLORER__?.kinds?.credential >= 1);
-    await expect(page.locator('#registry-env')).toHaveValue('prod');
-    await expect(page.locator('#registry-ta-link')).toHaveAttribute('href', 'https://ta.wallet.ipzs.it');
-    expect(new URL(page.url()).searchParams.get('env')).toBe('prod');
+    await page.locator('#registry-env').selectOption(REGISTRY_ENVS.prod.id);
+    await page.waitForFunction(
+      (prodId) => window.__ITW_EXPLORER__?.env === prodId && window.__ITW_EXPLORER__?.kinds?.credential >= 1,
+      REGISTRY_ENVS.prod.id,
+    );
+    await expect(page.locator('#registry-env')).toHaveValue(REGISTRY_ENVS.prod.id);
+    await expect(page.locator('#registry-ta-link')).toHaveAttribute('href', REGISTRY_ENVS.prod.baseUrl);
+    expect(new URL(page.url()).searchParams.get('env')).toBe(REGISTRY_ENVS.prod.id);
     const stats = await page.evaluate(() => window.__ITW_EXPLORER__);
-    expect(stats.baseUrl).toBe('https://ta.wallet.ipzs.it');
+    expect(stats.baseUrl).toBe(REGISTRY_ENVS.prod.baseUrl);
   });
 
   test('facet selects write legal_type, issuer, as and claim into the query', async ({ page }) => {
@@ -53,8 +57,8 @@ test.describe('graph and search UI', () => {
     await page.locator('#tab-list').click({ force: true }).catch(() => {});
 
     await expect(page.locator('#facet-legal-type option[value="pub-eaa"]')).toHaveCount(1);
-    await expect(page.locator('#facet-legal-type option[value="qeaa"]')).toHaveCount(1);
-    await expect(page.locator('#facet-legal-type option[value="eaa"]')).toHaveCount(1);
+    expect(await page.locator('#facet-legal-type option[value="qeaa"]').count()).toBe(0);
+    expect(await page.locator('#facet-legal-type option[value="eaa"]').count()).toBe(0);
     expect(await page.locator('#facet-issuer option').count()).toBeGreaterThan(1);
     const issuerLabels = await page.locator('#facet-issuer option').evaluateAll((opts) =>
       opts.map((o) => o.textContent.trim()).filter(Boolean),
@@ -64,6 +68,7 @@ test.describe('graph and search UI', () => {
     expect(issuerLabels.some((label) => label.includes('pre.eid.wallet.ipzs.it'))).toBe(true);
     expect(await page.locator('#facet-as option').count()).toBeGreaterThan(1);
     expect(await page.locator('#facet-claim option').count()).toBeGreaterThan(1);
+    expect(await page.locator('#facet-claim option[value="age_over_18"]').count()).toBe(1);
 
     await page.locator('#facet-legal-type').selectOption('pub-eaa');
     await page.waitForFunction(() => (window.__ITW_EXPLORER__?.query || '').includes('legal_type:pub-eaa'));

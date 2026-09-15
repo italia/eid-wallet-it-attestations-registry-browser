@@ -385,16 +385,28 @@ describe('graph model', () => {
 
   it('exposes dump examples for legal_type, issuer, authentic source and claims', () => {
     const facets = facetOptions(graph);
-    assert.deepEqual(facets.legalTypes.map((o) => o.value), ['pub-eaa', 'qeaa', 'eaa']);
-    assert.ok(facets.issuers.length > 0);
-    assert.ok(facets.sources.length > 0);
-    assert.ok(facets.claims.length > 0);
-    assert.ok(facets.sources.some((s) => /mit\.gov\.it/i.test(s.value)));
+    assert.deepEqual(facets.legal_type.map((o) => o.value), ['pub-eaa']);
+    assert.ok(facets.issuer.length > 0);
+    assert.ok(facets.as.length > 0);
+    assert.ok(facets.claim.length > 0);
+    assert.ok(facets.as.some((s) => /mit\.gov\.it/i.test(s.value)));
+    assert.ok(facets.claim.some((c) => c.value === 'age_over_18'));
+    assert.ok(graph.byId.get('claim:age_over_18'));
+    assert.ok(graph.byId.get('credential:av')?.claim.includes('age_over_18'));
+  });
+
+  it('does not treat JSON Schema envelope keys as claim facet values', () => {
+    const facets = facetOptions(graph);
+    const values = facets.claim.map((c) => c.value);
+    assert.equal(values.includes('iss'), false);
+    assert.equal(values.includes('_sd'), false);
+    assert.equal(values.includes('alg'), false);
+    assert.equal(values.includes('additionalProperties'), false);
   });
 
   it('distinguishes same-organisation issuers in the facet with hostname', () => {
     const facets = facetOptions(graph);
-    const ipzs = facets.issuers.filter((o) => /ipzs\.it/i.test(o.value));
+    const ipzs = facets.issuer.filter((o) => /ipzs\.it/i.test(o.value));
     assert.ok(ipzs.length >= 2);
     const labels = ipzs.map((o) => o.label);
     assert.equal(new Set(labels).size, labels.length);

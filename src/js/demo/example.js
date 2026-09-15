@@ -12,28 +12,10 @@ import {
   signPublicJwk,
 } from './material.js';
 import { buildMdoc } from './mdoc.js';
+import { claimVocabulary } from '../graph/model.js';
 
 const TINY_PNG =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
-
-const JWT_KEEP = new Set([
-  'iss',
-  'sub',
-  'iat',
-  'exp',
-  'nbf',
-  'vct',
-  'vct#integrity',
-  'cnf',
-  'status',
-  'verification',
-  'issuing_authority',
-  'issuing_country',
-  'issuance_date',
-  'date_of_expiry',
-  '_sd',
-  '_sd_alg',
-]);
 
 function resourceByUrl(dump, url) {
   if (!url) return null;
@@ -134,19 +116,25 @@ export function claimsFromCddl(cddl, ctx) {
   };
   const docType = String(cddl || '').match(/"docType"\s*:\s*tstr\s*\.enum\s*\("([^"]+)"\)/);
   if (docType) claims.docType = docType[1];
+  const framework = String(cddl || '').match(/trust_framework:\s*tstr\s*\.enum\s*\(\s*"([^"]+)"/)?.[1];
+  const loa = String(cddl || '').match(/assurance_level:\s*tstr\s*\.enum\s*\(\s*"(https:[^"]+)"/)?.[1];
+  const hintFor = (name) => {
+    const re = new RegExp(String.raw`\.enum\s*\("${name}"\)\s*,\s*elementValue:\s*([^\n]+)`);
+    return String(cddl || '').match(re)?.[1] || '';
+  };
   for (const match of String(cddl || '').matchAll(/elementIdentifier:\s*DataElementIdentifier\s*\.enum\s*\("([^"]+)"\)/g)) {
     const name = match[1];
     if (claims[name] != null) continue;
-    if (name === 'age_over_18' || name.startsWith('age_over_')) claims[name] = true;
-    else if (name === 'sub') claims.sub = ctx.sub;
-    else if (name === 'issuing_country') claims.issuing_country = 'IT';
-    else if (name === 'issuing_authority') claims.issuing_authority = ctx.issuerName;
+    if (name === 'sub') claims.sub = ctx.sub;
     else if (name === 'verification') {
       claims.verification = {
-        trust_framework: 'it_wallet',
-        assurance_level: 'https://ta.wallet.ipzs.it/loa/high',
+        trust_framework: framework,
+        assurance_level: loa,
       };
-    } else claims[name] = exampleFromSchema({ type: 'string' }, ctx, name);
+    } else {
+      const hint = hintFor(name);
+      claims[name] = exampleFromSchema({ type: /\bbool\b/.test(hint) ? 'boolean' : 'string' }, ctx, name);
+    }
   }
   return claims;
 }
@@ -174,6 +162,7 @@ export function demoContext(node, dump, schemaRow) {
     vct: schemaRow?.vct || schemaRow?.docType || `urn:it-wallet:${node.credential_type}:1`,
     holderJwk: holderCnfPublicJwk(),
     type: node.credential_type,
+    dump,
   };
 }
 
@@ -184,9 +173,11 @@ async function disclosureDigest(encoded) {
 export async function buildSdJwtVc(claims, ctx = {}) {
   const jwtPayload = {};
   const disclosures = [];
+  const vocabulary = ctx.vocabulary || claimVocabulary(ctx.dump);
   for (const [name, value] of Object.entries(claims)) {
     if (name === '_sd' || name === '_sd_alg') continue;
-    if (JWT_KEEP.has(name)) {
+    const disclose = !vocabulary.size || vocabulary.has(name);
+    if (!disclose) {
       jwtPayload[name] = value;
       continue;
     }

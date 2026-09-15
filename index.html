@@ -107,7 +107,7 @@
   <main id="main-content" class="container-fluid px-3 my-4" aria-labelledby="page-heading">
     <section id="section-search" class="explorer-section" aria-labelledby="search-section-heading">
     <h2 id="search-section-heading" class="h4 explorer-section-title">Ricerca</h2>
-    <form id="registry-search-form" class="mb-0" role="search">
+    <form id="registry-search-form" class="mb-0" role="search" data-field-map="schema:id">
       <div class="registry-env-row mb-3">
         <h3 class="registry-field-heading h5">
           <label for="registry-env" id="registry-env-label">Ambiente</label>
@@ -118,7 +118,7 @@
         </select>
         <p id="registry-ta" class="registry-ta mb-0">
           <span id="registry-ta-prefix" class="registry-field-heading registry-field-heading--inline">Trust Anchor:</span>
-          <a id="registry-ta-link" href="https://pre.ta.wallet.ipzs.it" rel="noopener">https://pre.ta.wallet.ipzs.it</a>
+          <a id="registry-ta-link" href="" rel="noopener"></a>
         </p>
       </div>
       <h3 class="registry-field-heading h5">
@@ -143,20 +143,17 @@
             <h3 class="registry-field-heading h6">
               <label for="facet-legal-type" id="facet-legal-type-label">legal_type</label>
             </h3>
-            <select id="facet-legal-type" class="form-select" name="legal_type"
-              aria-describedby="registry-search-hint">
+            <select id="facet-legal-type" class="form-select" name="legal_type" data-field="legal_type"
+              data-aliases="legal" aria-describedby="registry-search-hint">
               <option value="">Tutti</option>
-              <option value="pub-eaa">pub-eaa</option>
-              <option value="qeaa">qeaa</option>
-              <option value="eaa">eaa</option>
             </select>
           </div>
           <div class="col-12 col-md-6 col-xl-3">
             <h3 class="registry-field-heading h6">
               <label for="facet-issuer" id="facet-issuer-label">Emittente</label>
             </h3>
-            <select id="facet-issuer" class="form-select" name="issuer"
-              aria-describedby="registry-search-hint">
+            <select id="facet-issuer" class="form-select" name="issuer" data-field="issuer"
+              data-aliases="emittente" aria-describedby="registry-search-hint">
               <option value="">Tutti</option>
             </select>
           </div>
@@ -164,8 +161,8 @@
             <h3 class="registry-field-heading h6">
               <label for="facet-as" id="facet-as-label">Fonte autentica</label>
             </h3>
-            <select id="facet-as" class="form-select" name="as"
-              aria-describedby="registry-search-hint">
+            <select id="facet-as" class="form-select" name="as" data-field="as"
+              data-aliases="source fa authentic_source" aria-describedby="registry-search-hint">
               <option value="">Tutti</option>
             </select>
           </div>
@@ -173,8 +170,8 @@
             <h3 class="registry-field-heading h6">
               <label for="facet-claim" id="facet-claim-label">Attributo / claim</label>
             </h3>
-            <select id="facet-claim" class="form-select" name="claim"
-              aria-describedby="registry-search-hint">
+            <select id="facet-claim" class="form-select" name="claim" data-field="claim"
+              data-aliases="attr attribute" aria-describedby="registry-search-hint">
               <option value="">Tutti</option>
             </select>
           </div>
@@ -227,6 +224,7 @@
         </div>
         <p id="graph-caption" class="small" aria-live="polite"></p>
         <div id="registry-graph" class="registry-graph" data-ready="false" aria-busy="true"
+          data-cy-kinds="registry catalog schemas claims authentic_sources taxonomy credential issuer authentic_source schema claim domain class"
           aria-describedby="graph-caption"></div>
       </section>
     </div>

@@ -8,23 +8,28 @@ if (!dagreRegistered) {
   dagreRegistered = true;
 }
 
-const COLORS = {
-  registry: { bg: '#0066CC', color: '#ffffff' },
-  catalog: { bg: '#0D47A1', color: '#ffffff' },
-  schemas: { bg: '#5C6F82', color: '#ffffff' },
-  claims: { bg: '#5C6F82', color: '#ffffff' },
-  authentic_sources: { bg: '#5C6F82', color: '#ffffff' },
-  taxonomy: { bg: '#5C6F82', color: '#ffffff' },
-  credential: { bg: '#E6F0FA', color: '#17324D', border: '#0066CC' },
-  issuer: { bg: '#FFF8E6', color: '#17324D', border: '#A15C00' },
-  authentic_source: { bg: '#E7F5F2', color: '#17324D', border: '#207E6F' },
-  schema: { bg: '#F2EEF8', color: '#17324D', border: '#5A4B81' },
-  claim: { bg: '#FFFFFF', color: '#17324D', border: '#5C6F82' },
-  domain: { bg: '#F5F5F5', color: '#17324D', border: '#5C6F82' },
-  class: { bg: '#FFFFFF', color: '#17324D', border: '#5C6F82' },
-};
+export function graphColorsFromCss(container) {
+  if (!container || typeof getComputedStyle !== 'function') return {};
+  const style = getComputedStyle(container);
+  const kinds = String(container.dataset.cyKinds || '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  const colors = {};
+  for (const kind of kinds) {
+    const bg = style.getPropertyValue(`--cy-${kind}-bg`).trim();
+    if (!bg) continue;
+    colors[kind] = {
+      bg,
+      color: style.getPropertyValue(`--cy-${kind}-color`).trim() || '#17324d',
+      border: style.getPropertyValue(`--cy-${kind}-border`).trim() || bg,
+    };
+  }
+  return colors;
+}
 
-function stylesheet() {
+function stylesheet(container) {
+  const colors = graphColorsFromCss(container);
   return [
     {
       selector: 'node',
@@ -54,7 +59,7 @@ function stylesheet() {
         'target-arrow-color': '#5C6F82',
       },
     },
-    ...Object.entries(COLORS).map(([kind, c]) => ({
+    ...Object.entries(colors).map(([kind, c]) => ({
       selector: `node[kind = "${kind}"]`,
       style: {
         'background-color': c.bg,
@@ -74,7 +79,7 @@ export function createRegistryGraphView(container, graph, { onSelect } = {}) {
   const cy = cytoscape({
     container,
     elements: toCytoscapeElements(graph),
-    style: stylesheet(),
+    style: stylesheet(container),
     minZoom: 0.2,
     maxZoom: 2.5,
     autoungrabify: false,

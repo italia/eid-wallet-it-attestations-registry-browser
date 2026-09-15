@@ -24,6 +24,71 @@ function asIdOf(source) {
   return source?.id || source?.entity_id || '';
 }
 
+function claimNamesFromCddl(text) {
+  const acc = new Set();
+  const re = /elementIdentifier:\s*DataElementIdentifier\s*\.enum\s*\("([^"]+)"\)/g;
+  let match;
+  while ((match = re.exec(String(text || '')))) {
+    if (match[1]) acc.add(match[1]);
+  }
+  return acc;
+}
+
+function resourceForUri(dump, uri) {
+  const clean = String(uri || '').split('#')[0];
+  if (!clean) return null;
+  return (
+    (dump?.resources || []).find((r) => {
+      if (r.url && String(r.url).split('#')[0] === clean) return true;
+      const path = String(r.path || '');
+      return path && (clean.endsWith(path) || clean.endsWith(`/${path.replace(/^[^/]+\//, '')}`));
+    }) || null
+  );
+}
+
+function availableClaimNames(authenticSources) {
+  const acc = new Set();
+  for (const as of authenticSources || []) {
+    for (const cap of as.data_capabilities || []) {
+      for (const claim of cap.available_claims || []) {
+        if (claim.claim_name) acc.add(claim.claim_name);
+      }
+    }
+  }
+  return acc;
+}
+
+export function claimVocabulary(dump) {
+  return new Set([...Object.keys(dump?.claims || {}), ...availableClaimNames(dump?.authenticSources)]);
+}
+
+export function schemaClaimNamesByType(dump) {
+  const byType = new Map();
+  for (const schema of dump?.schemas || []) {
+    const type = schema.credential_type;
+    if (!type) continue;
+    const res = resourceForUri(dump, schema.schema_uri);
+    const raw = res?.raw != null ? String(res.raw) : '';
+    const acc = byType.get(type) || new Set();
+    if (raw.includes('elementIdentifier')) {
+      for (const name of claimNamesFromCddl(raw)) acc.add(name);
+    }
+    byType.set(type, acc);
+  }
+  return byType;
+}
+
+export function claimNamesFromL10n(bundles) {
+  const acc = new Set();
+  for (const bundle of Object.values(bundles || {})) {
+    for (const key of Object.keys(bundle || {})) {
+      const m = /^claim\.(.+)\.description$/.exec(key);
+      if (m) acc.add(m[1]);
+    }
+  }
+  return acc;
+}
+
 export function buildRegistryGraph(dump, { lang = 'it' } = {}) {
   const nodes = [];
   const edges = [];
@@ -90,7 +155,28 @@ export function buildRegistryGraph(dump, { lang = 'it' } = {}) {
   const schemaRows = dump.schemas || [];
   const authenticSources = dump.authenticSources || [];
   const claimDefs = dump.claims || {};
+  const schemaClaimsByType = schemaClaimNamesByType(dump);
   const parentLinks = [];
+
+  const addClaimNode = (name) => {
+    if (!name) return '';
+    const cid = `claim:${name}`;
+    addNode({
+      id: cid,
+      kind: 'claim',
+      label: name,
+      claim: [name],
+      text: [name, l10nLookup(claimL10n, lang, `claim.${name}.description`, '')].join(' '),
+    });
+    addEdge('claims', cid);
+    return cid;
+  };
+
+  const vocabulary = new Set([...Object.keys(claimDefs), ...availableClaimNames(authenticSources)]);
+  if (!vocabulary.size) {
+    for (const name of claimNamesFromL10n(claimL10n)) vocabulary.add(name);
+  }
+  for (const name of vocabulary) addClaimNode(name);
 
   for (const cred of credentials) {
     const type = cred.credential_type;
@@ -157,10 +243,17 @@ export function buildRegistryGraph(dump, { lang = 'it' } = {}) {
       });
       addEdge(id, nid, 'sourced-from');
     }
+    for (const name of schemaClaimsByType.get(type) || []) {
+      if (vocabulary.has(name)) claimTokens.push(name);
+    }
     credNode.issuer = [...new Set(issuerTokens.filter(Boolean))].join(' ');
     credNode.as = [...new Set(asTokens.filter(Boolean))].join(' ');
-    credNode.claim = [...new Set(claimTokens)];
+    credNode.claim = [...new Set(claimTokens.filter(Boolean))];
     credNode.text = [credNode.text, credNode.issuer, credNode.as, ...credNode.claim].filter(Boolean).join(' ');
+    for (const name of credNode.claim) {
+      const cid = addClaimNode(name);
+      if (cid) addEdge(id, cid, 'has-claim');
+    }
 
     for (const parent of cred.parent_credentials || []) {
       parentLinks.push([`credential:${parent}`, id]);
@@ -202,7 +295,6 @@ export function buildRegistryGraph(dump, { lang = 'it' } = {}) {
     if (schema.credential_type) addEdge(`credential:${schema.credential_type}`, id, 'has-schema');
   }
 
-  const usedClaims = new Set();
   for (const as of authenticSources) {
     const sid = asIdOf(as);
     const nid = `as:${sid}`;
@@ -221,19 +313,8 @@ export function buildRegistryGraph(dump, { lang = 'it' } = {}) {
     }
     for (const cap of as.data_capabilities || []) {
       for (const claim of cap.available_claims || []) {
-        const name = claim.claim_name;
-        if (!name) continue;
-        usedClaims.add(name);
-        const cid = `claim:${name}`;
-        addNode({
-          id: cid,
-          kind: 'claim',
-          label: name,
-          claim: [name],
-          text: [name, claimL10n[lang]?.[`claim.${name}.description`] || ''].join(' '),
-        });
-        addEdge('claims', cid);
-        addEdge(nid, cid, 'provides');
+        const cid = addClaimNode(claim.claim_name);
+        if (cid) addEdge(nid, cid, 'provides');
       }
     }
   }
@@ -284,8 +365,6 @@ export function buildRegistryGraph(dump, { lang = 'it' } = {}) {
   return { nodes, edges, byId, documents };
 }
 
-export const LEGAL_TYPES = ['pub-eaa', 'qeaa', 'eaa'];
-
 function uniqueByValue(items) {
   const seen = new Set();
   const out = [];
@@ -301,7 +380,9 @@ export function facetOptions(graph) {
   const issuers = [];
   const sources = [];
   const claims = [];
+  const legalTypes = [];
   for (const n of graph?.nodes || []) {
+    if (n.legal_type) legalTypes.push({ value: n.legal_type, label: n.legal_type });
     if (n.kind === 'issuer' && n.entity_id) {
       issuers.push({ value: n.entity_id, label: issuerOptionLabel(n.label, n.entity_id) });
     }
@@ -315,10 +396,10 @@ export function facetOptions(graph) {
     }
   }
   return {
-    legalTypes: LEGAL_TYPES.map((value) => ({ value, label: value })),
-    issuers: uniqueByValue(issuers),
-    sources: uniqueByValue(sources),
-    claims: uniqueByValue(claims),
+    legal_type: uniqueByValue(legalTypes),
+    issuer: uniqueByValue(issuers),
+    as: uniqueByValue(sources),
+    claim: uniqueByValue(claims),
   };
 }
 
@@ -347,7 +428,7 @@ export function visibleClosure(graph, matchedIds) {
     const node = byId.get(id);
     if (node?.kind === 'credential') {
       for (const e of graph.edges) {
-        if (e.source === id && (e.relation === 'issued-by' || e.relation === 'sourced-from' || e.relation === 'has-schema' || e.relation === 'in-domain')) {
+        if (e.source === id && (e.relation === 'issued-by' || e.relation === 'sourced-from' || e.relation === 'has-schema' || e.relation === 'in-domain' || e.relation === 'has-claim')) {
           vis.add(e.target);
         }
       }
