@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures.js';
 import { clickGraphNode, expandArtifact, expandDetailSection, openGraphPane, search, waitForGraph } from './helpers.js';
 
 test.describe('graph and search UI', () => {
@@ -334,8 +334,6 @@ test.describe('graph and search UI', () => {
   });
 
   test('CORS warning banner when live Trust Anchor requests fail', async ({ page }) => {
-    await page.route('https://pre.ta.wallet.ipzs.it/**', (route) => route.abort());
-    await page.route('https://ta.wallet.ipzs.it/**', (route) => route.abort());
     await page.goto('/?live=1', { waitUntil: 'domcontentloaded' });
     await waitForGraph(page);
     const alert = page.locator('#cors-fault-alert');

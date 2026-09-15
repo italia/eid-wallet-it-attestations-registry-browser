@@ -536,6 +536,17 @@ describe('http traces', () => {
     assert.equal(catalog.applicationType, 'application/jose');
     assert.ok(catalog.durationMs >= 0);
   });
+
+  it('times out hanging fetches instead of waiting forever', async () => {
+    const fetchFn = () => new Promise(() => {});
+    const result = await timedFetch('https://pre.ta.wallet.ipzs.it/.well-known/it-wallet-registry', fetchFn, {
+      timeoutMs: 40,
+    });
+    assert.equal(result.http.ok, false);
+    assert.equal(result.http.status, 0);
+    assert.match(result.http.error, /timed out after 40ms/);
+    assert.ok(result.http.durationMs >= 40);
+  });
 });
 
 describe('CORS live faults', () => {

@@ -82,8 +82,10 @@ function serveCache() {
   };
 }
 
-const pagesBase = '/eid-wallet-it-attestations-registry-browser/';
-const base = process.env.VITE_BASE || (process.env.GITHUB_ACTIONS ? pagesBase : './');
+// Pages sets VITE_BASE in pages.yml. Do not key off GITHUB_ACTIONS: that
+// variable is also set during CI Playwright runs, which would serve the app
+// under the Pages subdirectory while tests hit http://127.0.0.1:5173/.
+const base = process.env.VITE_BASE || './';
 
 export default defineConfig({
   base,

@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures.js';
 import { expandDetailSection, waitForGraph } from './helpers.js';
 
 test.describe('responsive navigation', () => {

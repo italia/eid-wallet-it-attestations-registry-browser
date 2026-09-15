@@ -1481,7 +1481,9 @@ async function bootDump() {
     publishBoard();
     rebuildGraph();
     const liveParam = new URLSearchParams(location.search).get('live');
-    const wantLive = liveParam === '1' || (liveParam !== '0' && !navigator.webdriver);
+    const skipLive = import.meta.env.VITE_SKIP_LIVE === '1';
+    const wantLive =
+      liveParam === '1' || (liveParam !== '0' && !skipLive && !navigator.webdriver);
     if (wantLive) {
       const idle = window.requestIdleCallback || ((fn) => window.setTimeout(fn, 1));
       idle(() => {

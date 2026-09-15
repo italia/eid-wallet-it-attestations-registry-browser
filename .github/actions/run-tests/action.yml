@@ -16,10 +16,15 @@ runs:
         path: ~/.cache/ms-playwright
         key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
     - name: Install Playwright Chromium
-      run: npx playwright install --with-deps chromium
+      run: timeout 8m npx playwright install --with-deps chromium
       shell: bash
-    - run: npm test
+      env:
+        DEBIAN_FRONTEND: noninteractive
+    - run: timeout 12m npm test
       shell: bash
+      env:
+        VITE_BASE: /
+        VITE_SKIP_LIVE: '1'
     - name: Upload Playwright traces
       if: failure()
       uses: actions/upload-artifact@v4

@@ -41,10 +41,33 @@ function pickApplicationType(...types) {
     .trim();
 }
 
+const DEFAULT_FETCH_TIMEOUT_MS = 10_000;
+
 export async function timedFetch(url, fetchFn = fetch, init = {}) {
   const started = nowMs();
+  const timeoutMs = init.timeoutMs === undefined ? DEFAULT_FETCH_TIMEOUT_MS : init.timeoutMs;
+  const { timeoutMs: _timeoutMs, signal: userSignal, ...rest } = init;
+  const controller = new AbortController();
+  if (userSignal) {
+    if (userSignal.aborted) controller.abort();
+    else userSignal.addEventListener('abort', () => controller.abort(), { once: true });
+  }
+  let timer;
   try {
-    const res = Object.keys(init).length ? await fetchFn(url, init) : await fetchFn(url);
+    const fetchPromise = Object.keys(rest).length || userSignal || timeoutMs > 0
+      ? fetchFn(url, { ...rest, signal: controller.signal })
+      : fetchFn(url);
+    const res = await (timeoutMs > 0
+      ? Promise.race([
+          fetchPromise,
+          new Promise((_, reject) => {
+            timer = setTimeout(() => {
+              controller.abort();
+              reject(new Error(`timed out after ${timeoutMs}ms`));
+            }, timeoutMs);
+          }),
+        ])
+      : fetchPromise);
     const contentType = res.headers.get('content-type') || '';
     const text = await res.text();
     return {
@@ -76,6 +99,8 @@ export async function timedFetch(url, fetchFn = fetch, init = {}) {
       },
       text: null,
     };
+  } finally {
+    if (timer) clearTimeout(timer);
   }
 }
 
