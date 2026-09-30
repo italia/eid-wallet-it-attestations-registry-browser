@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Italian PID - SD-JWT VC",
-  "description": "Person Identification Data (PID) in SD-JWT VC format compliant with IT Wallet Specification v1.3.3",
+  "title": "Italian National EID - SD-JWT VC",
+  "description": "Italian National EID in SD-JWT VC format compliant with IT Wallet Specification v1.3.3",
   "type": "object",
   "required": [
     "iss",
@@ -65,7 +65,10 @@
         },
         "assurance_level": {
           "type": "string",
-          "enum": ["high", "substantial"]
+          "enum": [
+            "https://ta.wallet.ipzs.it/loa/high",
+            "https://ta.wallet.ipzs.it/loa/substantial"
+          ]
         }
       },
       "additionalProperties": false

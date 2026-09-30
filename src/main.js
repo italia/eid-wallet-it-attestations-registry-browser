@@ -8,6 +8,7 @@ import {
   annotateDumpTrust,
   applyLiveBody,
   fetchLiveResource,
+  findDumpResource,
   isCorsFailure,
   overlayFromIdb,
   refreshDumpLive,
@@ -1326,15 +1327,7 @@ function publishBoard() {
 }
 
 function findManifestEntry(call) {
-  const endpoint = call?.endpoint || call?.url || '';
-  return (state.dump?.manifest?.resources || []).find(
-    (r) => r.url === endpoint || cacheLooksLike(call, r),
-  );
-}
-
-function cacheLooksLike(call, entry) {
-  const req = call?.requestUrl || call?.endpoint || '';
-  return entry.path && req.includes(entry.path);
+  return findDumpResource(state.dump, call);
 }
 
 async function retryCall(call) {

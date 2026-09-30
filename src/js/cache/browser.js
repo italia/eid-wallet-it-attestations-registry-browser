@@ -1,16 +1,20 @@
 import { assignDump, cacheUrl, timedFetch } from './loader.js';
 import { checkSri, jwksFromFederationPayload, parseRegistryBody, sha256Hex, verifyJwt } from './jwt.js';
+import {
+  acceptForKind,
+  cachePathForUrl,
+  dumpFallbackBody,
+  followUpsFromParsed,
+  kindFromUrl,
+  looksLikeHtml,
+  seedRegistryUrls,
+} from './discover.js';
+
+export { acceptForKind } from './discover.js';
 
 const DB_NAME = 'itw-registry-live';
 const STORE = 'resources';
 const DB_VERSION = 1;
-
-export function acceptForKind(kind) {
-  if (kind === 'catalog' || kind === 'federation-entity' || kind === 'issuer-federation') {
-    return 'application/jwt, application/jose, application/entity-statement+jwt, application/json;q=0.5, */*;q=0.1';
-  }
-  return 'application/json, application/jwt;q=0.8, */*;q=0.1';
-}
 
 export function isCorsFailure(http) {
   if (!http || http.ok) return false;
@@ -62,6 +66,17 @@ export async function idbGet(url) {
     const req = tx.objectStore(STORE).get(url);
     req.onsuccess = () => resolve(req.result || null);
     req.onerror = () => resolve(null);
+  });
+}
+
+export async function idbGetAll() {
+  const db = await openDb();
+  if (!db) return [];
+  return new Promise((resolve) => {
+    const tx = db.transaction(STORE, 'readonly');
+    const req = tx.objectStore(STORE).getAll();
+    req.onsuccess = () => resolve(req.result || []);
+    req.onerror = () => resolve([]);
   });
 }
 
@@ -124,11 +139,20 @@ export async function applyLiveBody(dump, entry, text, contentType) {
   return dump;
 }
 
+function markUnusableLive(result, reason) {
+  result.http.ok = false;
+  result.http.error = reason;
+  return result;
+}
+
 export async function fetchLiveResource(entry, fetchFn = fetch) {
   const url = entry.url;
   const result = await timedFetch(url, fetchFn, { headers: { Accept: acceptForKind(entry.kind) } });
   result.http.endpoint = url;
   result.http.source = 'live';
+  if (result.http.ok && result.text != null && looksLikeHtml(result.text, result.http.contentType)) {
+    return markUnusableLive(result, `WAF or HTML block (HTTP ${result.http.status})`);
+  }
   if (result.http.ok && result.text != null) {
     result.sha256 = await sha256Hex(result.text);
     await idbPut({
@@ -142,36 +166,151 @@ export async function fetchLiveResource(entry, fetchFn = fetch) {
   return result;
 }
 
+function overlayAllowed(cachedUrl, dump) {
+  if ((dump.resources || []).some((r) => r.url === cachedUrl)) return true;
+  const base = dump.manifest?.base_url;
+  if (!base) return false;
+  try {
+    return new URL(cachedUrl).hostname === new URL(base).hostname;
+  } catch {
+    return false;
+  }
+}
+
 export async function overlayFromIdb(dump) {
   let changed = false;
-  for (const entry of dump.manifest?.resources || []) {
-    if (!entry.url) continue;
-    const cached = await idbGet(entry.url);
-    if (!cached?.text) continue;
-    if (entry.sha256 && cached.sha256 === entry.sha256) continue;
-    const generated = Date.parse(dump.manifest.generated_at || '') || 0;
+  const records = await idbGetAll();
+  const dumpByUrl = new Map((dump.resources || []).map((r) => [r.url, r]));
+  const generated = Date.parse(dump.manifest?.generated_at || '') || 0;
+  for (const cached of records) {
+    if (!cached?.url || !cached?.text) continue;
+    if (!overlayAllowed(cached.url, dump)) continue;
+    if (looksLikeHtml(cached.text, cached.contentType)) continue;
+    const dumpEntry = dumpByUrl.get(cached.url);
+    if (dumpEntry?.sha256 && cached.sha256 === dumpEntry.sha256) continue;
     const fetched = Date.parse(cached.fetchedAt || '') || 0;
     if (generated && fetched && fetched < generated) continue;
+    const entry = dumpEntry || {
+      url: cached.url,
+      path: cachePathForUrl(cached.url),
+      kind: kindFromUrl(cached.url, dump.manifest?.base_url),
+    };
     await applyLiveBody(dump, entry, cached.text, cached.contentType);
+    dumpByUrl.set(cached.url, dump.resources.find((r) => r.url === cached.url));
     changed = true;
   }
   return changed;
 }
 
+function discoveryOptions(dump, baseUrl) {
+  let sameHost = '';
+  try {
+    sameHost = new URL(baseUrl).hostname;
+  } catch {
+    sameHost = '';
+  }
+  return {
+    withFederation: Boolean(dump.manifest?.flags?.withFederation),
+    withIssuerMetadata: dump.manifest?.flags?.withIssuerMetadata !== false,
+    sameHost,
+  };
+}
+
+function enqueueDiscovery(queue, queued, url, kind, baseUrl) {
+  const clean = String(url || '').split('#')[0];
+  if (!clean || queued.has(clean)) return;
+  try {
+    if (new URL(clean).protocol !== 'https:') return;
+  } catch {
+    return;
+  }
+  queued.add(clean);
+  queue.push({ url: clean, kind: kind || kindFromUrl(clean, baseUrl) });
+}
+
+function resourceEntryFor(dumpByUrl, item, baseUrl) {
+  const dumpEntry = dumpByUrl.get(item.url);
+  return {
+    url: item.url,
+    path: dumpEntry?.path || cachePathForUrl(item.url),
+    kind: item.kind || dumpEntry?.kind || kindFromUrl(item.url, baseUrl),
+    sha256: dumpEntry?.sha256,
+    content_type: dumpEntry?.content_type,
+  };
+}
+
+export function findDumpResource(dump, call) {
+  const endpoint = call?.endpoint || call?.url || '';
+  const req = call?.requestUrl || call?.endpoint || '';
+  const match = (r) => r.url === endpoint || (r.path && req.includes(r.path));
+  return (dump?.resources || []).find(match) || (dump?.manifest?.resources || []).find(match) || null;
+}
+
 export async function refreshDumpLive(dump, { fetchFn = fetch, onCall, shouldAbort } = {}) {
   let changed = false;
   const httpCalls = [];
-  for (const entry of dump.manifest?.resources || []) {
+  const baseUrl = String(dump.manifest?.base_url || '').replace(/\/$/, '');
+  if (!baseUrl) return { dump, changed, httpCalls };
+
+  dump.resources = dump.resources || [];
+  const dumpByUrl = new Map(dump.resources.map((r) => [r.url, r]));
+  const queued = new Set();
+  const queue = [];
+  const options = discoveryOptions(dump, baseUrl);
+
+  for (const seed of seedRegistryUrls(baseUrl)) {
+    enqueueDiscovery(queue, queued, seed.url, seed.kind, baseUrl);
+  }
+
+  while (queue.length) {
     if (shouldAbort?.()) break;
-    if (!entry.url) continue;
+    const item = queue.shift();
+    const entry = resourceEntryFor(dumpByUrl, item, baseUrl);
+    const dumpEntry = dumpByUrl.get(item.url);
     const result = await fetchLiveResource(entry, fetchFn);
+    const liveUsable = Boolean(result.http.ok && result.text != null);
     httpCalls.push(result.http);
     onCall?.(result.http, entry);
-    if (!result.http.ok || result.text == null) continue;
-    if (entry.sha256 && result.sha256 === entry.sha256) continue;
-    await applyLiveBody(dump, entry, result.text, result.http.contentType);
-    changed = true;
+
+    let text = liveUsable ? result.text : null;
+    let contentType = result.http.contentType || '';
+    if (!liveUsable) {
+      const fallback = dumpFallbackBody(dumpEntry);
+      if (fallback) {
+        text = fallback.text;
+        contentType = fallback.contentType || contentType;
+      } else if (!dumpEntry) {
+        dump.resources.push({
+          ...entry,
+          json: null,
+          error: result.http.error || `HTTP ${result.http.status}`,
+        });
+        dumpByUrl.set(entry.url, dump.resources[dump.resources.length - 1]);
+      }
+    }
+
+    if (text == null) continue;
+
+    const parsed = parseRegistryBody(text, contentType);
+    if (liveUsable) {
+      const existing = dump.resources.find((r) => r.url === entry.url);
+      if (existing?.raw !== text) {
+        await applyLiveBody(dump, entry, text, contentType);
+        dumpByUrl.set(entry.url, dump.resources.find((r) => r.url === entry.url));
+        changed = true;
+      }
+    }
+
+    const json = parsed.json ?? dumpEntry?.json ?? null;
+    const { followUps } = followUpsFromParsed({
+      kind: entry.kind,
+      url: entry.url,
+      json,
+      options,
+    });
+    for (const next of followUps) enqueueDiscovery(queue, queued, next.url, next.kind, baseUrl);
   }
+
   return { dump, changed, httpCalls };
 }
 

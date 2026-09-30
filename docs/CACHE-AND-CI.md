@@ -76,6 +76,8 @@ Failed resources stay listed (`status` or `error`) so the board can offer Retry 
 
 ## 4. Behaviour of `scripts/dump-registry.mjs`
 
+Discovery (seeds, `endpoints.*`, `schema_uri`, l10n, issuer well-knowns, federation list) lives in `src/js/cache/discover.js` and is shared with the browser live refresh.
+
 1. `GET {base}/.well-known/it-wallet-registry` with `Accept: application/json, application/jwt;q=0.9`.
 2. Parse JSON (or JWT → payload).
 3. For each `endpoints.*` of the data registries: GET, save raw; if JWT, decode only in RAM to discover further URIs.
@@ -97,12 +99,12 @@ Flags: `--env pre|prod`, `--with-federation`, `--with-issuer-metadata` (default 
 On startup:
 
 1. Copy the Pages dump into Cache Storage (`itw-registry-dump`) if missing or if `manifest.generated_at` is newer.
-2. Serve the UI from there.
-3. Refresh: `fetch(url, { headers: { Accept: '…' } })`.
-4. If ok and hash differs → IndexedDB `itw-registry-live` + `cache:updated` event.
-5. If it fails → board row for that GET (endpoint, status, ms, type) + Retry.
+2. Serve the UI from there (dump first).
+3. Refresh: crawl from `{base}/.well-known/it-wallet-registry` (same follow rules as `scripts/dump-registry.mjs`: `endpoints.*`, `schema_uri`, l10n, issuer well-knowns, federation list). Live `GET` each discovered URL. Do **not** replay `manifest.resources`.
+4. If ok and the body differs from the current dump resource → IndexedDB `itw-registry-live` and update the in-memory dump.
+5. If the live GET fails (CORS, network, HTML/WAF) → keep the dump body for that URL when present, follow links from that dump JSON so discovery can continue, board row for the failed GET + Retry.
 
-IndexedDB key = absolute TA resource URL, not the Pages path.
+IndexedDB key = absolute TA resource URL, not the Pages path. New URLs found live (for example a schema renamed `pid.json` → `eid.json`) are fetched even if they are absent from the dump manifest.
 
 ## 6. CI and two CD pipelines
 

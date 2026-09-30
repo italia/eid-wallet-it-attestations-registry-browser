@@ -13,7 +13,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { resolveRegistryEnv } from '../src/js/cache/environments.js';
-import { canonicalizeIssuerEntityId, issuerWellKnownUrl } from '../src/js/issuers/entity-id.js';
+import { acceptForKind, cachePathForUrl, followUpsFromParsed, looksLikeHtml, seedRegistryUrls } from '../src/js/cache/discover.js';
 import pkg from '../package.json' with { type: 'json' };
 
 const appVersion = pkg.version;
@@ -67,10 +67,7 @@ if (args.help) {
 }
 
 function cachePathFor(urlString) {
-  const u = new URL(urlString);
-  let pathname = u.pathname;
-  if (pathname.endsWith('/')) pathname = `${pathname}index`;
-  return join(u.hostname, pathname.replace(/^\//, ''));
+  return cachePathForUrl(urlString);
 }
 
 function sha256(buf) {
@@ -102,15 +99,6 @@ function parseBody(buf, contentType) {
     }
   }
   return { json: null, jwt: null, text };
-}
-
-function collectHttpsUrls(value, acc = []) {
-  if (typeof value === 'string' && /^https:\/\//i.test(value)) acc.push(value.split('#')[0]);
-  else if (Array.isArray(value)) value.forEach((v) => collectHttpsUrls(v, acc));
-  else if (value && typeof value === 'object') {
-    for (const v of Object.values(value)) collectHttpsUrls(v, acc);
-  }
-  return acc;
 }
 
 function sleep(ms) {
@@ -162,24 +150,6 @@ async function fetchWithRetry(url, accept) {
   throw lastErr;
 }
 
-function isWalletIpzsCredentialIssuer(entityId) {
-  try {
-    const host = new URL(entityId).hostname;
-    if (host.startsWith('verifier.')) return false;
-    return host.endsWith('.wallet.ipzs.it') || host === 'wallet.ipzs.it';
-  } catch {
-    return false;
-  }
-}
-
-function enqueueIssuerWellKnowns(entity, { fromFederationList = false } = {}) {
-  const id = canonicalizeIssuerEntityId(entity);
-  if (!id) return;
-  if (fromFederationList && !isWalletIpzsCredentialIssuer(id)) return;
-  enqueue(issuerWellKnownUrl(id, 'openid-credential-issuer'), 'issuer-metadata');
-  enqueue(issuerWellKnownUrl(id, 'openid-federation'), 'issuer-federation');
-}
-
 function enqueue(url, kind) {
   if (!url || queued.has(url)) return;
   try {
@@ -194,12 +164,7 @@ function enqueue(url, kind) {
 
 async function dumpOne({ url, kind }) {
   const path = cachePathFor(url);
-  const accept =
-    kind === 'catalog' || kind === 'federation-entity' || kind === 'issuer-federation'
-      ? 'application/jwt, application/jose, application/entity-statement+jwt, application/json;q=0.5, */*;q=0.1'
-      : kind === 'federation-list'
-        ? 'application/json, */*;q=0.1'
-        : 'application/json, application/jwt;q=0.8, */*;q=0.1';
+  const accept = acceptForKind(kind);
 
   const entry = {
     url,
@@ -223,8 +188,7 @@ async function dumpOne({ url, kind }) {
     entry.bytes = buf.length;
     entry.sha256 = sha256(buf);
 
-    const looksHtml =
-      contentType.includes('text/html') || buf.slice(0, 32).toString('utf8').includes('<html');
+    const looksHtml = looksLikeHtml(buf.toString('utf8'), contentType);
     if (looksHtml && !url.endsWith('.html')) {
       entry.error = `WAF or HTML block (HTTP ${res.status})`;
       resources.push(entry);
@@ -268,90 +232,23 @@ async function dumpOne({ url, kind }) {
 }
 
 function followParsed(kind, url, json) {
-  if (!json) return;
-
-  if (kind === 'federation-list') {
-    if (withIssuerMetadata && Array.isArray(json)) {
-      for (const entity of json) {
-        if (typeof entity === 'string') enqueueIssuerWellKnowns(entity, { fromFederationList: true });
-      }
-    }
-    return;
-  }
-
-  if (kind === 'federation-entity' && withIssuerMetadata) {
-    const list = json.metadata?.federation_entity?.federation_list_endpoint;
-    if (list) enqueue(list, 'federation-list');
-  }
-
-  if (kind === 'discovery' && json.endpoints) {
-    for (const [key, value] of Object.entries(json.endpoints)) {
-      if (typeof value !== 'string') continue;
-      if (key.startsWith('federation') && !withFederation) continue;
-      const catalog = key === 'credential_catalog' || /credential-catalog/.test(value);
-      enqueue(value, catalog ? 'catalog' : key.startsWith('federation') ? 'federation' : 'registry');
-    }
-  }
-
-  if (Array.isArray(json.schemas)) {
-    for (const schema of json.schemas) {
-      if (schema.schema_uri) {
-        const clean = String(schema.schema_uri).split('#')[0];
-        if (schema['schema_uri#integrity']) integrityByUrl.set(clean, schema['schema_uri#integrity']);
-        enqueue(schema.schema_uri, 'schema-file');
-      }
-    }
-  }
-
-  if (json.localization?.base_uri) {
-    const base = json.localization.base_uri.endsWith('/')
-      ? json.localization.base_uri
-      : `${json.localization.base_uri}/`;
-    for (const loc of json.localization.available_locales || ['it', 'en']) {
-      enqueue(new URL(`${loc}.json`, base).href, 'l10n');
-    }
-  }
-
-  if (withIssuerMetadata && Array.isArray(json.credentials)) {
-    for (const cred of json.credentials) {
-      for (const issuer of cred.issuers || []) {
-        const entity = issuer.entity_id || issuer.id;
-        if (entity) enqueueIssuerWellKnowns(entity);
-      }
-    }
-  }
-
-  if (
-    kind === 'schema-file' ||
-    kind === 'l10n' ||
-    kind === 'issuer-metadata' ||
-    kind === 'issuer-federation' ||
-    kind === 'federation-entity' ||
-    kind === 'federation-list'
-  ) {
-    return;
-  }
-
-  const host = new URL(baseUrl).hostname;
-  for (const found of collectHttpsUrls(json)) {
-    try {
-      if (new URL(found).hostname === host && found !== url) {
-        if (found.endsWith('/')) continue;
-        if (found.includes('/l10n/') && !found.endsWith('.json')) continue;
-        if (found.includes('/schemas/') || found.includes('.well-known/')) {
-          enqueue(found, found.includes('/schemas/') ? 'schema-file' : 'derived');
-        }
-      }
-    } catch {
-      /* ignore */
-    }
-  }
+  const { followUps, integrity } = followUpsFromParsed({
+    kind,
+    url,
+    json,
+    options: {
+      withFederation,
+      withIssuerMetadata,
+      sameHost: new URL(baseUrl).hostname,
+    },
+  });
+  for (const row of integrity) integrityByUrl.set(row.url, row.sri);
+  for (const item of followUps) enqueue(item.url, item.kind);
 }
 
 async function main() {
   console.log(`Dump env=${env} base=${baseUrl}`);
-  enqueue(`${baseUrl}/.well-known/it-wallet-registry`, 'discovery');
-  enqueue(`${baseUrl}/.well-known/openid-federation`, 'federation-entity');
+  for (const seed of seedRegistryUrls(baseUrl)) enqueue(seed.url, seed.kind);
 
   while (queue.length) {
     const item = queue.shift();
