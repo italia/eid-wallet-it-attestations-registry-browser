@@ -1,0 +1,11 @@
+---
+description: Never commit or push; the user owns git and GitHub
+alwaysApply: true
+---
+
+# No commit, no GitHub push
+
+- Never run `git commit`, `git push`, or any command that publishes to GitHub (`gh pr create` that needs a push, `gh repo`, releases).
+- Never stage files for a commit (`git add` for committing) unless the user is only asking to inspect the working tree.
+- Leave all changes local. The user commits and pushes themselves.
+- If asked to “ship”, “release”, or “open a PR”, prepare the work and summarize what to commit; do not commit or push.

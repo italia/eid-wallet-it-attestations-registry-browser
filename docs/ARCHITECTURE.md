@@ -51,7 +51,8 @@ No React/Vue/Svelte/Angular. Official IT-Wallet pages do not use them; the value
 | `i18n/` | Imported `it`/`en` JSON, `disco.html`-style language dropdown |
 | `cache/environments.js` | Trust Anchor `pre` / `prod` and permalink aliases |
 | `cache/loader.js` | Fetch dump from `manifest-{env}.json` + hierarchical files; `timedFetch` (status, ms, Content-Type) |
-| `cache/browser.js` | IndexedDB overlay, live refresh, hash compare, schema SRI |
+| `cache/discover.js` | Shared Trust Anchor discovery (seeds, `schema_uri` follow-ups); used by dump and live refresh |
+| `cache/browser.js` | IndexedDB overlay, discovery-driven live refresh, dump fallback, hash compare, schema SRI |
 | `cache/jwt.js` | JOSE split, payload decode, ES256 verify with JWKS |
 | `search/index.js` | Lucene-lite parser and document filter; facets that rewrite `field:value` |
 | `graph/model.js` | Registry → nodes/edges; facet options from the dump |
@@ -94,7 +95,7 @@ The on-disk dump stays **intact**. The index is derived in memory.
 5. Build graph model + search index.
 6. Render graph (root) + list.
 7. Board: one row per GET (TA endpoint, HTTP status, ms, application type).
-8. `requestIdleCallback` → live refresh for URLs in the manifest (best-effort; CORS). If live GETs fail, `#cors-fault-alert` (`alert alert-warning`) points at the GitHub CORS docs.
+8. `requestIdleCallback` → live Trust Anchor discovery crawl (best-effort; CORS), not a replay of dump manifest URLs. If a live GET fails, the dump body for that URL is kept and discovery continues from it; `#cors-fault-alert` (`alert alert-warning`) points at the GitHub CORS docs.
 9. For each live call: success / error+retry; if the hash differs, rebuild index and graph without losing the current query.
 10. On a `credential` result: one nested accordion with catalog/data-model dump artifacts, **credential issuer** well-knowns from the dump (`openid-credential-issuer` and `openid-federation`, with a mismatch warning when OpenID4VCI contents diverge), **credential demo** (**smartcard UI** from `credential_configuration` display metadata when present), and **credential offer**.
 

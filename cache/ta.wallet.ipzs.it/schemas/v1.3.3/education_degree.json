@@ -59,7 +59,10 @@
         },
         "assurance_level": {
           "type": "string",
-          "enum": ["high", "substantial"]
+          "enum": [
+            "https://ta.wallet.ipzs.it/loa/high",
+            "https://ta.wallet.ipzs.it/loa/substantial"
+          ]
         }
       },
       "additionalProperties": false

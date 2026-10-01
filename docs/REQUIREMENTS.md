@@ -1,11 +1,11 @@
 # Requirements — IT-Wallet Attestations Explorer and Demo
 
-Requirements version: **0.7.2**  
+Requirements version: **0.8.0**  
 Source: project request + review of the [registry handbook](EVALUATION_HANDBOOK.md) + IT-Wallet Technical Specifications v1.4.7 + UI updates (search facets, `disco.html` header, Trust Anchor switch, HTTP traces on the message board).
 
 Priority: **MUST** / **SHOULD** / **MAY** (RFC 2119).
 
-Changelog 0.7.2: The registry graph is a dedicated section (`#section-graph`). Lista (`#section-results`) and Grafo are links on every viewport; the landing page shows search and results. Selecting a graph node returns to the result list. The inactive section is `inert`. Footer alignment is IT-Wallet Technical Specifications v1.4.7.  
+Changelog 0.8.0: Browser live refresh (F-05) follows Trust Anchor discovery (`/.well-known/it-wallet-registry`, `schema_uri`, issuer well-knowns) instead of replaying dump manifest URLs; a failed live GET keeps the dump body for that URL. Production dump follows the catalog rename `pid` → `eid` (`eid.json`). The registry graph is a dedicated section (`#section-graph`). Lista (`#section-results`) and Grafo are links on every viewport; the landing page shows search and results. Selecting a graph node returns to the result list. The inactive section is `inert`. Footer alignment is IT-Wallet Technical Specifications v1.4.7.
 Changelog 0.7.1: Slim-header brand is a home link (`href=/`). Credential detail shows the authentic source (FA) by name and `entity_id`. A new search no longer pins a previously opened credential that does not match, so leftover FA (e.g. MIT on tessera sanitaria) cannot appear.  
 Changelog 0.7.0: Issuer facet labels include hostname/path so two credential issuers of the same organisation are distinct. Official Developers Italia favicon. Graph omits dangling schema edges when the catalog has no matching `credential_type` (e.g. live `eid` schemas). Below `lg`, Lista/Grafo are exclusive panes (`inert` on the hidden pane) to avoid overflow while navigating results.  
 Changelog 0.6.2: Credential Offer URL/QR are written on the selected result panel only (no `document.getElementById` onto a leftover hidden `#offer-link`); switching credentials no longer leaves `href="#"`. A-20: Bootstrap Italia is bundled from npm; production HTML gets a `Content-Security-Policy` meta (no jsDelivr).  
@@ -89,9 +89,9 @@ Detail: [CACHE-AND-CI.md](CACHE-AND-CI.md).
 On load the app MUST:
 
 1. Show dump data served with the app (repo / Pages) immediately.
-2. In the background try a Trust Anchor refresh into the **browser** cache (Cache API + IndexedDB), without blocking the UI.
+2. In the background try a Trust Anchor **discovery** crawl into the **browser** cache (Cache API + IndexedDB), without blocking the UI. The crawl MUST start at `{base}/.well-known/it-wallet-registry` and follow the same links as the dump crawler (`endpoints.*`, `schema_uri`, l10n, issuer well-knowns). It MUST NOT be limited to URLs listed in the dump manifest, so renamed or new schema files are fetched live.
 3. If live data differs from the dump, update index, graph and message board.
-4. If CORS/network fails, stay on the dump, record the failed GETs on the board, and show a page-level warning (`alert alert-warning`, openid-federation-browser pattern) with a GitHub link to CORS instructions ([CACHE-AND-CI.md](CACHE-AND-CI.md#cors-and-waf)).
+4. If a live GET fails (CORS, network, HTML/WAF), keep the dump body for that URL when present, continue discovery from the dump JSON, record the failed GET on the board, and show a page-level warning (`alert alert-warning`, openid-federation-browser pattern) with a GitHub link to CORS instructions ([CACHE-AND-CI.md](CACHE-AND-CI.md#cors-and-waf)).
 
 ### F-06 Message board
 
