@@ -136,7 +136,7 @@
     "mismatchField": "{{path}} è difforme: {{left}} vs {{right}}."
   },
   "offer": {
-    "heading": "Credential Offer",
+    "heading": "Credential offer",
     "disclaimer": "Credential offer generata dal catalogo. Senza issuer_state cifrato abilita solo la richiesta di una tipologia di credenziale dopo l'autenticazione (se elegibile). Il form sotto è esemplificativo: non usa la chiave PDND GetAttributeClaims.",
     "json": "Oggetto JSON",
     "urn": "URN issuer_state (in chiaro)",

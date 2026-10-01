@@ -223,13 +223,13 @@ test.describe('graph and search UI', () => {
     await expect(page.locator('#artifact-0-excerpt')).toContainText('mDL');
     await expect(page.locator('#artifact-0-excerpt details.json-node').first()).toBeVisible();
     await expect(page.locator('#artifact-0-excerpt .artifact-copy')).toBeVisible();
-    await expect(page.locator('#node-artifacts')).toContainText('data-model');
+    await expect(page.locator('#node-artifacts')).toContainText('Data model');
     await expect(page.locator('#credential-issuer')).toBeVisible();
     await expect(page.locator('#issuer-heading')).toBeVisible();
     await expect(page.locator('#credential-issuer-toggle')).toHaveAttribute('aria-expanded', 'false');
     await expandDetailSection(page, 'credential-issuer');
-    await expect(page.locator('#issuer-artifact-0-toggle')).toContainText('openid-credential-issuer');
-    await expect(page.locator('#issuer-artifact-1-toggle')).toContainText('openid-federation');
+    await expect(page.locator('#issuer-artifact-0-toggle')).toContainText('OpenID credential issuer');
+    await expect(page.locator('#issuer-artifact-1-toggle')).toContainText('OpenID federation');
     await expect(page.locator('#issuer-mismatch-0')).toHaveCount(0);
     await expandArtifact(page, 'issuer-artifact', 0);
     await expect(

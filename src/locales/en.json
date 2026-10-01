@@ -136,7 +136,7 @@
     "mismatchField": "{{path}} differs: {{left}} vs {{right}}."
   },
   "offer": {
-    "heading": "Credential Offer",
+    "heading": "Credential offer",
     "disclaimer": "Credential offer generated from the catalog. Without an encrypted issuer_state it only enables a request for a credential type after authentication (if eligible). The form below is an example: it does not use the PDND GetAttributeClaims key.",
     "json": "JSON object",
     "urn": "issuer_state URN (plaintext)",

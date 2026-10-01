@@ -1,10 +1,11 @@
 # Requirements — IT-Wallet Attestations Explorer and Demo
 
-Requirements version: **0.8.0**  
+Requirements version: **0.8.1**  
 Source: project request + review of the [registry handbook](EVALUATION_HANDBOOK.md) + IT-Wallet Technical Specifications v1.4.7 + UI updates (search facets, `disco.html` header, Trust Anchor switch, HTTP traces on the message board).
 
 Priority: **MUST** / **SHOULD** / **MAY** (RFC 2119).
 
+Changelog 0.8.1: Artifact accordion titles use one sentence-case style. Each artifact row uses the same card style as a result, and the accordion container has no border.
 Changelog 0.8.0: Browser live refresh (F-05) follows Trust Anchor discovery (`/.well-known/it-wallet-registry`, `schema_uri`, issuer well-knowns) instead of replaying dump manifest URLs; a failed live GET keeps the dump body for that URL. Production dump follows the catalog rename `pid` → `eid` (`eid.json`). The registry graph is a dedicated section (`#section-graph`). Lista (`#section-results`) and Grafo are links on every viewport; the landing page shows search and results. Selecting a graph node returns to the result list. The inactive section is `inert`. Footer alignment is IT-Wallet Technical Specifications v1.4.7.
 Changelog 0.7.1: Slim-header brand is a home link (`href=/`). Credential detail shows the authentic source (FA) by name and `entity_id`. A new search no longer pins a previously opened credential that does not match, so leftover FA (e.g. MIT on tessera sanitaria) cannot appear.  
 Changelog 0.7.0: Issuer facet labels include hostname/path so two credential issuers of the same organisation are distinct. Official Developers Italia favicon. Graph omits dangling schema edges when the catalog has no matching `credential_type` (e.g. live `eid` schemas). Below `lg`, Lista/Grafo are exclusive panes (`inert` on the hidden pane) to avoid overflow while navigating results.  

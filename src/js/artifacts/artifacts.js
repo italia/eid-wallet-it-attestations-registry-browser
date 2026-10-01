@@ -35,6 +35,25 @@ function pretty(value) {
   }
 }
 
+const ARTIFACT_TITLE_LABELS = {
+  'it-wallet-registry': 'IT-Wallet registry',
+  'credential-catalog': 'Credential catalog',
+  schemas: 'Schemas',
+  'claims-registry': 'Claims registry',
+  'authentic-sources': 'Authentic sources',
+  'credential-taxonomy': 'Credential taxonomy',
+  'openid-credential-issuer': 'OpenID credential issuer',
+  'openid-federation': 'OpenID federation',
+};
+
+export function displayArtifactTitle(title) {
+  const text = String(title || '').trim();
+  if (!text || /^https?:\/\//i.test(text)) return text;
+  if (ARTIFACT_TITLE_LABELS[text]) return ARTIFACT_TITLE_LABELS[text];
+  if (text.startsWith('data-model')) return text.replace(/^data-model/, 'Data model');
+  return text;
+}
+
 function fromResource(res, extras = {}) {
   if (!res) return null;
   return {
@@ -593,7 +612,7 @@ export function appendDetailAccordionItem(accordion, { id, title, headingId, tog
   btn.dataset.bsTarget = `#${pid}`;
   btn.setAttribute('aria-expanded', 'false');
   btn.setAttribute('aria-controls', pid);
-  btn.textContent = title;
+  btn.textContent = displayArtifactTitle(title);
   heading.appendChild(btn);
 
   const collapse = document.createElement('div');
