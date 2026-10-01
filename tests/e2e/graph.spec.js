@@ -1,11 +1,13 @@
 import { test, expect } from './fixtures.js';
-import { clickGraphNode, expandArtifact, expandDetailSection, openGraphPane, search, waitForGraph } from './helpers.js';
+import { clickGraphNode, expandArtifact, expandDetailSection, openGraphPane, openResultsPane, search, waitForGraph } from './helpers.js';
 import { REGISTRY_ENVS } from '../../src/js/cache/environments.js';
 
 test.describe('graph and search UI', () => {
-  test('renders a real node graph from the dump', async ({ page }, testInfo) => {
+  test('renders a real node graph from the dump', async ({ page }) => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     await waitForGraph(page);
+    await expect(page.locator('#section-graph')).toBeHidden();
+    await expect(page.locator('#nav-graph')).toHaveAttribute('href', '#section-graph');
 
     const stats = await page.evaluate(() => window.__ITW_EXPLORER__);
     expect(stats.nodeCount).toBeGreaterThan(20);
@@ -16,13 +18,13 @@ test.describe('graph and search UI', () => {
     expect(stats.visibleIds).toContain('registry');
     expect(stats.visibleIds).toContain('credential:mDL');
 
+    await openGraphPane(page);
+    await expect(page).toHaveURL(/#section-graph$/);
     const canvases = page.locator('#registry-graph canvas');
     await expect(canvases).toHaveCount(3);
     const box = await page.locator('#registry-graph canvas[data-id="layer2-node"]').boundingBox();
-    if (testInfo.project.name === 'desktop') {
-      expect(box?.width).toBeGreaterThan(200);
-      expect(box?.height).toBeGreaterThan(200);
-    }
+    expect(box?.width).toBeGreaterThan(200);
+    expect(box?.height).toBeGreaterThan(200);
 
     await expect(page.locator('#results-list button')).toHaveCount(10);
     await expect(page.locator('#results-list button[data-kind="credential"] .result-kind-icon use')).toHaveCount(10);
@@ -54,7 +56,7 @@ test.describe('graph and search UI', () => {
   test('facet selects write legal_type, issuer, as and claim into the query', async ({ page }) => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     await waitForGraph(page);
-    await page.locator('#tab-list').click({ force: true }).catch(() => {});
+    await openResultsPane(page);
 
     await expect(page.locator('#facet-legal-type option[value="pub-eaa"]')).toHaveCount(1);
     expect(await page.locator('#facet-legal-type option[value="qeaa"]').count()).toBe(0);
@@ -102,7 +104,7 @@ test.describe('graph and search UI', () => {
   test('search +mDL -pid filters list and graph hierarchy', async ({ page }) => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     await waitForGraph(page);
-    await page.locator('#tab-list').click({ force: true }).catch(() => {});
+    await openResultsPane(page);
     await search(page, '+mDL -pid');
 
     const stats = await page.evaluate(() => window.__ITW_EXPLORER__);
@@ -118,7 +120,7 @@ test.describe('graph and search UI', () => {
   test('issuer and schema results use distinct Bootstrap Italia icons', async ({ page }) => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     await waitForGraph(page);
-    await page.locator('#tab-list').click({ force: true }).catch(() => {});
+    await openResultsPane(page);
     await search(page, 'kind:issuer');
     await expect(page.locator('#results-list button[data-kind="issuer"] .result-kind-icon use').first()).toHaveAttribute(
       'href',
@@ -131,11 +133,13 @@ test.describe('graph and search UI', () => {
     );
   });
 
-  test('clicking a graph node shows raw artifacts', async ({ page }, testInfo) => {
+  test('clicking a graph node shows raw artifacts', async ({ page }) => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     await waitForGraph(page);
-    await openGraphPane(page, testInfo.project.name);
+    await openGraphPane(page);
     await clickGraphNode(page, 'credential:mDL');
+    await expect(page).toHaveURL(/#section-results$/);
+    await expect(page.locator('#section-results')).toBeVisible();
     await expect(page.locator('#node-detail')).toBeVisible();
     await expect(page.locator('#detail-title')).toHaveCount(0);
     await expect(page.locator('#node-artifacts')).toBeVisible();
@@ -164,7 +168,7 @@ test.describe('graph and search UI', () => {
   test('selecting a credential shows its authentic source', async ({ page }) => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     await waitForGraph(page);
-    await page.locator('#tab-list').click({ force: true }).catch(() => {});
+    await openResultsPane(page);
     await page.locator('#results-list button[data-node-id="credential:mDL"]').click();
     await expect(page.locator('#detail-as-label')).toHaveText('Fonte autentica');
     await expect(page.locator('#detail-as-name')).toContainText(/MIT|Motorizzazione|Infrastrutture/i);
@@ -174,7 +178,7 @@ test.describe('graph and search UI', () => {
   test('a new search drops a previously opened credential that no longer matches', async ({ page }) => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     await waitForGraph(page);
-    await page.locator('#tab-list').click({ force: true }).catch(() => {});
+    await openResultsPane(page);
     await search(page, 'mDL');
     await page.locator('#results-list button[data-node-id="credential:mDL"]').click();
     await expect(page.locator('#detail-as-entity')).toHaveText('https://www.mit.gov.it');
@@ -192,7 +196,7 @@ test.describe('graph and search UI', () => {
     test.setTimeout(90_000);
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     await waitForGraph(page);
-    await page.locator('#tab-list').click({ force: true }).catch(() => {});
+    await openResultsPane(page);
     await page.locator('#results-list button[data-node-id="credential:mDL"]').click();
     await expect(page.locator('#node-artifacts')).toBeVisible();
     await expect(page.locator('#artifacts-heading')).toBeVisible();

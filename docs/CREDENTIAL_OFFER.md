@@ -1,6 +1,6 @@
 # Credential Offer (QR and href)
 
-IT-Wallet Technical Specifications v1.4.6:
+IT-Wallet Technical Specifications v1.4.7:
 
 - `docs/it/credential-issuance-low-level.rst` — Credential Offer flow
 - OpenID4VCI § 4 — `credential_offer` / `credential_offer_uri`

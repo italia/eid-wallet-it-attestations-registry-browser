@@ -143,37 +143,62 @@ const els = {
   detail: document.getElementById('node-detail'),
   paneList: document.getElementById('section-results'),
   paneGraph: document.getElementById('section-graph'),
-  tabList: document.getElementById('tab-list'),
-  tabGraph: document.getElementById('tab-graph'),
+  navResults: document.getElementById('nav-results'),
+  navGraph: document.getElementById('nav-graph'),
   env: document.getElementById('registry-env'),
   taLink: document.getElementById('registry-ta-link'),
 };
 
-function setPane(name) {
-  const list = name === 'list';
-  els.tabList?.setAttribute('aria-selected', String(list));
-  els.tabGraph?.setAttribute('aria-selected', String(!list));
-  syncExplorerPanes();
-  const target = list ? els.paneList : els.paneGraph;
-  if (isMobile()) {
-    target?.scrollIntoView({
-      block: 'start',
-      behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
-    });
-  }
+const GRAPH_HASHES = new Set(['#graph', '#section-graph', '#registry-graph']);
+const RESULTS_HASHES = new Set(['', '#results', '#section-results']);
+
+function viewFromHash(hash = window.location.hash) {
+  if (GRAPH_HASHES.has(hash)) return 'graph';
+  if (RESULTS_HASHES.has(hash)) return 'list';
+  return null;
+}
+
+function paintViewLink(el, active) {
+  if (!el) return;
+  el.classList.toggle('btn-primary', active);
+  el.classList.toggle('btn-outline-primary', !active);
+  if (active) el.setAttribute('aria-current', 'page');
+  else el.removeAttribute('aria-current');
+}
+
+function layoutVisibleGraph() {
+  if (!els.paneGraph?.classList.contains('is-active') || !state.view) return;
+  state.view.resize();
+  if ((els.graph?.clientWidth || 0) > 0) state.view.runLayout();
+}
+
+function applyView(name) {
+  const list = name !== 'graph';
+  paintViewLink(els.navResults, list);
+  paintViewLink(els.navGraph, !list);
+  els.paneList?.classList.toggle('is-active', list);
+  els.paneGraph?.classList.toggle('is-active', !list);
+  els.paneList?.toggleAttribute('inert', !list);
+  els.paneGraph?.toggleAttribute('inert', list);
   if (!list) {
-    state.view?.resize();
-    state.view?.fit();
+    layoutVisibleGraph();
+    requestAnimationFrame(layoutVisibleGraph);
   }
 }
 
-function syncExplorerPanes() {
-  const list = els.tabList?.getAttribute('aria-selected') !== 'false';
-  const mobile = isMobile();
-  els.paneList?.classList.toggle('is-active', list);
-  els.paneGraph?.classList.toggle('is-active', !list);
-  els.paneList?.toggleAttribute('inert', mobile && !list);
-  els.paneGraph?.toggleAttribute('inert', mobile && list);
+function syncViewFromLocation() {
+  const view = viewFromHash();
+  if (view) applyView(view);
+}
+
+function setPane(name) {
+  const graph = name === 'graph';
+  applyView(graph ? 'graph' : 'list');
+  const hash = graph ? '#section-graph' : '#section-results';
+  if (window.location.hash === hash) return;
+  const url = new URL(window.location.href);
+  url.hash = hash;
+  history.pushState(null, '', url);
 }
 
 function isMobile() {
@@ -252,8 +277,8 @@ function bindChrome() {
     });
   });
 
-  els.tabList?.addEventListener('click', () => setPane('list'));
-  els.tabGraph?.addEventListener('click', () => setPane('graph'));
+  els.navResults?.addEventListener('click', () => applyView('list'));
+  els.navGraph?.addEventListener('click', () => applyView('graph'));
 
   document.getElementById('graph-zoom-in')?.addEventListener('click', () => state.view?.zoomIn());
   document.getElementById('graph-zoom-out')?.addEventListener('click', () => state.view?.zoomOut());
@@ -265,10 +290,7 @@ function bindChrome() {
     window.bootstrap?.Offcanvas?.getOrCreateInstance(canvas).show();
   });
   document.getElementById('skip-graph')?.addEventListener('click', () => {
-    if (isMobile()) setPane('graph');
-  });
-  document.getElementById('skip-search')?.addEventListener('click', () => {
-    if (isMobile()) setPane('list');
+    applyView('graph');
   });
 
   const offcanvas = document.getElementById('message-board');
@@ -280,12 +302,15 @@ function bindChrome() {
     document.getElementById('message-board-toggle')?.focus();
   });
 
+  window.addEventListener('hashchange', syncViewFromLocation);
+  window.addEventListener('popstate', syncViewFromLocation);
   window.addEventListener('resize', () => {
-    syncExplorerPanes();
-    state.view?.resize();
-    state.view?.fit();
+    if (els.paneGraph?.classList.contains('is-active')) {
+      state.view?.resize();
+      state.view?.fit();
+    }
   });
-  syncExplorerPanes();
+  syncViewFromLocation();
 }
 
 async function applyLocale(lang) {
@@ -338,6 +363,10 @@ function renderStatic(dict) {
   });
   if (els.search) els.search.placeholder = dict.search.placeholder;
   set('results-heading', dict.results.heading);
+  set('nav-results', dict.views?.results);
+  set('nav-graph', dict.views?.graph);
+  const viewNav = document.getElementById('explorer-views');
+  if (viewNav && dict.views?.label) viewNav.setAttribute('aria-label', dict.views.label);
   set('graph-heading', dict.graph.heading);
   set('message-board-title', dict.board.title);
   set('message-board-toggle-label', dict.board.open);
@@ -364,8 +393,6 @@ function renderStatic(dict) {
   set('footer-specs', dict.footer.specs);
   const specsLink = document.getElementById('footer-specs');
   if (specsLink && dict.footer.specsHref) specsLink.setAttribute('href', dict.footer.specsHref);
-  set('tab-list', dict.mobile.list);
-  set('tab-graph', dict.mobile.graph);
   set('graph-toolbar-label', dict.graph.toolbar);
   set('graph-zoom-in-label', dict.graph.zoomIn);
   set('graph-zoom-out-label', dict.graph.zoomOut);
@@ -683,7 +710,7 @@ function ensureResultRow(id) {
 }
 
 async function selectNode(id, { fromGraph = false, fromAccordion = false } = {}) {
-  if (fromGraph && isMobile()) setPane('list');
+  if (fromGraph) setPane('list');
   const gen = ++selectGen;
   state.selectedId = id;
   writeUrl();
@@ -1297,6 +1324,7 @@ function rebuildGraph() {
   }
   els.graph.setAttribute('data-ready', 'true');
   els.graph.setAttribute('aria-busy', 'false');
+  if (viewFromHash() === 'graph') layoutVisibleGraph();
   populateFacets();
   applyQuery(state.query, { restoreSelection: false });
   if (keepId && state.graph.byId.has(keepId)) {

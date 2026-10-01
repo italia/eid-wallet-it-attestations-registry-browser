@@ -1,8 +1,8 @@
 import { test, expect } from './fixtures.js';
-import { expandDetailSection, waitForGraph } from './helpers.js';
+import { expandDetailSection, openResultsPane, waitForGraph } from './helpers.js';
 
 test.describe('responsive navigation', () => {
-  test('header, search and graph remain usable', async ({ page }, testInfo) => {
+  test('header, search and graph remain usable', async ({ page }) => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     await waitForGraph(page);
 
@@ -22,32 +22,33 @@ test.describe('responsive navigation', () => {
     expect(slimBox?.width).toBeGreaterThan(300);
     expect(slimBox?.height).toBeGreaterThan(24);
 
-    const isMobile = testInfo.project.name === 'mobile' || (viewport?.width ?? 0) < 992;
-    if (isMobile) {
-      await expect(page.locator('.explorer-mobile-tabs')).toBeVisible();
-      await expect(page.locator('#section-results')).toBeVisible();
-      await expect(page.locator('#section-graph')).toBeHidden();
-      await page.locator('#tab-graph').click();
-      await expect(page.locator('#section-graph')).toBeVisible();
-      await expect(page.locator('#section-results')).toBeHidden();
-      const graph = page.locator('#registry-graph');
-      const gBox = await graph.boundingBox();
-      expect(gBox?.width).toBeGreaterThan(250);
-      expect(gBox?.height).toBeGreaterThan(200);
-      const canvas = page.locator('#registry-graph canvas[data-id="layer2-node"]');
-      await expect(canvas).toBeVisible();
-      await page.locator('#graph-zoom-in').click();
-      await page.locator('#graph-zoom-fit').click();
-      await page.locator('#tab-list').click();
-      await expect(page.locator('#section-results')).toBeVisible();
-      await expect(page.locator('#section-graph')).toBeHidden();
-      await expect(page.locator('#results-list button').first()).toBeVisible();
-    } else {
-      await expect(page.locator('#section-search')).toBeVisible();
-      await expect(page.locator('#section-results')).toBeVisible();
-      await expect(page.locator('#section-graph')).toBeVisible();
-      await expect(page.locator('#registry-graph canvas[data-id="layer2-node"]')).toBeVisible();
-    }
+    await expect(page.locator('#explorer-views')).toBeVisible();
+    await expect(page.locator('#nav-results')).toHaveAttribute('href', '#section-results');
+    await expect(page.locator('#nav-graph')).toHaveAttribute('href', '#section-graph');
+    await expect(page.locator('#section-search')).toBeVisible();
+    await expect(page.locator('#section-results')).toBeVisible();
+    await expect(page.locator('#section-graph')).toBeHidden();
+    await expect(page.locator('#nav-results')).toHaveAttribute('aria-current', 'page');
+
+    await page.locator('#nav-graph').click();
+    await expect(page).toHaveURL(/#section-graph$/);
+    await expect(page.locator('#section-graph')).toBeVisible();
+    await expect(page.locator('#section-results')).toBeHidden();
+    await expect(page.locator('#section-search')).toBeVisible();
+    await expect(page.locator('#nav-graph')).toHaveAttribute('aria-current', 'page');
+    const graph = page.locator('#registry-graph');
+    const gBox = await graph.boundingBox();
+    expect(gBox?.width).toBeGreaterThan(250);
+    expect(gBox?.height).toBeGreaterThan(200);
+    await expect(page.locator('#registry-graph canvas[data-id="layer2-node"]')).toBeVisible();
+    await page.locator('#graph-zoom-in').click();
+    await page.locator('#graph-zoom-fit').click();
+
+    await page.locator('#nav-results').click();
+    await expect(page).toHaveURL(/#section-results$/);
+    await expect(page.locator('#section-results')).toBeVisible();
+    await expect(page.locator('#section-graph')).toBeHidden();
+    await expect(page.locator('#results-list button').first()).toBeVisible();
   });
 
   test('slim-header brand reloads the home page', async ({ page }) => {
@@ -76,7 +77,7 @@ test.describe('responsive navigation', () => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     await waitForGraph(page);
-    await page.locator('#tab-list').click();
+    await openResultsPane(page);
     await page.locator('#results-list button[data-node-id="credential:mDL"]').click();
     await expect(page.locator('#detail-accordion')).toBeVisible();
     await expandDetailSection(page, 'credential-offer');

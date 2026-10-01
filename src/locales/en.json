@@ -60,8 +60,9 @@
     "zoomOut": "Zoom out",
     "fit": "Fit"
   },
-  "mobile": {
-    "list": "List",
+  "views": {
+    "label": "Sections",
+    "results": "List",
     "graph": "Graph"
   },
   "board": {
@@ -161,8 +162,8 @@
     "accessibility": "Accessibility",
     "github": "GitHub repository",
     "specsLabel": "Aligned with",
-    "specs": "IT-Wallet v1.4.6",
-    "specsHref": "https://italia.github.io/eid-wallet-it-docs/releases/1.4.6/en/"
+    "specs": "IT-Wallet v1.4.7",
+    "specsHref": "https://italia.github.io/eid-wallet-it-docs/releases/1.4.7/en/"
   },
   "noscript": "JavaScript is required to use the registry explorer."
 }

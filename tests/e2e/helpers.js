@@ -16,11 +16,17 @@ export async function search(page, query) {
   await page.waitForFunction((q) => window.__ITW_EXPLORER__?.query === q, query);
 }
 
-export async function openGraphPane(page, projectName) {
-  if (projectName !== 'desktop') {
-    const tab = page.locator('#tab-graph');
-    if (await tab.isVisible()) await tab.click();
-  }
+export async function openGraphPane(page) {
+  const section = page.locator('#section-graph');
+  if (!(await section.isVisible())) await page.locator('#nav-graph').click();
+  await expect(section).toBeVisible();
+  await expect(page.locator('#registry-graph canvas[data-id="layer2-node"]')).toBeVisible();
+}
+
+export async function openResultsPane(page) {
+  const section = page.locator('#section-results');
+  if (!(await section.isVisible())) await page.locator('#nav-results').click();
+  await expect(section).toBeVisible();
 }
 
 export async function expandDetailSection(page, id) {
